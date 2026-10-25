@@ -36,6 +36,8 @@ export interface CarRig {
   /** In-car displays (procedural cars only): redraw the canvas then flag the texture. */
   screens?: { nav: { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture }; cluster: { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture } };
   headlights: THREE.Group;
+  /** Car-space point at the base of the windscreen (for the cockpit rain mask). */
+  glassBase: THREE.Vector3;
   length: number;
   width: number;
   dispose(): void;
@@ -298,7 +300,7 @@ export function buildProceduralCar(body: BodyType, color: number, opts: { detail
   const headlights = makeHeadlights(p.W, p.hood - 0.1, p.L / 2);
   root.add(headlights);
   return {
-    root, body: bodyG, wheels, steerPivots, paint, brakeLights, eye, wheelRadius: p.wr, length: p.L, width: p.W, screens, headlights,
+    root, body: bodyG, wheels, steerPivots, paint, brakeLights, eye, wheelRadius: p.wr, length: p.L, width: p.W, screens, headlights, glassBase: new THREE.Vector3(0, p.belt + 0.08, p.cowl),
     dispose() { root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); }); paint.dispose(); brakeLights.dispose(); },
   };
 }
@@ -356,7 +358,7 @@ export async function buildModelCar(def: VehicleDef, photoreal: boolean): Promis
   const headlights = makeHeadlights(s.x, s.y * 0.5, s.z / 2);
   root.add(headlights);
   return {
-    root, body: bodyG, wheels, steerPivots: [], paint, brakeLights, headlights,
+    root, body: bodyG, wheels, steerPivots: [], paint, brakeLights, headlights, glassBase: new THREE.Vector3(0, s.y * 0.62, s.z * 0.12),
     eye: new THREE.Vector3(s.x * 0.2, s.y * 0.82, -0.25), wheelRadius: 0.34, length: s.z, width: s.x,
     dispose() { paint.dispose(); },
   };

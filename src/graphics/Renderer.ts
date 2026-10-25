@@ -13,6 +13,8 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflare.js';
 import type { GraphicsMode, TimeOfDay, Weather } from '../core/Save';
 import { binaryUrl } from '../core/AssetUrl';
+import { PlanarReflection, puddleUniforms } from './PuddleReflection';
+import { WindscreenRainShader } from './WindscreenRain';
 
 interface Preset {
   maxPixelRatio: number;
@@ -111,6 +113,10 @@ export class GameRenderer {
   private cube: THREE.CubeCamera;
   private cubeTarget: THREE.WebGLCubeRenderTarget;
   private fpsAcc = 0; private fpsN = 0;
+  readonly reflection = new PlanarReflection();
+  private windscreen: ShaderPass | null = null;
+  /** Cockpit rain on the glass: amount (0 = off) and the dashboard line in screen space. */
+  cockpitRain = { amount: 0, dashY: 0.3 };
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
@@ -212,6 +218,10 @@ export class GameRenderer {
     this.renderer.shadowMap.autoUpdate = p.shadowEvery === 1;
     this.renderer.shadowMap.needsUpdate = true;
     this.flare.visible = this.mode === 'hyper' && this.time !== 'night' && !rain;
+    puddleUniforms.uWet.value = wet ? 1 : 0;
+    puddleUniforms.uRain.value = rain ? 1 : 0;
+    puddleUniforms.uReflOn.value = 0;
+    this.reflection.scale = this.mode === 'hyper' ? 0.5 : 0.33;
     this.scene.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
       if (Array.isArray(m)) m.forEach((x) => (x.needsUpdate = true)); else if (m) m.needsUpdate = true;
@@ -237,6 +247,9 @@ export class GameRenderer {
     const full = this.preset.post === 'full';
     c.addPass(new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), night ? 0.55 : full ? 0.25 : 0.15, night ? 0.5 : 0.4, night ? 0.9 : 2.2));
     c.addPass(new OutputPass());
+    this.windscreen = new ShaderPass(WindscreenRainShader);
+    this.windscreen.enabled = false;
+    c.addPass(this.windscreen);
     if (this.preset.post === 'full') {
       this.cinematic = new ShaderPass(CinematicShader);
       const tint = { day: [1.02, 1.0, 0.97], sunset: [1.08, 0.98, 0.88], night: [0.92, 0.97, 1.08] }[this.time];
@@ -283,8 +296,22 @@ export class GameRenderer {
     if (this.preset.shadowEvery > 1 && this.frame % this.preset.shadowEvery === 0) this.renderer.shadowMap.needsUpdate = true;
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
+    // real reflections in standing water (Photoreal + Hyper-real, wet or rain)
+    const puddles = this.weather !== 'dry' && this.mode !== 'rendered';
+    if (puddles) { camera.updateMatrixWorld(); this.reflection.update(this.renderer, this.scene, camera); }
+    else puddleUniforms.uReflOn.value = 0;
+    puddleUniforms.uTime.value = (puddleUniforms.uTime.value + dt) % 1000;
     if (this.preset.post !== 'none') {
       if (!this.composer || this.camera !== camera) { this.buildComposer(camera); this.resize(); }
+      if (this.windscreen) {
+        const u = this.windscreen.uniforms;
+        this.windscreen.enabled = this.cockpitRain.amount > 0;
+        u.uAmount.value = this.cockpitRain.amount;
+        u.uDashY.value = this.cockpitRain.dashY;
+        u.uAspect.value = innerWidth / innerHeight;
+        u.uSpeed.value = this.speed01;
+        u.uTime.value = (u.uTime.value + dt) % 1000;
+      }
       if (this.cinematic) {
         this.cinematic.uniforms.uTime.value = (this.cinematic.uniforms.uTime.value + dt) % 100;
         this.cinematic.uniforms.uSpeed.value += (this.speed01 - this.cinematic.uniforms.uSpeed.value) * Math.min(1, dt * 4);

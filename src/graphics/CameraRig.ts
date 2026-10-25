@@ -8,6 +8,7 @@ export class CameraRig {
   private pos = new THREE.Vector3(0, 5, -10);
   private look = new THREE.Vector3();
   private offset = new THREE.Vector3(0, 2.2, -6.2);
+  private topHeading = 0;
   private shake = 0;
   private snap = true;
 
@@ -53,7 +54,11 @@ export class CameraRig {
       const want = cpos.clone().addScaledVector(fwd, speed * 0.35).add(new THREE.Vector3(0, h, -0.01));
       this.pos.lerp(want, this.snap ? 1 : 1 - Math.exp(-dt * 4));
       cam.position.copy(this.pos);
-      cam.up.set(0, 0, 1); // north-up (+Z at top of screen)
+      // heading-up: the view turns with the car so left/right on screen always match A/D
+      let dh = heading - this.topHeading;
+      dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+      this.topHeading += this.snap ? dh : dh * (1 - Math.exp(-dt * 4));
+      cam.up.set(Math.sin(this.topHeading), 0, Math.cos(this.topHeading));
       cam.lookAt(this.pos.x, 0, this.pos.z);
       cam.fov = THREE.MathUtils.lerp(cam.fov, 50, 1 - Math.exp(-dt * 3));
     }

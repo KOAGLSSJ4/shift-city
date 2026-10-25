@@ -2,6 +2,7 @@
 // (Poly Haven CC0 scans) and richer reflections, Rendered keeps lighter procedural textures.
 import * as THREE from 'three';
 import type { GraphicsMode, TimeOfDay, Weather } from '../core/Save';
+import { installPuddleShader } from './PuddleReflection';
 
 type MapSet = { map?: THREE.Texture; normalMap?: THREE.Texture; roughnessMap?: THREE.Texture };
 
@@ -77,6 +78,7 @@ export class Materials {
     this.lightMaps.set(this.grass, { map: grassLite });
     this.lightMaps.set(this.roof, { map: roofLite });
     this.facades = FACADES.map((f) => this.makeFacade(f));
+    installPuddleShader(this.asphalt);
     this.shopfronts = ['#b8432f', '#2f6db8', '#2f9a6a', '#c9a227', '#7a3fb0', '#d0d0d0'].map((c) => this.makeShopfront(c));
     this.leaves = new THREE.MeshStandardMaterial({ map: leafTexture(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.75, color: 0xb8c8a0 });
     this.puddles = canvasTex(512, 512, (g) => {
@@ -93,6 +95,7 @@ export class Materials {
       }
       for (let i = 0; i < 6000; i++) { g.fillStyle = `rgba(0,${Math.random() < 0.5 ? 60 : 130},0,0.12)`; g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2); }
     }, false);
+    this.puddles.repeat.set(0.27, 0.27); // one puddle tile ≈ 30 m of road, so the pattern doesn't visibly repeat
   }
 
   /** Ground-floor shops: one tile = 8 m wide x 4.5 m tall. Emissive glass lights up at night. */

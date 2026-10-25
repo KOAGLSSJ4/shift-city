@@ -89,6 +89,10 @@ export class Game {
     this.arcade = new ArcadeMode(this.mats, this.rig);
     this.arcade.events = this.arcadeEvents();
     this.gfx.scene.add(this.arcade.group);
+    // the road surface, its paint and the lamp pools must not reflect themselves
+    const flat = new Set<THREE.Material>([this.mats.asphalt, this.mats.paintWhite, this.mats.paintYellow, this.mats.lampPool]);
+    for (const g of [this.city.group, this.arcade.group]) g.traverse((o) => { const m = (o as THREE.Mesh).material; if (m && !Array.isArray(m) && flat.has(m)) this.gfx.reflection.hide(o); });
+    this.gfx.reflection.hide(this.rain.mesh);
     // ?gfx=rendered|photoreal overrides the saved choice (handy for testing / weak devices)
     const q = new URLSearchParams(location.search).get('gfx');
     this.gfx.scene.add(this.rain.mesh);
@@ -219,6 +223,16 @@ export class Game {
     this.gfx.followSun(focus, this.cam.camera);
     this.rain.update(dt, this.cam.camera);
     this.gfx.updateReflections(this.rig.root, this.rig.paint);
+    const st = this.save.settings;
+    const cockpit = this.cam.view === 'cockpit' && (this.state === 'city' || this.state === 'arcade') && !(this.paused && this.previewId !== null);
+    const glassRain = cockpit && st.weather === 'rain' && st.graphics !== 'rendered';
+    this.gfx.cockpitRain.amount = glassRain ? 0.85 : 0;
+    if (glassRain) {
+      const gb = this.rig.glassBase.clone().applyMatrix4(this.rig.root.matrixWorld).project(this.cam.camera);
+      this.gfx.cockpitRain.dashY = THREE.MathUtils.clamp(gb.y * 0.5 + 0.5, 0, 0.9);
+    }
+    // no duplicate map: in the cockpit the nav map lives on the dashboard screen
+    $('minimap').hidden = cockpit && !!this.rig.screens;
 
     // HUD + audio (DOM work throttled to ~20 Hz; the 3D view still runs every frame)
     if ((this.hudTimer -= dt) <= 0) {
@@ -262,10 +276,28 @@ export class Game {
 
   private setView(v: CameraView) {
     this.cam.setView(v);
+    this.showViewHint(v);
     this.save.settings.camera = v;
     $('view-label').textContent = VIEW_LABEL[v];
     this.refreshMenu();
     this.persist();
+  }
+
+  private showViewHint(v: CameraView) {
+    if (this.state !== 'city' && this.state !== 'arcade') return;
+    const touch = isTouch();
+    const steer = this.state === 'arcade' ? (touch ? 'swipe ◀ ▶ to change lane' : '<b>A / D</b> change lane') : touch ? '◀ ▶ steer · ▲ gas · ▼ brake' : '<b>W</b> gas · <b>A / D</b> steer · <b>S</b> brake/reverse · <b>Space</b> handbrake';
+    const extra = {
+      cockpit: this.rig.screens ? 'Map and speed are on your dashboard screens' : 'Map bottom-left',
+      chase: 'Map bottom-left · <b>V</b> next view',
+      top: 'The map turns with your car, so left and right on screen always match your steering',
+    }[v];
+    const el = $('view-hint');
+    el.hidden = true; void el.offsetWidth;
+    el.innerHTML = `<b>${VIEW_LABEL[v]}</b> · ${steer}<br>${extra}`;
+    el.hidden = false;
+    clearTimeout((el as any)._t);
+    (el as any)._t = setTimeout(() => (el.hidden = true), 3600);
   }
 
   /** Graphics tier, time of day and weather are independent of gameplay and never touch the save's progress. */
