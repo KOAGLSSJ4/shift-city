@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { BodyType, VehicleDef } from '../data/vehicles';
+import { binaryUrl } from '../core/AssetUrl';
 
 interface Profile {
   L: number; W: number; H: number; wb: number; wr: number; clear: number;
@@ -270,7 +271,7 @@ export function loadModel(url: string): Promise<THREE.Group | null> {
     gltfLoader.setDRACOLoader(draco);
   }
   if (!gltfCache.has(url)) {
-    gltfCache.set(url, new Promise((res) => gltfLoader!.load(url, (g) => res(g.scene), undefined, (e) => { console.warn('model failed', url, e); res(null); })));
+    gltfCache.set(url, binaryUrl(url).then((u) => new Promise((res) => gltfLoader!.load(u, (g) => res(g.scene), undefined, (e) => { console.warn('model failed', url, e); res(null); }))));
   }
   return gltfCache.get(url)!;
 }

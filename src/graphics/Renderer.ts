@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import type { GraphicsMode } from '../core/Save';
+import { binaryUrl } from '../core/AssetUrl';
 
 interface Preset {
   maxPixelRatio: number;
@@ -57,7 +58,7 @@ export class GameRenderer {
   async loadEnvironment(onProgress?: (f: number) => void) {
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     const loader = new RGBELoader();
-    const load = (url: string) => new Promise<THREE.DataTexture>((res, rej) => loader.load(url, res, undefined, rej));
+    const load = async (url: string) => { const u = await binaryUrl(url); return new Promise<THREE.DataTexture>((res, rej) => loader.load(u, res, undefined, rej)); };
     try {
       const lo = await load('assets/hdri/sky_1k.hdr');
       onProgress?.(0.5);
