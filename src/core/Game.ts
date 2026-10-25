@@ -8,10 +8,11 @@ import { City } from '../world/City';
 import { Traffic } from '../world/Traffic';
 import { CityMode } from '../gameplay/CityMode';
 import { ArcadeMode, ARCADE_ORIGIN } from '../gameplay/ArcadeMode';
-import { buildModelCar, buildProceduralCar, loadModel, type CarRig } from '../vehicles/CarFactory';
+import { buildModelCar, buildProceduralCar, loadModel, setCarLights, type CarRig } from '../vehicles/CarFactory';
+import { Rain } from '../graphics/Rain';
 import { Input } from './Input';
 import { Audio } from './Audio';
-import { loadSave, writeSave, type CameraView, type GraphicsMode, type SaveData } from './Save';
+import { loadSave, writeSave, type CameraView, type GraphicsMode, type SaveData, type TimeOfDay, type Weather } from './Save';
 import { BALANCE } from '../data/balancing';
 import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
@@ -24,6 +25,7 @@ import { Minimap } from '../ui/Minimap';
 type State = 'loading' | 'menu' | 'city' | 'arcade' | 'over';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const money = (n: number) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+const GFX_LABEL: Record<GraphicsMode, string> = { rendered: 'Rendered', photoreal: 'Photoreal', hyper: 'Hyper-real' };
 const VIEW_LABEL: Record<CameraView, string> = { cockpit: 'Cockpit cam', chase: 'Chase cam', top: 'Top-down' };
 
 export class Game {
@@ -50,11 +52,17 @@ export class Game {
   private previewId: string | null = null;
   private garageSel: string;
   private lastWallet = -1;
+  private rain = new Rain();
+  private hudTimer = 0;
+  private screenTimer = 0;
+  private navMap: Minimap | null = null;
+  private slowWarned = false;
 
   constructor() {
     this.gfx = new GameRenderer($<HTMLCanvasElement>('c'));
     this.garageSel = this.save.selected;
     this.audio.setEnabled(this.save.settings.audio);
+    this.audio.setVolume(this.save.settings.volume);
     this.tutorial = new Tutorial(() => { this.save.tutorialDone = true; this.persist(); });
     (window as any).__game = this;
   }
@@ -83,7 +91,13 @@ export class Game {
     this.gfx.scene.add(this.arcade.group);
     // ?gfx=rendered|photoreal overrides the saved choice (handy for testing / weak devices)
     const q = new URLSearchParams(location.search).get('gfx');
-    this.applyGraphics(q === 'rendered' || q === 'photoreal' ? q : this.save.settings.graphics);
+    this.gfx.scene.add(this.rain.mesh);
+    this.gfx.onSlow = () => {
+      if (this.slowWarned || this.save.settings.graphics === 'rendered') return;
+      this.slowWarned = true;
+      this.toast(`Your device is struggling with ${this.save.settings.graphics === 'hyper' ? 'Hyper-real' : 'Photoreal'} — try a lower graphics setting (⚙)`, 'bad');
+    };
+    await this.applyGraphics(q === 'rendered' || q === 'photoreal' || q === 'hyper' ? q : this.save.settings.graphics);
     this.cam.setView(this.save.settings.camera);
     this.bindUI();
     progress(1, 'Ready');
@@ -112,6 +126,7 @@ export class Game {
     this.rig = rig;
     this.cityMode.setRig(rig);
     this.arcade.rig = rig;
+    this.applyRigLook();
     this.cam.cut();
   }
 
@@ -181,7 +196,7 @@ export class Game {
     if (this.state === 'arcade' && !this.paused) {
       const tap = inp.hit('KeyA', 'ArrowLeft', 'TouchLeft') ? 1 : inp.hit('KeyD', 'ArrowRight', 'TouchRight') ? -1 : 0;
       this.arcade.update(dt, tap, 0);
-      this.updateArcadeHud();
+      if (this.hudTimer <= 0) this.updateArcadeHud();
     }
 
     // camera
@@ -201,11 +216,19 @@ export class Game {
       this.cam.update(dt, this.rig.root, heading, this.rig.eye, speed, this.state === 'city' ? inp.steer : 0);
       this.rig.root.getWorldPosition(focus);
     }
-    this.gfx.followSun(focus);
+    this.gfx.followSun(focus, this.cam.camera);
+    this.rain.update(dt, this.cam.camera);
+    this.gfx.updateReflections(this.rig.root, this.rig.paint);
 
-    // HUD + audio
-    if (this.state === 'city') this.updateCityHud();
+    // HUD + audio (DOM work throttled to ~20 Hz; the 3D view still runs every frame)
+    if ((this.hudTimer -= dt) <= 0) {
+      this.hudTimer = 0.05;
+      if (this.state === 'city') this.updateCityHud();
+      if (this.save.settings.showFps) $('fps').textContent = `${this.gfx.stats.fps} fps · ${Math.round(this.gfx.stats.scale * 100)}% res · ${this.gfx.stats.calls} draws`;
+    }
+    if (this.state === 'city' && this.cam.view === 'cockpit' && (this.screenTimer -= dt) <= 0) { this.screenTimer = 0.1; this.drawCarScreens(); }
     const sp = this.state === 'city' ? this.cityMode.physics.speed : this.state === 'arcade' ? this.arcade.speed : 0;
+    this.gfx.speed01 = this.state === 'arcade' ? Math.min(1, sp / 70) : this.state === 'city' ? Math.min(1, Math.max(0, sp - 15) / 40) : 0;
     const top = effectiveStats(vehicleById(this.save.selected), upgradesOf(this.save, this.save.selected)).top;
     this.audio.engine(Math.min(1, sp / top), this.state === 'arcade' ? 0.7 : inp.throttle, (this.state === 'city' || this.state === 'arcade') && !this.paused);
     this.tutorial.update(dt, this.cam.camera, this.state === 'city' && this.cityMode.target ? new THREE.Vector3(this.cityMode.target.x, 0, this.cityMode.target.z) : null, this.paused);
@@ -219,7 +242,7 @@ export class Game {
     const i = this.input;
     if (this.state === 'loading') return;
     if (i.hit('Escape')) {
-      if (!$('garage').hidden || !$('goals').hidden) this.closeModals();
+      if (!$('garage').hidden || !$('goals').hidden || !$('settings').hidden) this.closeModals();
       else if (this.state === 'menu') { if (this.sessionMode) this.startCity(this.sessionMode); }
       else this.showMenu();
     }
@@ -245,14 +268,52 @@ export class Game {
     this.persist();
   }
 
-  applyGraphics(mode: GraphicsMode) {
-    this.save.settings.graphics = mode;
-    this.gfx.setMode(mode);
-    this.mats.setMode(mode);
-    this.rig.paint.clearcoat = mode === 'photoreal' ? 1 : 0.4;
+  /** Graphics tier, time of day and weather are independent of gameplay and never touch the save's progress. */
+  async applyGraphics(mode: GraphicsMode = this.save.settings.graphics, time: TimeOfDay = this.save.settings.time, weather: Weather = this.save.settings.weather) {
+    Object.assign(this.save.settings, { graphics: mode, time, weather });
     this.persist();
     this.refreshMenu();
-    $('btn-gfx').textContent = mode === 'photoreal' ? 'Gfx: Photoreal' : 'Gfx: Rendered';
+    this.refreshSettings();
+    $('btn-gfx').textContent = `Gfx: ${GFX_LABEL[mode]}`;
+    const night = time === 'night';
+    this.mats.setMode(mode);
+    this.mats.setWeather(weather);
+    this.mats.setTime(time);
+    this.city.setMode(mode);
+    setCarLights(night);
+    this.rain.mesh.visible = weather === 'rain' && mode !== 'rendered';
+    this.rain.night = night;
+    this.applyRigLook();
+    await this.gfx.configure(mode, time, weather);
+  }
+
+  private applyRigLook() {
+    const s = this.save.settings;
+    this.rig.paint.clearcoat = s.graphics === 'rendered' ? 0.4 : 1;
+    this.rig.paint.clearcoatRoughness = s.weather === 'dry' ? 0.04 : 0.02;
+    this.rig.headlights.visible = s.time === 'night' || s.weather === 'rain';
+  }
+
+  /** Cockpit displays: live nav map on the centre screen and speed on the cluster. */
+  private drawCarScreens() {
+    const sc = this.rig.screens;
+    if (!sc) return;
+    const ph = this.cityMode.physics, r = this.cityMode.route, t = this.cityMode.target;
+    if (!this.navMap || (this.navMap as any).canvas !== sc.nav.canvas) this.navMap = new Minimap(sc.nav.canvas, false);
+    const tc = this.traffic.cars.filter((c) => Math.abs(c.pos.x - ph.pos.x) < 150 && Math.abs(c.pos.z - ph.pos.z) < 150).map((c) => ({ x: c.pos.x, z: c.pos.z }));
+    this.navMap.draw(ph.pos, ph.heading, r?.points ?? null, t, tc, this.cityMode.job?.stage === 'dropoff' ? '#ffb347' : '#54ffd0');
+    const g = sc.nav.canvas.getContext('2d')!;
+    if (r) { g.fillStyle = 'rgba(8,14,22,0.85)'; g.fillRect(0, 0, 256, 30); g.fillStyle = '#fff'; g.font = 'bold 17px sans-serif'; g.fillText($('nav-text').textContent ?? '', 10, 21); }
+    sc.nav.tex.needsUpdate = true;
+    const c = sc.cluster.canvas.getContext('2d')!;
+    c.fillStyle = '#05080c'; c.fillRect(0, 0, 256, 96);
+    c.fillStyle = '#e8f4ff'; c.font = 'bold 56px sans-serif'; c.textAlign = 'center';
+    c.fillText(String(Math.round(ph.speed * 3.6)), 128, 62);
+    c.font = '600 13px sans-serif'; c.fillStyle = '#7fd8ff'; c.fillText(ph.vLong < -0.3 ? 'R · km/h' : 'D · km/h', 128, 84);
+    const w = Math.min(1, ph.speed / ph.stats.top);
+    c.fillStyle = '#1b2a36'; c.fillRect(20, 8, 216, 5); c.fillStyle = '#4cf0af'; c.fillRect(20, 8, 216 * w, 5);
+    c.textAlign = 'left';
+    sc.cluster.tex.needsUpdate = true;
   }
 
   // ---------------------------------------------------------------- city events
@@ -486,7 +547,7 @@ export class Game {
   }
 
   private closeModals() {
-    $('garage').hidden = true; $('goals').hidden = true;
+    $('garage').hidden = true; $('goals').hidden = true; $('settings').hidden = true;
     if (this.previewId && this.previewId !== this.save.selected) this.swapRig(vehicleById(this.save.selected));
     this.previewId = null;
     this.paused = false;
@@ -570,6 +631,32 @@ export class Game {
     }));
   }
 
+  private openSettings() {
+    $('garage').hidden = true; $('goals').hidden = true;
+    $('settings').hidden = false;
+    this.paused = this.state === 'city' || this.state === 'arcade';
+    this.refreshSettings();
+  }
+
+  private refreshSettings() {
+    const st = this.save.settings;
+    for (const k of ['master', 'engine', 'sfx'] as const) {
+      $<HTMLInputElement>(`vol-${k}`).value = String(Math.round(st.volume[k] * 100));
+      $(`vol-${k}-v`).textContent = st.audio ? `${Math.round(st.volume[k] * 100)}` : 'off';
+    }
+    $('s-mute').textContent = st.audio ? 'Mute all' : 'Unmute';
+    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.classList.toggle('on', b.dataset.time === st.time));
+    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.classList.toggle('on', b.dataset.weather === st.weather));
+    document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.classList.toggle('on', b.dataset.gfx === st.graphics));
+    document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === st.camera));
+    $<HTMLInputElement>('s-fps').checked = st.showFps;
+    $('s-gfx-note').textContent = {
+      rendered: 'Fastest. Clean stylised look for laptops, phones and older GPUs.',
+      photoreal: 'Scanned PBR materials, HDRI sky lighting, soft shadows and bloom. Needs a decent GPU.',
+      hyper: 'Everything in Photoreal plus ambient occlusion, live car reflections, cinematic grade, speed blur and lens flare. For gaming PCs.',
+    }[st.graphics];
+  }
+
   // ---------------------------------------------------------------- menu & UI wiring
   private refreshMenu() {
     const s = this.save;
@@ -578,7 +665,6 @@ export class Game {
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.classList.toggle('on', b.dataset.gfx === s.settings.graphics));
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === s.settings.camera));
     $('menu-stats').textContent = `Level ${s.level} · ${money(Math.round(s.wallet))} wallet · ${s.stats.trips} trips · ${money(Math.round(s.stats.earned))} lifetime · ${s.arcade.points.toLocaleString()} arcade points · driving the ${vehicleById(s.selected).name}`;
-    $('menu-audio').textContent = `Sound: ${s.settings.audio ? 'on' : 'off'}`;
     const n = claimableGoals(s);
     $('goals-badge').hidden = !n; $('goals-badge').textContent = String(n);
   }
@@ -591,8 +677,27 @@ export class Game {
     on('menu-garage', () => this.openGarage());
     on('menu-goals', () => this.openGoals());
     on('menu-tutorial', () => { this.save.tutorialDone = false; this.tutorial.active = false; this.persist(); const m = this.sessionMode ?? 'free'; this.sessionMode = null; this.startCity(m); });
-    on('menu-audio', () => { this.save.settings.audio = !this.save.settings.audio; this.audio.setEnabled(this.save.settings.audio); this.persist(); this.refreshMenu(); });
+    on('menu-settings', () => this.openSettings());
+    on('btn-settings', () => ($('settings').hidden ? this.openSettings() : this.closeModals()));
+    on('s-close', () => this.closeModals());
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(b.dataset.gfx as GraphicsMode)));
+    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, b.dataset.time as TimeOfDay)));
+    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, undefined, b.dataset.weather as Weather)));
+    for (const k of ['master', 'engine', 'sfx'] as const) {
+      const el = $<HTMLInputElement>(`vol-${k}`);
+      el.addEventListener('input', () => {
+        this.audio.unlock();
+        this.save.settings.volume[k] = Number(el.value) / 100;
+        if (k !== 'engine') this.save.settings.audio = true;
+        this.audio.setEnabled(this.save.settings.audio);
+        this.audio.setVolume(this.save.settings.volume);
+        this.refreshSettings();
+      });
+      el.addEventListener('change', () => { if (k !== 'engine') this.audio.preview(); this.persist(); });
+    }
+    on('s-mute', () => { this.save.settings.audio = !this.save.settings.audio; this.audio.setEnabled(this.save.settings.audio); this.persist(); this.refreshSettings(); });
+    $<HTMLInputElement>('s-fps').addEventListener('change', (e) => { this.save.settings.showFps = (e.target as HTMLInputElement).checked; $('fps').hidden = !this.save.settings.showFps; this.persist(); });
+    $('fps').hidden = !this.save.settings.showFps;
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.addEventListener('click', () => this.setView(b.dataset.cam as CameraView)));
     on('accept', () => this.acceptJob());
     on('decline', () => this.cityMode.decline());
@@ -600,7 +705,7 @@ export class Game {
     on('btn-garage', () => this.toggleGarage());
     on('btn-goals', () => ($('goals').hidden ? this.openGoals() : this.closeModals()));
     on('btn-camera', () => this.setView(this.cam.cycle()));
-    on('btn-gfx', () => this.applyGraphics(this.save.settings.graphics === 'photoreal' ? 'rendered' : 'photoreal'));
+    on('btn-gfx', () => this.applyGraphics(({ rendered: 'photoreal', photoreal: 'hyper', hyper: 'rendered' } as const)[this.save.settings.graphics]));
     on('btn-reset', () => this.cityMode.resetCar());
     on('g-close', () => this.closeModals());
     on('goals-close', () => this.closeModals());

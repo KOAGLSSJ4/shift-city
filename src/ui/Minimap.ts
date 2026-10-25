@@ -4,15 +4,15 @@ import type { Pt } from '../world/RoadNetwork';
 
 export class Minimap {
   private g: CanvasRenderingContext2D;
-  constructor(private canvas: HTMLCanvasElement) { this.g = canvas.getContext('2d')!; }
+  constructor(private canvas: HTMLCanvasElement, private round = true) { this.g = canvas.getContext('2d')!; }
 
   draw(pos: Pt, heading: number, route: Pt[] | null, target: Pt | null, traffic: Pt[], targetColor: string) {
     const c = this.canvas, g = this.g, W = c.width, H = c.height, S = 0.55; // px per metre
     g.clearRect(0, 0, W, H);
     g.save();
-    g.beginPath(); g.arc(W / 2, H / 2, W / 2, 0, Math.PI * 2); g.clip();
+    if (this.round) { g.beginPath(); g.arc(W / 2, H / 2, W / 2, 0, Math.PI * 2); g.clip(); }
     g.fillStyle = '#16242f'; g.fillRect(0, 0, W, H);
-    g.translate(W / 2, H / 2 + 20);
+    g.translate(W / 2, H * 0.6);
     // heading-up: forward (+heading) points to the top of the map; world +X is left of +Z
     g.rotate(heading + Math.PI);
     g.scale(S, S);
@@ -39,7 +39,7 @@ export class Minimap {
     if (target) { g.fillStyle = targetColor; g.beginPath(); g.arc(target.x, target.z, 11, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); }
     g.restore();
     // player arrow (always pointing up)
-    g.save(); g.translate(W / 2, H / 2 + 20);
+    g.save(); g.translate(W / 2, H * 0.6);
     g.fillStyle = '#4cf0af'; g.strokeStyle = '#04140d'; g.lineWidth = 2;
     g.beginPath(); g.moveTo(0, -11); g.lineTo(8, 9); g.lineTo(0, 4); g.lineTo(-8, 9); g.closePath(); g.fill(); g.stroke();
     g.restore();
@@ -49,10 +49,10 @@ export class Minimap {
       const fx = Math.sin(heading), fz = Math.cos(heading);
       const ahead = dx * fx + dz * fz, left = dx * fz - dz * fx; // +X is left of +Z
       const sx = -left * S, sy = -ahead * S;
-      const r = Math.hypot(sx, sy), R = W / 2 - 10;
+      const r = Math.hypot(sx, sy), R = Math.min(W, H) / 2 - 10;
       if (r > R - 20) {
         g.fillStyle = targetColor;
-        g.beginPath(); g.arc(W / 2 + (sx / r) * R, H / 2 + 20 + (sy / r) * R * 1, 7, 0, 7); g.fill();
+        g.beginPath(); g.arc(W / 2 + (sx / r) * R, H * 0.6 + (sy / r) * R, 7, 0, 7); g.fill();
       }
     }
   }

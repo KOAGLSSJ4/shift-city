@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DESTINATIONS, GRID, HALF, PITCH, ROAD_W, WALK_W, roadCoord, type Destination } from '../data/world';
 import type { Materials } from '../graphics/Materials';
+import type { GraphicsMode } from '../core/Save';
 import { neighbours, nodeId, nodePos } from './RoadNetwork';
 
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
@@ -34,8 +35,7 @@ function flat(out: number[][], x0: number, z0: number, x1: number, z1: number, y
 }
 
 /** Building walls: one texture tile = one 4 m x 3.5 m window bay. */
-function walls(out: number[][], x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, uOff: number) {
-  const bay = 4, fl = 3.5;
+function walls(out: number[][], x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, uOff: number, bay = 4, fl = 3.5) {
   const v0 = y0 / fl, v1 = y1 / fl;
   const side = (a: THREE.Vector3, b: THREE.Vector3, len: number) => {
     const u1 = uOff + Math.round(len / bay);
@@ -87,6 +87,7 @@ export class City {
     const road: number[][] = [[], [], []], walk: number[][] = [[], [], []], curb: number[][] = [[], [], []];
     const white: number[][] = [[], [], []], yellow: number[][] = [[], [], []], roof: number[][] = [[], [], []];
     const facades: number[][][] = M.facades.map(() => [[], [], []]);
+    const shops: number[][][] = M.shopfronts.map(() => [[], [], []]);
     const grassPatches: number[][] = [[], [], []];
     const treeSpots: THREE.Vector3[] = [], lampSpots: { p: THREE.Vector3; rot: number }[] = [];
     const hw = ROAD_W / 2;
@@ -163,7 +164,9 @@ export class City {
         const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
         const downtown = Math.max(0, 1 - Math.hypot(cx, cz) / 340);
         const addBuilding = (ax0: number, az0: number, ax1: number, az1: number, h: number, style: number) => {
-          walls(facades[style], ax0, az0, ax1, az1, curbH, curbH + h, Math.floor(rand() * 4));
+          const shopH = 4.5;
+          walls(shops[Math.floor(rand() * shops.length)], ax0, az0, ax1, az1, curbH, curbH + shopH, Math.floor(rand() * 3), 8, shopH);
+          walls(facades[style], ax0, az0, ax1, az1, curbH + shopH, curbH + h, Math.floor(rand() * 4));
           flat(roof, ax0, az0, ax1, az1, curbH + h, 6);
           // parapet + rooftop plant
           if (h > 12 && rand() < 0.7) {
@@ -206,10 +209,24 @@ export class City {
     add(roof, M.roof, true);
     add(grassPatches, M.grass);
     facades.forEach((f, i) => add(f, M.facades[i], true));
+    shops.forEach((f, i) => add(f, M.shopfronts[i], true));
 
     this.addTrees(treeSpots);
     this.addLamps(lampSpots);
     this.addSignals();
+    // the city never moves: skip per-frame matrix updates for every static object
+    this.group.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
+    this.group.updateMatrixWorld(true);
+  }
+
+  private blobTrees: THREE.Object3D[] = [];
+  private cardTrees: THREE.Object3D[] = [];
+
+  /** Rendered keeps faceted low-poly crowns; Photoreal/Hyper use alpha-tested leaf cards. */
+  setMode(mode: GraphicsMode) {
+    const real = mode !== 'rendered';
+    this.blobTrees.forEach((o) => (o.visible = !real));
+    this.cardTrees.forEach((o) => (o.visible = real));
   }
 
   private addTrees(spots: THREE.Vector3[]) {
@@ -236,7 +253,35 @@ export class City {
     });
     it.castShadow = ic.castShadow = true;
     ic.receiveShadow = true;
-    this.group.add(it, ic);
+    // leaf-card crowns: many crossed, tilted quads around a few branch clumps
+    const cards: THREE.BufferGeometry[] = [];
+    for (let k = 0; k < 16; k++) {
+      const q = new THREE.PlaneGeometry(2.2 + rand() * 1.2, 2.2 + rand() * 1.2);
+      const a = rand() * Math.PI * 2, r = rand() * 1.5, y = 3.4 + rand() * 2.6;
+      q.rotateX((rand() - 0.5) * 1.4); q.rotateY(rand() * Math.PI); q.rotateZ((rand() - 0.5) * 0.8);
+      q.translate(Math.cos(a) * r, y, Math.sin(a) * r);
+      // fake normals pointing outward from the crown centre so cards shade like a volume
+      const pos = q.attributes.position as THREE.BufferAttribute, nrm = q.attributes.normal as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) { const v = new THREE.Vector3(pos.getX(i), pos.getY(i) - 4.4, pos.getZ(i)).normalize(); nrm.setXYZ(i, v.x, v.y, v.z); }
+      cards.push(q);
+    }
+    const branches: THREE.BufferGeometry[] = [trunk.clone()];
+    for (let k = 0; k < 4; k++) {
+      const b = new THREE.CylinderGeometry(0.04, 0.08, 1.8, 5); b.translate(0, 0.9, 0);
+      b.rotateZ(0.7 + rand() * 0.3); b.rotateY(k * 1.6 + rand()); b.translate(0, 2.6 + rand() * 0.6, 0);
+      branches.push(b.toNonIndexed());
+    }
+    const crownCards = mergeGeometries(cards);
+    const ib = new THREE.InstancedMesh(mergeGeometries(branches.map((g) => (g.index ? g.toNonIndexed() : g))), this.mats.trunk, spots.length);
+    const il = new THREE.InstancedMesh(crownCards, this.mats.leaves, spots.length);
+    spots.forEach((_, i) => { it.getMatrixAt(i, m); ib.setMatrixAt(i, m); il.setMatrixAt(i, m); il.setColorAt(i, col.setHSL(0.22 + rand() * 0.1, 0.35, 0.55 + rand() * 0.25)); });
+    ib.castShadow = il.castShadow = true;
+    il.receiveShadow = true;
+    // alpha-tested shadows for the leaf cards
+    il.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.mats.leaves.map, alphaTest: 0.45 });
+    this.blobTrees.push(it, ic);
+    this.cardTrees.push(ib, il);
+    this.group.add(it, ic, ib, il);
   }
 
   private addLamps(spots: { p: THREE.Vector3; rot: number }[]) {
@@ -254,7 +299,17 @@ export class City {
       im.setMatrixAt(i, m); ih.setMatrixAt(i, m);
     });
     im.castShadow = true;
-    this.group.add(im, ih);
+    // pools of light on the road under each lamp (visible at dusk/night)
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d')!, grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.5, 'rgba(255,255,255,0.35)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+    this.mats.lampPool.map = new THREE.CanvasTexture(c);
+    const poolGeo = new THREE.PlaneGeometry(10, 10); poolGeo.rotateX(-Math.PI / 2); poolGeo.translate(0, -0.12, -3);
+    const ip = new THREE.InstancedMesh(poolGeo, this.mats.lampPool, spots.length);
+    spots.forEach((_, i) => { im.getMatrixAt(i, m); ip.setMatrixAt(i, m); });
+    ip.renderOrder = 2;
+    this.group.add(im, ih, ip);
   }
 
   private addSignals() {

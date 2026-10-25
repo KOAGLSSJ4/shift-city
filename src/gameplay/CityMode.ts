@@ -266,6 +266,8 @@ export class CityMode {
     const spin = ph.wheelSpin / rig.wheelRadius;
     rig.wheels.forEach((w) => { w.rotation.x = spin; });
     rig.steerPivots.forEach((p) => { p.rotation.y = ph.steerAngle; });
+    const sw = (rig.body.userData.sw ??= rig.body.getObjectByName('steeringWheel') ?? null) as THREE.Object3D | null;
+    if (sw) sw.rotation.z = -ph.steerAngle * 4;
     rig.brakeLights.emissiveIntensity = ph.braking || input.brake ? 3 : 0.5;
     rig.root.updateMatrixWorld();
   }

@@ -1,7 +1,7 @@
 // Shared material library. Both graphics modes use the same materials; Photoreal adds PBR maps
 // (Poly Haven CC0 scans) and richer reflections, Rendered keeps lighter procedural textures.
 import * as THREE from 'three';
-import type { GraphicsMode } from '../core/Save';
+import type { GraphicsMode, TimeOfDay, Weather } from '../core/Save';
 
 type MapSet = { map?: THREE.Texture; normalMap?: THREE.Texture; roughnessMap?: THREE.Texture };
 
@@ -52,6 +52,12 @@ export class Materials {
   readonly trunk = new THREE.MeshStandardMaterial({ color: 0x5a4532, roughness: 1 });
   readonly facades: THREE.MeshStandardMaterial[];
   readonly lampGlow = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2cc, emissiveIntensity: 0.6 });
+  readonly shopfronts: THREE.MeshStandardMaterial[];
+  readonly leaves: THREE.MeshStandardMaterial;
+  readonly lampPool = new THREE.MeshBasicMaterial({ color: 0xffc98a, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false });
+  private puddles: THREE.Texture;
+  private mode: GraphicsMode = 'rendered';
+  private weather: Weather = 'dry';
 
   constructor() {
     const asphaltLite = canvasTex(256, 256, (g) => noiseFill(g, 256, 256, [62, 65, 70], 60, 12000));
@@ -71,6 +77,46 @@ export class Materials {
     this.lightMaps.set(this.grass, { map: grassLite });
     this.lightMaps.set(this.roof, { map: roofLite });
     this.facades = FACADES.map((f) => this.makeFacade(f));
+    this.shopfronts = ['#b8432f', '#2f6db8', '#2f9a6a', '#c9a227', '#7a3fb0', '#d0d0d0'].map((c) => this.makeShopfront(c));
+    this.leaves = new THREE.MeshStandardMaterial({ map: leafTexture(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.75, color: 0xb8c8a0 });
+    this.puddles = canvasTex(512, 512, (g) => {
+      // roughness (G channel): a uniform damp sheen with soft, irregular standing water
+      g.fillStyle = 'rgb(0,95,0)'; g.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 9; i++) {
+        const cx = Math.random() * 512, cy = Math.random() * 512;
+        for (let k = 0; k < 14; k++) {
+          const x = cx + (Math.random() - 0.5) * 120, y = cy + (Math.random() - 0.5) * 60, r = 18 + Math.random() * 40;
+          const grd = g.createRadialGradient(x, y, 0, x, y, r);
+          grd.addColorStop(0, 'rgba(0,10,0,0.55)'); grd.addColorStop(1, 'rgba(0,10,0,0)');
+          g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+        }
+      }
+      for (let i = 0; i < 6000; i++) { g.fillStyle = `rgba(0,${Math.random() < 0.5 ? 60 : 130},0,0.12)`; g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2); }
+    }, false);
+  }
+
+  /** Ground-floor shops: one tile = 8 m wide x 4.5 m tall. Emissive glass lights up at night. */
+  private makeShopfront(sign: string) {
+    const W = 512, H = 288;
+    const draw = (g: CanvasRenderingContext2D, lit: boolean) => {
+      g.fillStyle = lit ? '#000' : '#3a3d42'; g.fillRect(0, 0, W, H);
+      g.fillStyle = lit ? '#000' : sign; g.fillRect(0, 0, W, 54);
+      if (!lit) { g.fillStyle = 'rgba(255,255,255,0.85)'; g.font = 'bold 30px sans-serif'; g.fillText(['CAFÉ', 'MARKET', 'BAKERY', 'PHARMACY', 'BOUTIQUE', 'DELI'][Math.floor(Math.random() * 6)], 24, 38); }
+      const panes = [[16, 70, 300, 200], [330, 70, 70, 200], [414, 70, 82, 200]];
+      panes.forEach(([x, y, w, h], i) => {
+        if (lit) { const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, '#ffe2b0'); grd.addColorStop(1, '#c98a4a'); g.fillStyle = i === 1 ? '#6a4a2a' : grd; }
+        else { const grd = g.createLinearGradient(0, y, 0, y + h); grd.addColorStop(0, '#4a5d6c'); grd.addColorStop(1, '#141c24'); g.fillStyle = grd; }
+        g.fillRect(x, y, w, h);
+        if (!lit && i !== 1) { g.fillStyle = 'rgba(220,210,190,0.18)'; for (let k = 0; k < 6; k++) g.fillRect(x + 10 + Math.random() * (w - 40), y + h * 0.55, 18, h * 0.45 * Math.random()); }
+      });
+      if (lit) { g.fillStyle = sign; g.fillRect(16, 12, 220, 30); }
+    };
+    const map = canvasTex(W, H, (g) => draw(g, false));
+    const emissiveMap = canvasTex(W, H, (g) => draw(g, true));
+    const rm = canvasTex(W, H, (g) => { g.fillStyle = 'rgb(0,200,0)'; g.fillRect(0, 0, W, H); g.fillStyle = 'rgb(0,20,160)'; [[16, 70, 300, 200], [414, 70, 82, 200]].forEach(([x, y, w, h]) => g.fillRect(x, y, w, h)); }, false);
+    const m = new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffffff, emissiveIntensity: 0, roughnessMap: rm, metalnessMap: rm, roughness: 1, metalness: 1 });
+    this.lightMaps.set(m, { map });
+    return m;
   }
 
   /** One texture tile = one window bay (4 m wide x 3.5 m tall). */
@@ -102,7 +148,23 @@ export class Materials {
         g.fillStyle = 'rgb(0,18,200)'; g.fillRect(x0, y0, w, h);
       }
     }, false);
-    const m = new THREE.MeshStandardMaterial({ map, roughnessMap: rm, metalnessMap: rm, roughness: 1, metalness: 1 });
+    // night: a random subset of windows glows warm/cool
+    const em = canvasTex(S, S * 4, (g) => {
+      g.fillStyle = '#000'; g.fillRect(0, 0, S, S * 4);
+      const cw = S / f.cols;
+      for (let row = 0; row < 4; row++) for (let c = 0; c < f.cols; c++) {
+        if (Math.random() < 0.45) continue;
+        const x0 = c * cw + (f.glassy ? 3 : cw * 0.16), w = f.glassy ? cw - 6 : cw * 0.68;
+        const y0 = row * S + (f.glassy ? 6 : S * 0.14), h = f.glassy ? S * 0.78 : S * 0.6;
+        const warm = Math.random() < 0.75;
+        g.fillStyle = warm ? `rgb(${230 + Math.random() * 25},${170 + Math.random() * 40},${90 + Math.random() * 40})` : 'rgb(170,200,255)';
+        g.globalAlpha = 0.35 + Math.random() * 0.65;
+        g.fillRect(x0, y0, w, h);
+        g.globalAlpha = 1;
+      }
+    });
+    em.repeat.set(1, 0.25);
+    const m = new THREE.MeshStandardMaterial({ map, roughnessMap: rm, metalnessMap: rm, roughness: 1, metalness: 1, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0 });
     this.lightMaps.set(m, { map });
     return m;
   }
@@ -134,20 +196,61 @@ export class Materials {
   }
 
   setMode(mode: GraphicsMode) {
+    this.mode = mode;
+    const real = mode !== 'rendered';
     const all = new Set([...this.lightMaps.keys(), ...this.photoMaps.keys()]);
     for (const m of all) {
-      const set = (mode === 'photoreal' && this.photoMaps.get(m)) || this.lightMaps.get(m) || {};
+      const set = (real && this.photoMaps.get(m)) || this.lightMaps.get(m) || {};
       m.map = set.map ?? null;
       m.normalMap = set.normalMap ?? null;
       if (!m.metalnessMap) m.roughnessMap = set.roughnessMap ?? null;
       m.normalScale.set(1, 1);
       m.needsUpdate = true;
     }
-    this.asphalt.color.set(mode === 'photoreal' ? 0x9a9a9a : 0xffffff);
-    this.asphalt.roughness = 1;
-    this.foliage.flatShading = mode !== 'photoreal';
+    this.foliage.flatShading = !real;
     this.foliage.needsUpdate = true;
+    this.setWeather(this.weather);
   }
+
+  /** Wet roads: darker albedo, standing-water puddles that mirror the sky and sun. */
+  setWeather(w: Weather) {
+    this.weather = w;
+    const real = this.mode !== 'rendered', wet = w !== 'dry';
+    const base = this.photoMaps.get(this.asphalt);
+    this.asphalt.roughnessMap = wet ? this.puddles : real ? base?.roughnessMap ?? null : null;
+    this.asphalt.color.set(wet ? (real ? 0x5a5a5e : 0xb0b0b8) : real ? 0x9a9a9a : 0xffffff);
+    this.asphalt.roughness = wet ? 1 : 1;
+    this.asphalt.envMapIntensity = wet ? 1.6 : 1;
+    this.asphalt.normalScale.set(wet ? 0.5 : 1, wet ? 0.5 : 1);
+    this.sidewalk.roughness = wet ? 0.45 : 0.9;
+    this.sidewalk.color.set(wet ? 0x8a8a8a : 0xffffff);
+    this.paintWhite.roughness = this.paintYellow.roughness = wet ? 0.25 : 0.6;
+    for (const m of [this.asphalt, this.sidewalk]) m.needsUpdate = true;
+  }
+
+  setTime(t: TimeOfDay) {
+    const k = t === 'night' ? 1 : t === 'sunset' ? 0.12 : 0;
+    this.facades.forEach((m) => (m.emissiveIntensity = 0.9 * k));
+    this.shopfronts.forEach((m) => (m.emissiveIntensity = t === 'night' ? 0.7 : t === 'sunset' ? 0.25 : 0));
+    this.lampGlow.emissiveIntensity = t === 'night' ? 8 : t === 'sunset' ? 2 : 0.4;
+    this.lampPool.opacity = t === 'night' ? 0.3 : t === 'sunset' ? 0.06 : 0;
+  }
+}
+
+/** Alpha-tested foliage card: clusters of leaves with light/dark variation. */
+function leafTexture() {
+  return canvasTex(256, 256, (g) => {
+    g.clearRect(0, 0, 256, 256);
+    for (let i = 0; i < 520; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.pow(Math.random(), 0.6) * 118;
+      const x = 128 + Math.cos(a) * r, y = 128 + Math.sin(a) * r * 0.9;
+      const shade = 0.55 + Math.random() * 0.45 - (r / 118) * 0.15;
+      g.fillStyle = `rgb(${Math.round(70 * shade)},${Math.round(118 * shade)},${Math.round(48 * shade)})`;
+      g.save(); g.translate(x, y); g.rotate(Math.random() * 6.3);
+      g.beginPath(); g.ellipse(0, 0, 7 + Math.random() * 5, 3 + Math.random() * 2, 0, 0, 7); g.fill();
+      g.restore();
+    }
+  });
 }
 
 function hexRgb(h: string): [number, number, number] {

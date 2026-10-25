@@ -8,6 +8,10 @@ const tex = (id, map) => [`public/assets/textures/${id}_${map}.jpg`, `${PH}/Text
 const ASSETS = [
   ['public/assets/hdri/sky_2k.hdr', `${PH}/HDRIs/hdr/2k/kloofendal_48d_partly_cloudy_puresky_2k.hdr`],
   ['public/assets/hdri/sky_1k.hdr', `${PH}/HDRIs/hdr/1k/kloofendal_48d_partly_cloudy_puresky_1k.hdr`],
+  ['public/assets/hdri/sunset_1k.hdr', `${PH}/HDRIs/hdr/1k/belfast_sunset_puresky_1k.hdr`],
+  ['public/assets/hdri/sunset_2k.hdr', `${PH}/HDRIs/hdr/2k/belfast_sunset_puresky_2k.hdr`],
+  ['public/assets/hdri/night_1k.hdr', `${PH}/HDRIs/hdr/1k/kloppenheim_07_puresky_1k.hdr`],
+  ['public/assets/hdri/night_2k.hdr', `${PH}/HDRIs/hdr/2k/kloppenheim_07_puresky_2k.hdr`],
   ...['asphalt_02', 'concrete_pavers_02', 'concrete_wall_008', 'brick_wall_02'].flatMap((id) =>
     ['diff', 'nor_gl', 'rough'].map((m) => tex(id, m))),
   ['public/assets/cars/rosso.glb', 'https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/ferrari.glb'],

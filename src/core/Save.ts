@@ -4,7 +4,14 @@ import { VEHICLES, type Upgrades } from '../data/vehicles';
 export const SAVE_KEY = 'shift-city-save';
 export const SAVE_VERSION = 5;
 
-export type GraphicsMode = 'photoreal' | 'rendered';
+export type GraphicsMode = 'rendered' | 'photoreal' | 'hyper';
+export type TimeOfDay = 'day' | 'sunset' | 'night';
+export type Weather = 'dry' | 'wet' | 'rain';
+export interface Settings {
+  graphics: GraphicsMode; camera: CameraView; audio: boolean;
+  volume: { master: number; engine: number; sfx: number };
+  time: TimeOfDay; weather: Weather; showFps: boolean;
+}
 export type CameraView = 'cockpit' | 'chase' | 'top';
 
 export interface SaveData {
@@ -21,7 +28,7 @@ export interface SaveData {
   paidJobs: string[];
   claimedGoals: string[];
   tutorialDone: boolean;
-  settings: { graphics: GraphicsMode; camera: CameraView; audio: boolean };
+  settings: Settings;
 }
 
 export function defaultSave(): SaveData {
@@ -34,7 +41,7 @@ export function defaultSave(): SaveData {
     story: { chapter: 0 },
     stats: { trips: 0, earned: 0, km: 0, food: 0, nearMisses: 0, rating: 4.9, ratings: 1 },
     paidJobs: [], claimedGoals: [], tutorialDone: false,
-    settings: { graphics: 'photoreal', camera: 'chase', audio: true },
+    settings: { graphics: 'photoreal', camera: 'chase', audio: true, volume: { master: 0.8, engine: 0.7, sfx: 0.8 }, time: 'day', weather: 'dry', showFps: false },
   };
 }
 
@@ -74,10 +81,14 @@ export function normalize(raw: any): SaveData {
     arcade: { ...d.arcade, ...(raw?.arcade ?? {}) },
     story: { ...d.story, ...(raw?.story ?? {}) },
     stats: { ...d.stats, ...(raw?.stats ?? {}) },
-    settings: { ...d.settings, ...(raw?.settings ?? {}) },
+    settings: { ...d.settings, ...(raw?.settings ?? {}), volume: { ...d.settings.volume, ...(raw?.settings?.volume ?? {}) } },
     upgrades: { ...(raw?.upgrades ?? {}) },
   };
   s.version = SAVE_VERSION;
+  if (!['rendered', 'photoreal', 'hyper'].includes(s.settings.graphics)) s.settings.graphics = 'photoreal';
+  if (!['day', 'sunset', 'night'].includes(s.settings.time)) s.settings.time = 'day';
+  if (!['dry', 'wet', 'rain'].includes(s.settings.weather)) s.settings.weather = 'dry';
+  for (const k of ['master', 'engine', 'sfx'] as const) s.settings.volume[k] = Math.min(1, Math.max(0, num(s.settings.volume[k], 0.8)));
   s.owned = Array.isArray(s.owned) ? s.owned.filter((id) => VEHICLES.some((v) => v.id === id)) : ['metro'];
   if (!s.owned.includes('metro')) s.owned.unshift('metro');
   if (!s.owned.includes(s.selected)) s.selected = 'metro';

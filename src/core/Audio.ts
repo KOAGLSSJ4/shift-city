@@ -5,6 +5,9 @@ export class Audio {
   private engOsc!: OscillatorNode;
   private engOsc2!: OscillatorNode;
   private engGain!: GainNode;
+  private engBus!: GainNode;
+  private sfxBus!: GainNode;
+  private vol = { master: 0.8, engine: 0.7, sfx: 0.8 };
   private engFilter!: BiquadFilterNode;
   enabled = true;
 
@@ -13,17 +16,34 @@ export class Audio {
     if (this.ctx) { this.ctx.resume(); return; }
     try { this.ctx = new AudioContext(); } catch { return; }
     const c = this.ctx;
-    this.master = c.createGain(); this.master.gain.value = this.enabled ? 0.5 : 0; this.master.connect(c.destination);
+    this.master = c.createGain(); this.master.connect(c.destination);
+    this.engBus = c.createGain(); this.engBus.connect(this.master);
+    this.sfxBus = c.createGain(); this.sfxBus.connect(this.master);
+    this.applyVolume();
     this.engFilter = c.createBiquadFilter(); this.engFilter.type = 'lowpass'; this.engFilter.frequency.value = 600;
     this.engGain = c.createGain(); this.engGain.gain.value = 0;
     this.engOsc = c.createOscillator(); this.engOsc.type = 'sawtooth';
     this.engOsc2 = c.createOscillator(); this.engOsc2.type = 'square';
     this.engOsc.connect(this.engFilter); this.engOsc2.connect(this.engFilter);
-    this.engFilter.connect(this.engGain); this.engGain.connect(this.master);
+    this.engFilter.connect(this.engGain); this.engGain.connect(this.engBus);
     this.engOsc.start(); this.engOsc2.start();
   }
 
-  setEnabled(on: boolean) { this.enabled = on; if (this.master) this.master.gain.value = on ? 0.5 : 0; }
+  setEnabled(on: boolean) { this.enabled = on; this.applyVolume(); }
+
+  /** 0..1 levels; master is perceptually scaled. */
+  setVolume(v: { master: number; engine: number; sfx: number }) { this.vol = { ...v }; this.applyVolume(); }
+
+  private applyVolume() {
+    if (!this.master) return;
+    const t = this.ctx!.currentTime;
+    this.master.gain.setTargetAtTime(this.enabled ? Math.pow(this.vol.master, 2) * 0.9 : 0, t, 0.02);
+    this.engBus.gain.setTargetAtTime(this.vol.engine * 1.4, t, 0.02);
+    this.sfxBus.gain.setTargetAtTime(this.vol.sfx, t, 0.02);
+  }
+
+  /** Short blip so a volume slider gives instant feedback. */
+  preview() { this.tone(660, 0.12, 'triangle', 0.18); }
 
   /** rpm01: 0..1 engine load, active: whether engine sound should play. */
   engine(rpm01: number, throttle: number, active: boolean) {
@@ -43,7 +63,7 @@ export class Audio {
     o.type = type; o.frequency.setValueAtTime(freq, t);
     if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * slide), t + dur);
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur);
+    o.connect(g); g.connect(this.sfxBus); o.start(t); o.stop(t + dur);
   }
 
   private noise(dur: number, vol = 0.3, freq = 800) {
@@ -55,7 +75,7 @@ export class Audio {
     const src = c.createBufferSource(); src.buffer = buf;
     const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
     const g = c.createGain(); g.gain.value = vol;
-    src.connect(f); f.connect(g); g.connect(this.master); src.start(t);
+    src.connect(f); f.connect(g); g.connect(this.sfxBus); src.start(t);
   }
 
   coin(pitch = 1) { this.tone(880 * pitch, 0.12, 'triangle', 0.15); setTimeout(() => this.tone(1320 * pitch, 0.18, 'triangle', 0.12), 60); }

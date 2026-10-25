@@ -5,6 +5,8 @@ Downloaded by `npm run fetch-assets` into `public/assets/` (not committed to git
 | Asset | Source | Licence | Used for |
 |---|---|---|---|
 | `kloofendal_48d_partly_cloudy_puresky` HDRI (1k + 2k) | [Poly Haven](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky) — Greg Zaal, Jarod Guest | CC0 | Sky, image-based lighting, reflections, sun direction |
+| `belfast_sunset_puresky` HDRI (1k + 2k) | [Poly Haven](https://polyhaven.com/a/belfast_sunset_puresky) | CC0 | Golden-hour sky + lighting |
+| `kloppenheim_07_puresky` HDRI (1k + 2k) | [Poly Haven](https://polyhaven.com/a/kloppenheim_07_puresky) | CC0 | Night sky + lighting |
 | `asphalt_02` (diffuse/normal/roughness, 1k) | [Poly Haven](https://polyhaven.com/a/asphalt_02) | CC0 | Photoreal roads |
 | `concrete_pavers_02` | [Poly Haven](https://polyhaven.com/a/concrete_pavers_02) | CC0 | Photoreal sidewalks |
 | `concrete_wall_008` | [Poly Haven](https://polyhaven.com/a/concrete_wall_008) | CC0 | Roofs, facade surface detail |

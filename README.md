@@ -1,4 +1,4 @@
-# Shift City — v0.5 (Claude rebuild)
+# Shift City — v0.6 (Claude rebuild)
 
 Browser rideshare / delivery / arcade driving game. Rebuilt from scratch from the v4 single-file prototype
 into a modular TypeScript + Three.js (r170) + Vite project.
@@ -13,7 +13,7 @@ npm test               # economy, save-migration and road-routing unit tests
 npm run build          # static build in dist/ (host anywhere)
 ```
 
-`?gfx=rendered` or `?gfx=photoreal` in the URL overrides the saved graphics choice (useful on weak machines).
+`?gfx=rendered`, `?gfx=photoreal` or `?gfx=hyper` in the URL overrides the saved graphics choice (useful on weak machines).
 
 ## Controls
 
@@ -54,6 +54,16 @@ src/
 - **Tutorial**: 6 contextual steps, bouncing pointer that tracks live UI elements and world objectives, glow highlight, advances only on real actions, skip + replay, saved completion flag.
 - **Save**: `shift-city-save` v5 with migration from `shift-city-v4`/`v3` and their mission keys.
 - **Photoreal mode**: 2k HDRI image-based lighting + sky, sun direction extracted from the HDRI, Poly Haven scanned PBR road/sidewalk/wall materials, clearcoat car paint, reflective window glass, 4k soft shadows, GTAO ambient occlusion, bloom, SMAA, AgX tone mapping, adaptive resolution.
+
+## v0.6 additions
+
+- **Settings panel (⚙)**: master / engine / effects volume sliders, mute, FPS counter, graphics tier, time of day, weather, camera.
+- **Hyper-real tier**: ambient occlusion, live city reflections in car paint (cube map), cinematic grade + vignette + film grain + chromatic aberration, speed blur, sun lens flare, 4k shadows, 2k HDRIs.
+- **Time of day**: Day / Golden hour / Night (CC0 HDRIs). Night lights windows, shopfronts, street lamps with light pools, traffic head/tail lights and player headlight beams.
+- **Weather**: Dry / Wet roads (puddle reflections) / Rain (GPU rain streaks, heavier fog).
+- **World detail**: lit ground-floor shopfronts on every building, leaf-card trees in Photoreal/Hyper-real.
+- **Cockpit**: live nav map on the centre screen, digital speed cluster, three-spoke wheel that turns with steering, rear-view mirror.
+- **Performance**: Photoreal is lighter (no AO, 1.25x max resolution, 2k shadows updated every other frame, MSAA instead of SMAA), HUD/minimap DOM updates throttled to 20 Hz, static city transforms frozen, faster adaptive resolution, glass transmission pass removed, a warning when the device can't keep up.
 
 ## Not yet implemented / known gaps
 
