@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "export-unreal-data": "vite-node scripts/export-data.ts ../unreal/Plugins/ShiftCityCore/Data"
   },
   "dependencies": {
     "three": "^0.170.0"
