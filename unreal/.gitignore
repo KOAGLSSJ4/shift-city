@@ -1,0 +1,13 @@
+# Unreal Engine
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+.vs/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+Plugins/*/Binaries/
+Plugins/*/Intermediate/

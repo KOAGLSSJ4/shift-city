@@ -1,0 +1,52 @@
+{
+  "restaurants": [
+    "Burger House",
+    "Sushi Junction",
+    "Pizza Lab",
+    "Noodle Street",
+    "Green Bowl",
+    "Taco Yard"
+  ],
+  "destinations": [
+    {
+      "name": "Central Station",
+      "landmark": "station"
+    },
+    {
+      "name": "Riverside Apartments",
+      "landmark": "apartments"
+    },
+    {
+      "name": "City Hospital",
+      "landmark": "hospital"
+    },
+    {
+      "name": "Westside Mall",
+      "landmark": "mall"
+    },
+    {
+      "name": "University Quarter",
+      "landmark": "campus"
+    },
+    {
+      "name": "Harbour Hotel",
+      "landmark": "hotel"
+    },
+    {
+      "name": "Market Square",
+      "landmark": "market"
+    },
+    {
+      "name": "Old Town",
+      "landmark": "oldtown"
+    },
+    {
+      "name": "South Park",
+      "landmark": "park"
+    },
+    {
+      "name": "Arts District",
+      "landmark": "arts"
+    }
+  ]
+}
