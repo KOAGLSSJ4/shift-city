@@ -1,0 +1,64 @@
+{
+  "chapters": [
+    {
+      "title": "01 / THE FIRST SHIFT",
+      "desc": "Prove yourself on your first passenger run",
+      "a": "Central Station",
+      "b": "Arts District",
+      "food": false,
+      "price": 32,
+      "passenger": "Maya, gallery curator",
+      "intro": "\"First day? Relax. Just get me to the Arts District in one piece.\"",
+      "outro": "\"Smooth. I'll tell my friends about you.\"",
+      "bonusTime": 0
+    },
+    {
+      "title": "02 / THE DINNER RUSH",
+      "desc": "A restaurant needs a reliable courier",
+      "a": "Market Square",
+      "b": "University Quarter",
+      "food": true,
+      "price": 39,
+      "passenger": "Noodle Street kitchen",
+      "intro": "\"Six ramen bowls for the dorms. Hot food, happy students — move!\"",
+      "outro": "The students cheer. Five stars from the whole floor.",
+      "bonusTime": 90
+    },
+    {
+      "title": "03 / THE AIRPORT PICKUP",
+      "desc": "Your first time-sensitive hotel transfer",
+      "a": "Harbour Hotel",
+      "b": "Old Town",
+      "food": false,
+      "price": 62,
+      "passenger": "Mr. Okafor, consultant",
+      "intro": "\"My meeting starts in minutes. Old Town, as fast as is legal.\"",
+      "outro": "\"Made it with time to spare. Keep the change.\"",
+      "bonusTime": 80
+    },
+    {
+      "title": "04 / THE NIGHT SHIFT",
+      "desc": "A late-night trip across the city",
+      "a": "South Park",
+      "b": "City Hospital",
+      "food": false,
+      "price": 76,
+      "passenger": "Dr. Lin, on call",
+      "intro": "\"Emergency surgery. Hospital, please — careful but quick.\"",
+      "outro": "\"You may have just helped save a life tonight.\"",
+      "bonusTime": 100
+    },
+    {
+      "title": "05 / THE BIG CLIENT",
+      "desc": "A premium customer needs a smooth ride",
+      "a": "Arts District",
+      "b": "Riverside Apartments",
+      "food": false,
+      "price": 110,
+      "passenger": "Ava Sterling, investor",
+      "intro": "\"I judge people by how they drive. Impress me.\"",
+      "outro": "\"Impressive. I have a lot more work for a driver like you.\"",
+      "bonusTime": 0
+    }
+  ]
+}

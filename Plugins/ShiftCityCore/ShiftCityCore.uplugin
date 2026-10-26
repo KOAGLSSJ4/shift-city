@@ -1,0 +1,13 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1",
+  "FriendlyName": "Shift City Core",
+  "Description": "Shift City gameplay systems: rideshare/delivery jobs, economy, garage, goals, save game and HUD.",
+  "Category": "Gameplay",
+  "CreatedBy": "K Studios",
+  "CanContainContent": true,
+  "Modules": [
+    { "Name": "ShiftCityCore", "Type": "Runtime", "LoadingPhase": "Default" }
+  ]
+}

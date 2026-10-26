@@ -1,0 +1,12 @@
+{
+  "arcadePointsPerUnit": 100,
+  "cashPerUnit": 5,
+  "xpPerJob": 30,
+  "xpPerStoryChapter": 55,
+  "baseFare": 7,
+  "farePerMetre": 0.045,
+  "pickupRadius": 800,
+  "stopSpeed": 2.5,
+  "boardTime": 0.6,
+  "xpPerLevel": 100
+}
