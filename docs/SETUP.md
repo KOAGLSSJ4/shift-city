@@ -11,7 +11,7 @@ Laptop: RTX 3050 Ti (4 GB), 16 GB RAM, 2 TB SSD. Install everything below onto t
 3. **Visual Studio 2022 Community** (free, visualstudio.microsoft.com). In the installer tick:
    - **Game development with C++**, and inside it make sure **Unreal Engine installer** and a **Windows 10/11 SDK** are ticked.
    - **.NET desktop development** (Unreal's build tools need it).
-4. **GitHub Desktop** (desktop.github.com). Sign in, then **File → Clone repository → `shift-city-unreal`** into `D:\Projects\shift-city-unreal`.
+4. **GitHub Desktop** (desktop.github.com). Sign in, then **File → Clone repository → `shift-city`** into `D:\Projects\shift-city`. If it asks to initialise **Git LFS**, click **Yes**.
 
 ## 2. Create the Unreal project from the free Vehicle template
 
@@ -22,10 +22,11 @@ Laptop: RTX 3050 Ti (4 GB), 16 GB RAM, 2 TB SSD. Install everything below onto t
    - Location: `D:\Projects`. Name: **ShiftCity**.
 3. Click **Create**. Visual Studio may open; you can close it. The editor opens on the vehicle test track.
 4. Drive once to check it works: press **Play** (green ▶), drive with W/A/S/D, press **Esc** to stop. Then close Unreal.
-5. **Move the project into the repo folder.** Open `D:\Projects\ShiftCity` and move **everything inside it**
-   (`ShiftCity.uproject`, `Source`, `Content`, `Config`, …) into `D:\Projects\shift-city-unreal`, next to the
+5. **Move the project into the repo's `unreal` folder.** Open `D:\Projects\ShiftCity` and move **everything inside it**
+   (`ShiftCity.uproject`, `Source`, `Content`, `Config`, …) into `D:\Projects\shift-city\unreal`, next to the
    `Plugins` and `docs` folders that are already there. From now on always open
-   `D:\Projects\shift-city-unreal\ShiftCity.uproject`. You can delete the empty `D:\Projects\ShiftCity` folder.
+   `D:\Projects\shift-city\unreal\ShiftCity.uproject`. You can delete the empty `D:\Projects\ShiftCity` folder.
+6. In GitHub Desktop, **commit** ("Add Unreal project from Vehicle template") and **push**. Large Unreal files go through Git LFS automatically.
 
 ## 3. Add the Shift City plugin
 
@@ -70,8 +71,8 @@ Send Claude a screenshot when it works, or the error text if anything fails.
 
 ## Keeping data in sync with the browser version
 
-Cars, prices, story and goals live in the browser repo. To update the Unreal copy, run this in the browser repo:
+Cars, prices, story and goals are defined once in `web/src/data`. To copy changes into the Unreal plugin, run from the `web` folder:
 
 ```
-npx vite-node scripts/export-data.ts <path-to>/shift-city-unreal/Plugins/ShiftCityCore/Data
+npm run export-unreal-data
 ```

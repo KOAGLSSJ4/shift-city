@@ -1,6 +1,6 @@
-# Shift City — Unreal Engine 5
+# Shift City — Unreal Engine 5 (`unreal/`)
 
-The hyper-real PC version of Shift City (K Studios). The browser version (`shift-city` repo) stays as the
+The hyper-real PC version of Shift City (K Studios). The browser version in `../web` stays as the
 free, link-playable taster and the place where gameplay is prototyped quickly.
 
 ## What's here
@@ -8,7 +8,7 @@ free, link-playable taster and the place where gameplay is prototyped quickly.
 | Path | What it is |
 |---|---|
 | `Plugins/ShiftCityCore/` | C++ plugin with the core game systems, ported from the browser version |
-| `Plugins/ShiftCityCore/Data/*.json` | Cars, story chapters, goals and balancing, exported from the browser repo so both versions use the same numbers |
+| `Plugins/ShiftCityCore/Data/*.json` | Cars, story chapters, goals and balancing, exported from `../web/src/data` (`npm run export-unreal-data`) so both versions use the same numbers |
 | `docs/SETUP.md` | **Start here.** Step-by-step: install Unreal, create the project, add the plugin, press Play |
 | `docs/FIRST-STREET.md` | Building the first realistic street, lighting and rain on an RTX 3050 Ti |
 | `docs/ROADMAP.md` | What gets built next, in order |

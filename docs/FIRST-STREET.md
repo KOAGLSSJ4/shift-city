@@ -19,7 +19,7 @@ golden hour or night with rain. One rideshare job runs along it.
    - Check each asset's licence on Fab before using it in a game you'll sell.
 5. **Street furniture:** reuse the Poly Haven props from the browser version (lamps, bins, hydrants, benches).
    - Import the `.glb` files via **Import** in the Content Browser.
-   - The browser repo's `scripts/fetch-polyhaven-models.mjs` downloads the full-quality originals; Unreal can use the full-detail versions with **Nanite**.
+   - `web/scripts/fetch-polyhaven-models.mjs` downloads the full-quality originals; Unreal can use the full-detail versions with **Nanite**.
 6. **Trees:** Poly Haven trees (`tree_small_02`, `jacaranda_tree`, `island_tree_01`). Import with **Nanite enabled**, which handles millions of triangles.
 7. **Cars:** the Vehicle template's sports car to start. Later, the free Sketchfab cars (e.g. the Corolla with an interior) for the cockpit view.
 8. **Wet roads and rain** (the look from your references):
