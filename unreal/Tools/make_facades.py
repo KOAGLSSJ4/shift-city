@@ -1,4 +1,4 @@
-"""Generates the building facade + shopfront textures in SourceArt/facades (run with system Python + Pillow).
+"""DEVELOPER TOOL - do not run inside Unreal. Generates the building facade + shopfront textures in SourceArt/facades (run with system Python + Pillow).
 Each facade texture is one window bay: 4 m wide x 3.5 m tall. Writes _D (colour), _R (roughness),
 _M (metallic) and _E (night window glow, 4 floors stacked) maps."""
 import os, random

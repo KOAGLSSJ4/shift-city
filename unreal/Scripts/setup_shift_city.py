@@ -354,7 +354,30 @@ def setup_level(mats, lamp, tree):
     les.save_current_level()
 
 
+REQUIRED_GENERATOR_VERSION = 2
+
+
+def check_code_is_current():
+    """Warn loudly if the C++ plugin wasn't rebuilt after pulling (the city would look like the old version)."""
+    cls = unreal.load_class(None, "/Script/ShiftCityCore.SCCityGenerator")
+    version = 0
+    try:
+        version = unreal.get_default_object(cls).get_generator_version()
+    except Exception:
+        pass
+    if version < REQUIRED_GENERATOR_VERSION:
+        msg = ("The Shift City C++ code is out of date (version %d, need %d).\n\n"
+               "Close Unreal, open unreal/ShiftCity.slnx in Visual Studio, choose Development Editor, "
+               "Build > Build Solution, then reopen the project and run this script again." % (version, REQUIRED_GENERATOR_VERSION))
+        unreal.log_error("[ShiftCity] " + msg)
+        unreal.EditorDialog.show_message("Shift City: rebuild needed", msg, unreal.AppMsgType.OK)
+        return False
+    return True
+
+
 def main():
+    if not check_code_is_current():
+        return
     with unreal.ScopedSlowTask(5, "Setting up Shift City") as task:
         task.make_dialog(True)
         task.enter_progress_frame(1, "Importing textures and building materials")
