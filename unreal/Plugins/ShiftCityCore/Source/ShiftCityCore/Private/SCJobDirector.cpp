@@ -40,9 +40,6 @@ APawn* ASCJobDirector::PlayerPawn() const
 void ASCJobDirector::BeginPlay()
 {
 	Super::BeginPlay();
-	for (TActorIterator<ASCDestination> It(GetWorld()); It; ++It) Destinations.Add(*It);
-	if (Destinations.Num() < 2)
-		Toast(TEXT("Place at least two SC Destination actors in the level to get jobs"), FLinearColor(1.f, 0.4f, 0.4f), 10.f);
 
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
@@ -89,7 +86,20 @@ void ASCJobDirector::Toast(const FString& Text, const FLinearColor& Color, float
 void ASCJobDirector::NextOffer()
 {
 	USCEconomySubsystem* E = Economy();
-	if (!E || Destinations.Num() < 2) return;
+	if (Destinations.Num() < 2)
+	{
+		// destinations may be spawned by the city generator after this actor starts, so look again
+		Destinations.Reset();
+		for (TActorIterator<ASCDestination> It(GetWorld()); It; ++It) Destinations.Add(*It);
+		if (Destinations.Num() < 2)
+		{
+			if (!bWarnedNoDestinations) Toast(TEXT("No pickup points yet: add an SC City Generator or SC Destination actors"), FLinearColor(1.f, 0.4f, 0.4f), 10.f);
+			bWarnedNoDestinations = true;
+			OfferTimer = 2.f;
+			return;
+		}
+	}
+	if (!E) return;
 	const FSCVehicleDef Car = E->GetSelectedVehicle();
 	Job = FSCJob();
 	Job.Id = FGuid::NewGuid().ToString();

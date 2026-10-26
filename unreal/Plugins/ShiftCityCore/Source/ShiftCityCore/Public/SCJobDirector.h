@@ -60,6 +60,7 @@ private:
 	UPROPERTY() FSCJob Job;
 	bool bHasJob = false;
 	bool bNearTarget = false;
+	bool bWarnedNoDestinations = false;
 	float OfferTimer = 1.f;
 	float Hold = 0.f;
 	float Clock = 0.f;
