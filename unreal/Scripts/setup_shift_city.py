@@ -31,6 +31,16 @@ def log(msg):
     unreal.log("[ShiftCity] " + msg)
 
 
+def setp(obj, name, value):
+    """Sets an editor property, logging (not stopping) if this engine version names it differently."""
+    try:
+        obj.set_editor_property(name, value)
+        return True
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] could not set %s on %s: %s" % (name, obj.get_name(), e))
+        return False
+
+
 # ------------------------------------------------------------------ textures
 def import_file(path, dest, name=None):
     task = unreal.AssetImportTask()
@@ -245,28 +255,32 @@ def setup_level(mats, lamp, tree):
     sun = eas.spawn_actor_from_class(unreal.DirectionalLight, unreal.Vector(0, 0, 2000), unreal.Rotator(0.0, pitch, 135.0))
     sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
     sc.set_mobility(unreal.ComponentMobility.MOVABLE)
-    sc.set_editor_property("atmosphere_sun_light", True)
-    sc.set_editor_property("intensity", 10.0)
-    sc.set_editor_property("dynamic_shadow_distance_movable_light", 30000.0)
+    setp(sc, "atmosphere_sun_light", True)
+    setp(sc, "intensity", 10.0)
+    setp(sc, "dynamic_shadow_distance_movable_light", 30000.0)
     eas.spawn_actor_from_class(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0))
     sky = eas.spawn_actor_from_class(unreal.SkyLight, unreal.Vector(0, 0, 1000))
     skc = sky.get_component_by_class(unreal.SkyLightComponent)
     skc.set_mobility(unreal.ComponentMobility.MOVABLE)
-    skc.set_editor_property("real_time_capture", True)
+    setp(skc, "real_time_capture", True)
     fog = eas.spawn_actor_from_class(unreal.ExponentialHeightFog, unreal.Vector(0, 0, 0))
     fc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
-    fc.set_editor_property("fog_density", 0.01)
-    fc.set_editor_property("volumetric_fog", True)
-    eas.spawn_actor_from_class(unreal.VolumetricCloud, unreal.Vector(0, 0, 0))
+    setp(fc, "fog_density", 0.01)
+    if not setp(fc, "enable_volumetric_fog", True):
+        setp(fc, "volumetric_fog", True)
+    try:
+        eas.spawn_actor_from_class(unreal.VolumetricCloud, unreal.Vector(0, 0, 0))
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] no volumetric clouds: %s" % e)
     pp = eas.spawn_actor_from_class(unreal.PostProcessVolume, unreal.Vector(0, 0, 0))
-    pp.set_editor_property("unbound", True)
+    setp(pp, "unbound", True)
 
     gen_class = unreal.load_class(None, "/Script/ShiftCityCore.SCCityGenerator")
     gen = eas.spawn_actor_from_class(gen_class, unreal.Vector(0, 0, 0))
     for key, value in mats.items():
-        gen.set_editor_property(key, value)
-    gen.set_editor_property("lamp_meshes", lamp)
-    gen.set_editor_property("tree_meshes", tree)
+        setp(gen, key, value)
+    setp(gen, "lamp_meshes", lamp)
+    setp(gen, "tree_meshes", tree)
     gen.generate()
 
     spawn = gen.get_spawn_transform()
@@ -276,9 +290,9 @@ def setup_level(mats, lamp, tree):
     gm = find_class("BP_VehicleAdvGameMode")
     if gm:
         cdo = unreal.get_default_object(gm)
-        cdo.set_editor_property("hud_class", unreal.load_class(None, "/Script/ShiftCityCore.SCHUD"))
+        setp(cdo, "hud_class", unreal.load_class(None, "/Script/ShiftCityCore.SCHUD"))
         world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-        world.get_world_settings().set_editor_property("default_game_mode", gm)
+        setp(world.get_world_settings(), "default_game_mode", gm)
         for path in EAL.list_assets("/Game", recursive=True):
             if path.split("/")[-1].split(".")[0] == "BP_VehicleAdvGameMode":
                 EAL.save_asset(path.split(".")[0])
