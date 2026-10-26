@@ -8,6 +8,16 @@
   "CreatedBy": "K Studios",
   "CanContainContent": true,
   "Modules": [
-    { "Name": "ShiftCityCore", "Type": "Runtime", "LoadingPhase": "Default" }
+    {
+      "Name": "ShiftCityCore",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "ProceduralMeshComponent",
+      "Enabled": true
+    }
   ]
 }
