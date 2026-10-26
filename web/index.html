@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Shift City</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="loading" class="screen">
+  <div class="brand">SHIFT<span>CITY</span></div>
+  <div class="bar"><i id="load-bar"></i></div>
+  <p id="load-text">Loading city…</p>
+</div>
+
+<div id="menu" class="screen" hidden>
+  <div class="menu-inner">
+    <div class="brand">SHIFT<span>CITY</span></div>
+    <p class="tagline">Drive the city. Build a career. Chase the high score.</p>
+    <div class="modes">
+      <button class="mode-card" id="mode-story"><b>Story</b><small id="story-progress">Chapter 1 of 5</small><span>Your driving career, chapter by chapter.</span></button>
+      <button class="mode-card" id="mode-free"><b>Free Ride</b><small>Open city</small><span>Take rides and food orders at your own pace.</span></button>
+      <button class="mode-card arcade" id="mode-arcade"><b>Arcade Rush</b><small id="arcade-best">Best 0</small><span>Dodge, collect, chain near misses.</span></button>
+    </div>
+    <div class="settings">
+      <div class="seg" id="gfx-seg"><label>Graphics</label><button data-gfx="rendered">Rendered</button><button data-gfx="photoreal">Photoreal</button><button data-gfx="hyper">Hyper-real</button></div>
+      <div class="seg" id="cam-seg"><label>Camera</label><button data-cam="cockpit">Cockpit</button><button data-cam="chase">Chase</button><button data-cam="top">Top-down</button></div>
+    </div>
+    <div class="menu-actions">
+      <button class="ghost" id="menu-garage">Garage</button>
+      <button class="ghost" id="menu-goals">Goals <i class="badge" id="goals-badge" hidden></i></button>
+      <button class="ghost" id="menu-tutorial">Replay tutorial</button>
+      <button class="ghost" id="menu-settings">Settings &amp; sound</button>
+    </div>
+    <div class="menu-stats" id="menu-stats"></div>
+  </div>
+</div>
+
+<div id="hud" hidden>
+  <div class="panel career" id="career">
+    <div class="wallet" id="wallet">$0</div>
+    <div class="lvl"><span id="level">LV 1</span><div class="xp"><i id="xp-bar"></i></div></div>
+    <div class="sub"><span id="rating">★ 4.90</span> · <span id="trips">0 trips</span> · <span id="km">0.0 km</span></div>
+  </div>
+  <div class="nav" id="nav" hidden>
+    <div class="nav-arrow" id="nav-arrow">➤</div>
+    <div><div class="nav-text" id="nav-text">Head to pickup</div><div class="nav-dist" id="nav-dist">—</div></div>
+  </div>
+  <div class="panel job" id="jobpanel">
+    <div class="tag" id="job-tag">WAITING FOR REQUESTS</div>
+    <h3 id="job-title">Looking for riders…</h3>
+    <p id="job-detail"></p>
+    <div class="fare" id="job-fare"></div>
+    <div class="row" id="offer-buttons" hidden><button class="action" id="accept">Accept (Enter)</button><button class="action secondary" id="decline">Decline</button></div>
+  </div>
+  <canvas id="minimap" width="200" height="200"></canvas>
+  <div class="panel speedo"><b id="speed">0</b><small>km/h</small><div class="muted" id="view-label">Chase cam</div></div>
+  <div class="toolbar">
+    <button id="btn-menu" title="Menu (Esc)">☰ Menu</button>
+    <button id="btn-garage" title="Garage (G)">Garage</button>
+    <button id="btn-goals" title="Goals">Goals <i class="badge" id="hud-goals-badge" hidden></i></button>
+    <button id="btn-camera" title="Camera (V)">View</button>
+    <button id="btn-gfx" title="Graphics">Gfx</button>
+    <button id="btn-settings" title="Settings">⚙</button>
+    <button id="btn-reset" title="Recover (R)">Recover</button>
+  </div>
+  <div class="hold" id="hold" hidden><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" /><circle id="hold-ring" cx="20" cy="20" r="17" /></svg><span id="hold-text">Stop here</span></div>
+  <div class="story-card" id="story-card" hidden><div class="tag" id="sc-title"></div><h3 id="sc-name"></h3><p id="sc-line"></p></div>
+  <div class="earn-pop" id="earn-pop" hidden></div>
+</div>
+
+<div id="arcade-hud" hidden>
+  <div class="a-score"><b id="a-score">0</b><small>SCORE</small></div>
+  <div class="a-mult" id="a-mult">x1</div>
+  <div class="a-streak"><i id="a-streak"></i></div>
+  <div class="a-left"><div id="a-hearts">♥♥♥</div><div id="a-coins">◎ 0</div><div id="a-power"></div></div>
+  <div class="a-count" id="a-count"></div>
+  <div class="a-hint">◀ A / D ▶ change lanes</div>
+</div>
+
+<div id="arcade-over" class="screen dim" hidden>
+  <div class="over-card">
+    <div class="tag">RUN COMPLETE</div>
+    <div class="newbest" id="newbest" hidden>NEW BEST!</div>
+    <div class="big" id="o-score">0</div>
+    <div class="o-grid"><div><b id="o-best">0</b><small>Best</small></div><div><b id="o-near">0</b><small>Near misses</small></div><div><b id="o-coins">0</b><small>Coins</small></div></div>
+    <p id="o-points"></p>
+    <div class="row"><button class="action" id="o-again">Play again (Enter)</button><button class="action secondary" id="o-convert">Convert points</button></div>
+    <div class="row"><button class="ghost" id="o-garage">Garage</button><button class="ghost" id="o-menu">Menu</button></div>
+  </div>
+</div>
+
+<div id="garage" class="side-modal" hidden>
+  <div class="modal-head"><h2>Garage</h2><span class="wallet-mini" id="g-wallet"></span><button class="close" id="g-close">✕</button></div>
+  <div class="convert"><span id="g-points"></span><button class="action secondary small" id="g-convert">Convert</button></div>
+  <div id="g-list"></div>
+  <div id="g-detail"></div>
+</div>
+
+<div id="goals" class="side-modal" hidden>
+  <div class="modal-head"><h2>Goals</h2><button class="close" id="goals-close">✕</button></div>
+  <div id="goals-list"></div>
+</div>
+
+<div id="settings" class="side-modal" hidden>
+  <div class="modal-head"><h2>Settings</h2><button class="close" id="s-close">✕</button></div>
+  <h4 class="s-h">Sound</h4>
+  <label class="slider" for="vol-master"><span>Master volume</span><input type="range" id="vol-master" min="0" max="100" /><b id="vol-master-v"></b></label>
+  <label class="slider" for="vol-engine"><span>Engine</span><input type="range" id="vol-engine" min="0" max="100" /><b id="vol-engine-v"></b></label>
+  <label class="slider" for="vol-sfx"><span>Effects</span><input type="range" id="vol-sfx" min="0" max="100" /><b id="vol-sfx-v"></b></label>
+  <button class="ghost small" id="s-mute">Mute all</button>
+  <h4 class="s-h">Graphics</h4>
+  <div class="seg wide" id="s-gfx"><button data-gfx="rendered">Rendered</button><button data-gfx="photoreal">Photoreal</button><button data-gfx="hyper">Hyper-real</button></div>
+  <p class="s-note" id="s-gfx-note"></p>
+  <div class="seg wide"><label>Time</label><button data-time="day">Day</button><button data-time="sunset">Golden hour</button><button data-time="night">Night</button></div>
+  <div class="seg wide"><label>Weather</label><button data-weather="dry">Dry</button><button data-weather="wet">Wet roads</button><button data-weather="rain">Rain</button></div>
+  <h4 class="s-h">Camera</h4>
+  <div class="seg wide"><button data-cam="cockpit">Cockpit</button><button data-cam="chase">Chase</button><button data-cam="top">Top-down</button></div>
+  <label class="check" for="s-fps"><input type="checkbox" id="s-fps" /> Show FPS counter</label>
+</div>
+<div id="fps" hidden></div>
+<div id="view-hint" hidden></div>
+
+<div id="tutorial" hidden>
+  <div class="t-count" id="t-count">1 / 6</div>
+  <h3 id="t-title"></h3>
+  <p id="t-text"></p>
+  <button class="ghost small" id="t-skip">Skip tutorial</button>
+</div>
+<div id="pointer" hidden><div class="p-arrow">➜</div><div class="p-label" id="p-label"></div></div>
+<div id="edge-arrow" hidden>➤</div>
+<div id="toasts"></div>
+<div id="confetti"></div>
+
+<div id="touch" hidden>
+  <div class="t-left"><button data-touch="left">◀</button><button data-touch="right">▶</button></div>
+  <div class="t-right"><button data-touch="handbrake" class="hb">HB</button><button data-touch="brake">▼</button><button data-touch="throttle" class="gas">▲</button></div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
