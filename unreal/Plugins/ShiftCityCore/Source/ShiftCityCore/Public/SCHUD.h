@@ -19,6 +19,9 @@ public:
 	/** Set false to hide the speedometer if your vehicle already shows one. */
 	UPROPERTY(EditAnywhere, Category = "Shift City") bool bShowSpeed = true;
 
+	/** Overall HUD size (text and panels). 1 = original size; raise it if text is hard to read. */
+	UPROPERTY(EditAnywhere, Category = "Shift City", meta = (ClampMin = "0.5", ClampMax = "3.0")) float UIScale = 1.5f;
+
 private:
 	void Panel(float X, float Y, float W, float H);
 	void Label(const FString& Text, float X, float Y, const FLinearColor& Color, float Scale, bool bCentre = false);
