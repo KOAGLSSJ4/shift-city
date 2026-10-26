@@ -1,0 +1,30 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const id = new URLSearchParams(location.search).get('id');
+const S = 1024, VIEWS = [0, 60, 120];
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setSize(S, S); r.setClearColor(0x000000, 0); r.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x5a5040, 1.6));
+const sun = new THREE.DirectionalLight(0xfff4e6, 1.6); sun.position.set(0.3, 1, 0.6); scene.add(sun);
+const g = (await new GLTFLoader().loadAsync(`src/${id}/${id}.gltf`)).scene;
+g.traverse((o) => { if (o.isMesh) { const m = o.material; m.side = THREE.DoubleSide; if (m.map || m.alphaMap) { m.alphaTest = 0.5; m.transparent = false; } } });
+scene.add(g);
+const box = new THREE.Box3().setFromObject(g), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+const half = Math.max(size.x, size.z, size.y) / 2 * 1.02;
+const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, half * 10);
+const atlas = document.createElement('canvas'); atlas.width = S * VIEWS.length; atlas.height = S;
+const ctx = atlas.getContext('2d');
+VIEWS.forEach((deg, i) => {
+  const a = THREE.MathUtils.degToRad(deg);
+  cam.position.set(c.x + Math.sin(a) * half * 4, box.min.y + half, c.z + Math.cos(a) * half * 4);
+  cam.lookAt(c.x, box.min.y + half, c.z);
+  r.render(scene, cam);
+  ctx.drawImage(r.domElement, i * S, 0);
+});
+window.result = { png: atlas.toDataURL('image/png'), meta: { views: VIEWS, frame: half * 2, bottom: box.min.y, height: size.y, width: Math.max(size.x, size.z) } };
+</script></body></html>

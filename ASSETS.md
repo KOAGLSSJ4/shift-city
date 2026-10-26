@@ -12,6 +12,8 @@ Downloaded by `npm run fetch-assets` into `public/assets/` (not committed to git
 | `concrete_wall_008` | [Poly Haven](https://polyhaven.com/a/concrete_wall_008) | CC0 | Roofs, facade surface detail |
 | `brick_wall_02` | [Poly Haven](https://polyhaven.com/a/brick_wall_02) | CC0 | Brick facade surface detail |
 | `ferrari.glb` → `cars/rosso.glb` | three.js examples, model "Ferrari 458 Italia" by [vicent091036](https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6) | Sketchfab licence — **verify before any public/commercial release** | **Placeholder** body for the "Rosso F90" garage car |
+| Street props in `public/props/` — `street_lamp_01`, `fire_hydrant`, `metal_trash_can`, `modular_street_seating`, `utility_box_01`, `exterior_aircon_unit`, `water_manhole_cover`, `concrete_road_barrier` | [Poly Haven](https://polyhaven.com/models) | CC0 | Simplified (~1–5k triangles each) with glTF-Transform, 512px WebP textures, Draco geometry. Source: `scripts/fetch-polyhaven-models.mjs` |
+| Tree impostors in `public/trees/` — from `tree_small_02` and `island_tree_01` | [Poly Haven](https://polyhaven.com/models) | CC0 | The full scanned trees (1.7–4.7M triangles) photographed from 3 angles by `scripts/bake-impostors.cjs` and shown on crossed cards |
 | Draco decoder (`public/draco/`) | three.js r170 | MIT | Decoding the compressed glTF car |
 
 ## Important

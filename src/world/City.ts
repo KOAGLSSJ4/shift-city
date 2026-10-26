@@ -5,6 +5,7 @@ import { DESTINATIONS, GRID, HALF, PITCH, ROAD_W, WALK_W, roadCoord, type Destin
 import type { Materials } from '../graphics/Materials';
 import type { GraphicsMode } from '../core/Save';
 import { neighbours, nodeId, nodePos } from './RoadNetwork';
+import { instanceProp, treeImpostors, TREE_IMPOSTORS, type Placement } from './Props';
 
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
 
@@ -168,6 +169,7 @@ export class City {
           walls(shops[Math.floor(rand() * shops.length)], ax0, az0, ax1, az1, curbH, curbH + shopH, Math.floor(rand() * 3), 8, shopH);
           walls(facades[style], ax0, az0, ax1, az1, curbH + shopH, curbH + h, Math.floor(rand() * 4));
           flat(roof, ax0, az0, ax1, az1, curbH + h, 6);
+          if (rand() < 0.55) this.roofSpots.push({ p: V(ax0 + 3 + rand() * (ax1 - ax0 - 6), curbH + h, az0 + 3 + rand() * (az1 - az0 - 6)), rot: Math.floor(rand() * 4) * Math.PI / 2 });
           // parapet + rooftop plant
           if (h > 12 && rand() < 0.7) {
             const rw = 3 + rand() * 4, rx = ax0 + 2 + rand() * (ax1 - ax0 - rw - 4), rz = az0 + 2 + rand() * (az1 - az0 - rw - 4);
@@ -213,6 +215,8 @@ export class City {
 
     this.addTrees(treeSpots);
     this.addLamps(lampSpots);
+    this.treeSpots = treeSpots;
+    this.lampSpots = lampSpots;
     this.addSignals();
     // the city never moves: skip per-frame matrix updates for every static object
     this.group.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
@@ -221,12 +225,84 @@ export class City {
 
   private blobTrees: THREE.Object3D[] = [];
   private cardTrees: THREE.Object3D[] = [];
+  private procLamps: THREE.Object3D[] = [];
+  private treeSpots: THREE.Vector3[] = [];
+  private lampSpots: { p: THREE.Vector3; rot: number }[] = [];
+  private roofSpots: Placement[] = [];
+  /** Poly Haven props + photographic tree impostors (Photoreal / Hyper-real only). */
+  readonly detail = new THREE.Group();
+  private detailLoaded = false;
+  private mode: GraphicsMode = 'rendered';
+  /** Lamp glass materials from the street-lamp model, lit at night by Materials.setTime. */
+  lampGlass: THREE.MeshStandardMaterial[] = [];
 
-  /** Rendered keeps faceted low-poly crowns; Photoreal/Hyper use alpha-tested leaf cards. */
+  /** Rendered keeps faceted low-poly crowns and simple poles; Photoreal/Hyper use scanned assets. */
   setMode(mode: GraphicsMode) {
+    this.mode = mode;
     const real = mode !== 'rendered';
     this.blobTrees.forEach((o) => (o.visible = !real));
-    this.cardTrees.forEach((o) => (o.visible = real));
+    this.cardTrees.forEach((o) => (o.visible = real && !this.detailLoaded));
+    this.procLamps.forEach((o) => (o.visible = !real || !this.detailLoaded));
+    this.detail.visible = real && this.detailLoaded;
+  }
+
+  /** Streams in the street detail after the game has started (≈3 MB). */
+  async loadDetail() {
+    let r = 991;
+    const rnd = () => { r = (r * 16807) % 2147483647; return (r - 1) / 2147483646; };
+    const hw = ROAD_W / 2;
+    const hydrants: Placement[] = [], bins: Placement[] = [], benches: Placement[] = [], boxes: Placement[] = [], manholes: Placement[] = [];
+    for (const b of this.blocks) {
+      // corners: hydrant on one, bins on two, utility box on another (all on the sidewalk, facing the road)
+      const corners: [number, number, number][] = [[b.x0 + 2.2, b.z0 + 1.0, 0], [b.x1 - 2.2, b.z0 + 1.0, 0], [b.x0 + 2.2, b.z1 - 1.0, Math.PI], [b.x1 - 2.2, b.z1 - 1.0, Math.PI]];
+      corners.sort(() => rnd() - 0.5);
+      hydrants.push({ p: V(corners[0][0], 0.15, corners[0][1]), rot: rnd() * 6.28 });
+      bins.push({ p: V(corners[1][0] + 1.2, 0.15, corners[1][1]), rot: corners[1][2] });
+      if (rnd() < 0.6) bins.push({ p: V(corners[2][0] - 1.2, 0.15, corners[2][1]), rot: corners[2][2] });
+      if (rnd() < 0.7) boxes.push({ p: V(corners[3][0], 0.15, corners[3][1] + (corners[3][2] ? -1.8 : 1.8)), rot: corners[3][2] + Math.PI });
+      // a bench facing the street on some blocks
+      if (rnd() < 0.45) {
+        const side = Math.floor(rnd() * 4), t = 0.3 + rnd() * 0.4;
+        const pl = side === 0 ? { p: V(b.x0 + (b.x1 - b.x0) * t, 0.15, b.z0 + 2.6), rot: Math.PI }
+          : side === 1 ? { p: V(b.x0 + (b.x1 - b.x0) * t, 0.15, b.z1 - 2.6), rot: 0 }
+          : side === 2 ? { p: V(b.x0 + 2.6, 0.15, b.z0 + (b.z1 - b.z0) * t), rot: -Math.PI / 2 }
+          : { p: V(b.x1 - 2.6, 0.15, b.z0 + (b.z1 - b.z0) * t), rot: Math.PI / 2 };
+        benches.push(pl);
+      }
+    }
+    // manhole covers in the middle of road segments
+    for (let k = 0; k <= GRID; k++) for (let sgm = 0; sgm < GRID; sgm++) {
+      if (rnd() < 0.5) continue;
+      const c = roadCoord(k), a = roadCoord(sgm) + hw + 10 + rnd() * (PITCH - 2 * hw - 20), lane = (rnd() < 0.5 ? -1 : 1) * 1.75;
+      manholes.push(rnd() < 0.5 ? { p: V(a, -0.055, c + lane), rot: rnd() * 6.28 } : { p: V(c + lane, -0.055, a), rot: rnd() * 6.28 });
+    }
+    // street lamps replace the procedural poles (arms faced the road; the post lamp sits at the kerb)
+    const lamps: Placement[] = this.lampSpots.map((l) => ({ p: l.p, rot: l.rot, scale: 1.25 }));
+    const trees = this.treeSpots.map((p) => ({ p, rot: rnd() * 6.28, scale: 1.55 + rnd() * 0.6 }));
+    const treeA = trees.filter((_, i) => i % 3 !== 0), treeB = trees.filter((_, i) => i % 3 === 0);
+
+    const loaded = await Promise.all([
+      instanceProp('props/street_lamp_01.glb', lamps),
+      instanceProp('props/fire_hydrant.glb', hydrants),
+      instanceProp('props/metal_trash_can.glb', bins),
+      instanceProp('props/modular_street_seating.glb', benches),
+      instanceProp('props/utility_box_01.glb', boxes),
+      instanceProp('props/exterior_aircon_unit.glb', this.roofSpots, { filter: (n) => !/rust/i.test(n) }),
+      instanceProp('props/water_manhole_cover.glb', manholes, { shadows: false }),
+      treeImpostors(TREE_IMPOSTORS[0], treeA),
+      treeImpostors(TREE_IMPOSTORS[1], treeB),
+    ].map((p) => p.catch((e) => { console.warn('detail asset failed', e); return null; })));
+    for (const o of loaded) if (o) this.detail.add(o);
+    // find the lamp glass so night mode can light it
+    loaded[0]?.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      if (m && /glass|light|bulb|lamp_?glass/i.test(m.name) && !this.lampGlass.includes(m)) { m.emissive = new THREE.Color(0xffd9a0); this.lampGlass.push(m); }
+    });
+    this.detail.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
+    this.group.add(this.detail);
+    this.detail.updateMatrixWorld(true);
+    this.detailLoaded = loaded.some(Boolean);
+    this.setMode(this.mode);
   }
 
   private addTrees(spots: THREE.Vector3[]) {
@@ -309,6 +385,7 @@ export class City {
     const ip = new THREE.InstancedMesh(poolGeo, this.mats.lampPool, spots.length);
     spots.forEach((_, i) => { im.getMatrixAt(i, m); ip.setMatrixAt(i, m); });
     ip.renderOrder = 2;
+    this.procLamps.push(im, ih);
     this.group.add(im, ih, ip);
   }
 

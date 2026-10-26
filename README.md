@@ -65,6 +65,12 @@ src/
 - **Cockpit**: live nav map on the centre screen, digital speed cluster, three-spoke wheel that turns with steering, rear-view mirror.
 - **Performance**: Photoreal is lighter (no AO, 1.25x max resolution, 2k shadows updated every other frame, MSAA instead of SMAA), HUD/minimap DOM updates throttled to 20 Hz, static city transforms frozen, faster adaptive resolution, glass transmission pass removed, a warning when the device can't keep up.
 
+## v0.8 additions
+
+- Free Poly Haven (CC0) street detail in Photoreal/Hyper-real: cast-iron lamp posts that glow at night, fire hydrants, bins, benches, utility boxes, rooftop air-con units and manhole covers, all GPU-instanced.
+- Photographic trees: real scanned trees baked to lightweight impostors (`scripts/bake-impostors.cjs`).
+- Asset pipeline: `fetch-polyhaven-models.mjs` (download) → glTF-Transform `optimize` (simplify, WebP, Draco) → `public/props/`.
+
 ## Not yet implemented / known gaps
 
 See the session report. Headline items: authored building/tree/vehicle assets for true photorealism, pedestrians,

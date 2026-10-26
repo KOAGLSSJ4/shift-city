@@ -109,6 +109,8 @@ export class Game {
     this.showMenu();
     this.clock.start();
     this.gfx.renderer.setAnimationLoop(() => this.frame());
+    // street detail (Poly Haven props + photographic trees) streams in after the menu is up
+    this.city.loadDetail().then(() => this.applyLampGlass()).catch((e) => console.warn('street detail failed', e));
   }
 
   // ---------------------------------------------------------------- vehicles
@@ -312,11 +314,17 @@ export class Game {
     this.mats.setWeather(weather);
     this.mats.setTime(time);
     this.city.setMode(mode);
+    this.applyLampGlass();
     setCarLights(night);
     this.rain.mesh.visible = weather === 'rain' && mode !== 'rendered';
     this.rain.night = night;
     this.applyRigLook();
     await this.gfx.configure(mode, time, weather);
+  }
+
+  private applyLampGlass() {
+    const t = this.save.settings.time;
+    for (const m of this.city.lampGlass) { m.emissiveIntensity = t === 'night' ? 5 : t === 'sunset' ? 1.5 : 0; m.needsUpdate = true; }
   }
 
   private applyRigLook() {
