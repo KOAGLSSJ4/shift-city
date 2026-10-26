@@ -61,7 +61,7 @@ void ASCHUD::DrawHUD()
 {
 	Super::DrawHUD();
 	if (!Canvas) return;
-	S = FMath::Max(0.6f, Canvas->ClipY / 1080.f);
+	S = FMath::Max(0.8f, Canvas->ClipY / 1080.f) * UIScale;
 	const float W = Canvas->ClipX, H = Canvas->ClipY, Pad = 20.f * S;
 	UGameInstance* GI = GetGameInstance();
 	USCEconomySubsystem* E = GI ? GI->GetSubsystem<USCEconomySubsystem>() : nullptr;

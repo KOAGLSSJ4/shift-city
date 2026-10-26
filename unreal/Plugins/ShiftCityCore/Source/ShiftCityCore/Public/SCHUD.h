@@ -16,8 +16,11 @@ public:
 	virtual void BeginPlay() override;
 	virtual void DrawHUD() override;
 
-	/** Set false to hide the speedometer if your vehicle already shows one. */
-	UPROPERTY(EditAnywhere, Category = "Shift City") bool bShowSpeed = true;
+	/** Turn on if your vehicle has no speedometer of its own. */
+	UPROPERTY(EditAnywhere, Category = "Shift City") bool bShowSpeed = false; // the Vehicle template already shows gear + speed
+
+	/** Overall HUD size (text and panels). 1 = original size; raise it if text is hard to read. */
+	UPROPERTY(EditAnywhere, Category = "Shift City", meta = (ClampMin = "0.5", ClampMax = "3.0")) float UIScale = 1.5f;
 
 private:
 	void Panel(float X, float Y, float W, float H);
