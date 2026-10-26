@@ -55,12 +55,14 @@ namespace SC
 	 *  whichever handedness the engine expects; the supplied normal is the lit (outside) side. */
 	struct FBuf
 	{
-		TArray<FVector> V; TArray<int32> T; TArray<FVector> N; TArray<FVector2D> UV; TArray<FProcMeshTangent> Tan;
+		TArray<FVector> V; TArray<int32> T; TArray<FVector> N; TArray<FVector2D> UV; TArray<FProcMeshTangent> Tan; TArray<FColor> Col;
+		FColor Tint = FColor::White; // per-building colour variation (materials multiply by vertex colour)
 		void Quad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector2D UVs[4], const FVector& Normal)
 		{
 			const int32 I = V.Num();
 			V.Append({ A, B, C, D });
 			UV.Append({ UVs[0], UVs[1], UVs[2], UVs[3] });
+			Col.Append({ Tint, Tint, Tint, Tint });
 			const FVector Tg = (B - A).GetSafeNormal();
 			for (int32 k = 0; k < 4; ++k) { N.Add(Normal); Tan.Add(FProcMeshTangent(Tg, false)); }
 			T.Append({ I, I + 1, I + 2, I, I + 2, I + 3 });
@@ -98,6 +100,11 @@ ASCCityGenerator::ASCCityGenerator()
 	RootComponent = Mesh;
 	Mesh->bUseComplexAsSimpleCollision = true;
 	Mesh->SetCollisionProfileName(TEXT("BlockAll"));
+	Ground = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("GroundMesh"));
+	Ground->SetupAttachment(Mesh);
+	Ground->bUseComplexAsSimpleCollision = true;
+	Ground->SetCollisionProfileName(TEXT("BlockAll"));
+	Ground->SetCastShadow(false);
 	auto MakeHism = [this](const TCHAR* Name, bool bCollide)
 	{
 		UHierarchicalInstancedStaticMeshComponent* C = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(Name);
@@ -126,7 +133,7 @@ void ASCCityGenerator::Generate()
 	using namespace SC;
 	FRandomStream Rng(Seed);
 	enum ESec { SRoad, SWhite, SYellow, SWalk, SKerb, SRoof, SGrass, SFacade0 };
-	const int32 NumFacades = 6, NumShops = 6;
+	const int32 NumFacades = FMath::Max(1, FMath::Min(Facades.Num() > 0 ? Facades.Num() : 6, 12)), NumShops = 6;
 	const int32 SShop0 = SFacade0 + NumFacades;
 	TArray<FBuf> B; B.SetNum(SShop0 + NumShops);
 	TArray<FTransform> LampT, TreeT, HydrantT, BinT;
@@ -185,12 +192,59 @@ void ASCCityGenerator::Generate()
 		Landmarks.Add(Blk, i);
 	}
 
+	// subtle colour variations so neighbouring buildings of the same style don't look identical
+	static const FColor Tints[] = { FColor(255, 255, 255), FColor(255, 244, 228), FColor(236, 240, 246), FColor(250, 236, 220),
+		FColor(228, 228, 228), FColor(255, 250, 238), FColor(222, 230, 238), FColor(246, 232, 226) };
+	auto Tinted = [&](int32 Sec, FColor C) -> FBuf& { B[Sec].Tint = C; return B[Sec]; };
 	auto AddBuilding = [&](float X0, float Y0, float X1, float Y1, float H, int32 Style)
 	{
 		const float ShopH = 450.f;
-		B[SShop0 + Rng.RandRange(0, NumShops - 1)].Box(X0, Y0, X1, Y1, KerbH, KerbH + ShopH, Rng.RandRange(0, 2), 800.f, ShopH);
-		B[SFacade0 + Style].Box(X0, Y0, X1, Y1, KerbH + ShopH, KerbH + H, Rng.RandRange(0, 3), 400.f, 350.f);
-		B[SRoof].Flat(X0, Y0, X1, Y1, KerbH + H, 600.f);
+		const FColor Tint = Tints[Rng.RandRange(0, UE_ARRAY_COUNT(Tints) - 1)];
+		Tinted(SShop0 + Rng.RandRange(0, NumShops - 1), FColor::White).Box(X0, Y0, X1, Y1, KerbH, KerbH + ShopH, Rng.RandRange(0, 2), 800.f, ShopH);
+		const float W = FMath::Min(X1 - X0, Y1 - Y0);
+		if (H > 4000.f && W > 1400.f)
+		{
+			// podium + set-back tower (and sometimes a second set-back near the top)
+			const float Podium = 1200.f + Rng.FRand() * 1000.f, Inset = 300.f + Rng.FRand() * 300.f;
+			const int32 PodiumStyle = (Style + 1 + Rng.RandRange(0, NumFacades - 2)) % NumFacades;
+			Tinted(SFacade0 + PodiumStyle, Tint).Box(X0, Y0, X1, Y1, KerbH + ShopH, KerbH + Podium, Rng.RandRange(0, 3), 400.f, 350.f);
+			Tinted(SRoof, FColor::White).Flat(X0, Y0, X1, Y1, KerbH + Podium, 600.f);
+			float TX0 = X0 + Inset, TY0 = Y0 + Inset, TX1 = X1 - Inset, TY1 = Y1 - Inset, Base = KerbH + Podium;
+			const bool bTwoStep = Rng.FRand() < 0.4f && W > 2200.f;
+			const float Top = KerbH + H, Step = bTwoStep ? Base + (Top - Base) * 0.7f : Top;
+			Tinted(SFacade0 + Style, Tint).Box(TX0, TY0, TX1, TY1, Base, Step, Rng.RandRange(0, 3), 400.f, 350.f);
+			if (bTwoStep)
+			{
+				Tinted(SRoof, FColor::White).Flat(TX0, TY0, TX1, TY1, Step, 600.f);
+				TX0 += 300.f; TY0 += 300.f; TX1 -= 300.f; TY1 -= 300.f;
+				Tinted(SFacade0 + Style, Tint).Box(TX0, TY0, TX1, TY1, Step, Top, Rng.RandRange(0, 3), 400.f, 350.f);
+			}
+			X0 = TX0; Y0 = TY0; X1 = TX1; Y1 = TY1;
+		}
+		else
+		{
+			Tinted(SFacade0 + Style, Tint).Box(X0, Y0, X1, Y1, KerbH + ShopH, KerbH + H, Rng.RandRange(0, 3), 400.f, 350.f);
+		}
+		Tinted(SRoof, FColor::White).Flat(X0, Y0, X1, Y1, KerbH + H, 600.f);
+		// rooftop plant rooms / lift housings
+		const int32 Units = H > 1200.f ? Rng.RandRange(0, 3) : 0;
+		for (int32 U = 0; U < Units; ++U)
+		{
+			const float RW = 250.f + Rng.FRand() * 400.f, RD = 250.f + Rng.FRand() * 400.f, RH = 180.f + Rng.FRand() * 250.f;
+			if (X1 - X0 < RW + 200.f || Y1 - Y0 < RD + 200.f) break;
+			const float RX = Rng.FRandRange(X0 + 100.f, X1 - RW - 100.f), RY = Rng.FRandRange(Y0 + 100.f, Y1 - RD - 100.f);
+			Tinted(SRoof, FColor(200, 200, 205)).Box(RX, RY, RX + RW, RY + RD, KerbH + H, KerbH + H + RH, 0.f, 400.f, 350.f);
+			Tinted(SRoof, FColor(200, 200, 205)).Flat(RX, RY, RX + RW, RY + RD, KerbH + H + RH, 600.f);
+		}
+	};
+	// facade style pools (indices into Facades): glass for towers, mixed mid-rise, masonry for low-rise
+	auto PickStyle = [&](float H) -> int32
+	{
+		static const int32 Glass[] = { 2, 4, 9, 6 }, Mid[] = { 0, 3, 6, 10, 11, 7 }, Low[] = { 1, 5, 7, 8, 11, 0, 3 };
+		auto Pick = [&](const int32* Arr, int32 N) { const int32 S = Arr[Rng.RandRange(0, N - 1)]; return S < NumFacades ? S : S % NumFacades; };
+		if (H > 5000.f) return Pick(Glass, UE_ARRAY_COUNT(Glass));
+		if (H > 2000.f) return Pick(Mid, UE_ARRAY_COUNT(Mid));
+		return Pick(Low, UE_ARRAY_COUNT(Low));
 	};
 
 	for (int32 Bi = 0; Bi < Grid; ++Bi)
@@ -233,7 +287,7 @@ void ASCCityGenerator::Generate()
 			{
 				float LmH = 2000.f; int32 LmStyle = 0;
 				LandmarkSpec(Dests[*Lm].Landmark, LmH, LmStyle);
-				AddBuilding(BX0, BY0, BX1, BY1, LmH, LmStyle);
+				AddBuilding(BX0, BY0, BX1, BY1, LmH, LmStyle % NumFacades);
 				continue;
 			}
 			const float CX = (X0 + X1) / 2, CY = (Y0 + Y1) / 2;
@@ -250,14 +304,14 @@ void ASCCityGenerator::Generate()
 			for (const FBox2D& P : Parcels)
 			{
 				const float H = 900.f + Rng.FRand() * 1400.f + FMath::Pow(Downtown, 1.6f) * Rng.FRand() * 11000.f;
-				const int32 Style = H > 5000.f ? (Rng.FRand() < 0.6f ? 2 : 4) : Rng.RandRange(0, NumFacades - 1);
-				AddBuilding(P.Min.X, P.Min.Y, P.Max.X, P.Max.Y, H, Style);
+				AddBuilding(P.Min.X, P.Min.Y, P.Max.X, P.Max.Y, H, PickStyle(H));
 			}
 		}
 	}
 
 	// upload sections
 	Mesh->ClearAllMeshSections();
+	Ground->ClearAllMeshSections();
 	auto MatFor = [&](int32 S) -> UMaterialInterface*
 	{
 		switch (S)
@@ -273,8 +327,11 @@ void ASCCityGenerator::Generate()
 	{
 		if (!B[S].V.Num()) continue;
 		const bool bCollide = S != SWhite && S != SYellow;
-		Mesh->CreateMeshSection(S, B[S].V, B[S].T, B[S].N, B[S].UV, TArray<FColor>(), B[S].Tan, bCollide);
-		if (UMaterialInterface* M = MatFor(S)) Mesh->SetMaterial(S, M);
+		// flat surfaces never need to cast shadows; keeping them out of the shadow pass saves a lot of GPU time
+		const bool bFlat = S == SRoad || S == SWhite || S == SYellow || S == SWalk || S == SGrass;
+		UProceduralMeshComponent* Target = bFlat ? Ground.Get() : Mesh.Get();
+		Target->CreateMeshSection(S, B[S].V, B[S].T, B[S].N, B[S].UV, B[S].Col, B[S].Tan, bCollide);
+		if (UMaterialInterface* M = MatFor(S)) Target->SetMaterial(S, M);
 	}
 
 	auto Fill = [](UHierarchicalInstancedStaticMeshComponent* C, UStaticMesh* M, const TArray<FTransform>& Ts)

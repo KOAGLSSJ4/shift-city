@@ -55,7 +55,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Shift City") FTransform GetSpawnTransform() const;
 
 private:
-	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Mesh;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Mesh;   // buildings, roofs, kerbs (cast shadows)
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UProceduralMeshComponent> Ground; // ground, roads, paint, sidewalks (no shadows)
 	void AddPropInstances(const TArray<TObjectPtr<UStaticMesh>>& Meshes, const TArray<FTransform>& Ts, bool bCollide);
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Hydrants;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Bins;

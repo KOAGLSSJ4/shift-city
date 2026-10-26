@@ -105,23 +105,32 @@ def color(mat, rgb, x, y):
 
 
 def make_material(name, base=None, tint=None, normal=None, rough=None, metal=None, emissive=None,
-                  rough_value=None, metal_value=None, emissive_v_tiling=1.0, normal_tiling=None):
+                  rough_value=None, metal_value=None, emissive_v_tiling=1.0, normal_tiling=None,
+                  vertex_tint=False, glow=0.0):
     mat = new_material(name)
     mat.set_editor_property("two_sided", True)
     S = unreal.MaterialSamplerType
     P = unreal.MaterialProperty
-    # base colour (optionally tinted)
+    # base colour (optionally tinted by a constant and/or the per-building vertex colour)
+    base_out = None
     if base is not None:
-        b = tex_node(mat, base, S.SAMPLERTYPE_COLOR, -700, -300)
+        b = tex_node(mat, base, S.SAMPLERTYPE_COLOR, -900, -300)
+        base_out = (b, "RGB")
         if tint is not None:
-            m = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -300, -300)
+            m = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -600, -300)
             MEL.connect_material_expressions(b, "RGB", m, "A")
-            MEL.connect_material_expressions(color(mat, tint, -600, -150), "", m, "B")
-            MEL.connect_material_property(m, "", P.MP_BASE_COLOR)
-        else:
-            MEL.connect_material_property(b, "RGB", P.MP_BASE_COLOR)
+            MEL.connect_material_expressions(color(mat, tint, -800, -150), "", m, "B")
+            base_out = (m, "")
     elif tint is not None:
-        MEL.connect_material_property(color(mat, tint, -400, -300), "", P.MP_BASE_COLOR)
+        base_out = (color(mat, tint, -600, -300), "")
+    if base_out is not None and vertex_tint:
+        vc = MEL.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -600, -100)
+        m2 = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -300, -300)
+        MEL.connect_material_expressions(base_out[0], base_out[1], m2, "A")
+        MEL.connect_material_expressions(vc, "", m2, "B")
+        base_out = (m2, "")
+    if base_out is not None:
+        MEL.connect_material_property(base_out[0], base_out[1], P.MP_BASE_COLOR)
     # normal (optionally at a finer tiling than the albedo)
     if normal is not None:
         uv = None
@@ -148,7 +157,7 @@ def make_material(name, base=None, tint=None, normal=None, rough=None, metal=Non
         e = tex_node(mat, emissive, S.SAMPLERTYPE_COLOR, -700, 750, uv)
         p = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -700, 1000)
         p.set_editor_property("parameter_name", "WindowGlow")
-        p.set_editor_property("default_value", 0.0 if not GOLDEN_HOUR else 0.4)
+        p.set_editor_property("default_value", glow)
         m = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -300, 800)
         MEL.connect_material_expressions(e, "RGB", m, "A")
         MEL.connect_material_expressions(p, "", m, "B")
@@ -174,19 +183,23 @@ def build_materials():
     white = make_material("M_PaintWhite", tint=(0.85, 0.85, 0.82), rough_value=0.55)
     yellow = make_material("M_PaintYellow", tint=(0.85, 0.6, 0.08), rough_value=0.55)
     grass = make_material("M_Grass", tint=(0.09, 0.16, 0.05), rough_value=0.95)
+    # windows glow very slightly at golden hour (evening interiors), not at all at midday
+    glow = 0.06 if GOLDEN_HOUR else 0.0
     facades = []
-    for i in range(6):
+    i = 0
+    while os.path.exists(f("T_Facade%d_D.png" % i)):
         facades.append(make_material(
             "M_Facade%d" % i, import_texture(f("T_Facade%d_D.png" % i)), None,
-            brick_n if i in (1, 5) else wall_n, import_texture(f("T_Facade%d_R.png" % i), "mask"),
+            brick_n if i in (1, 5, 8) else wall_n, import_texture(f("T_Facade%d_R.png" % i), "mask"),
             import_texture(f("T_Facade%d_M.png" % i), "mask"), import_texture(f("T_Facade%d_E.png" % i)),
-            emissive_v_tiling=0.25, normal_tiling=2.0))
+            emissive_v_tiling=0.25, normal_tiling=2.0, vertex_tint=True, glow=glow))
+        i += 1
     shops = []
     for i in range(6):
         shops.append(make_material(
             "M_Shop%d" % i, import_texture(f("T_Shop%d_D.png" % i)), None, None,
             import_texture(f("T_Shop%d_R.png" % i), "mask"), import_texture(f("T_Shop%d_M.png" % i), "mask"),
-            import_texture(f("T_Shop%d_E.png" % i))))
+            import_texture(f("T_Shop%d_E.png" % i)), glow=0.04 if GOLDEN_HOUR else 0.0))
     return dict(asphalt=asphalt, sidewalk=walk, kerb=kerb, roof=roof, paint_white=white, paint_yellow=yellow,
                 grass=grass, facades=facades, shopfronts=shops)
 
@@ -199,6 +212,45 @@ def fetch(url, dest):
     req = urllib.request.Request(url, headers={"User-Agent": "ShiftCitySetup/1.0"})
     with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as out:
         out.write(r.read())
+
+
+def fix_foliage(asset_id, files, meshes):
+    """Poly Haven's glTF leaves use a JPG (no alpha) with 'blend' transparency, which Nanite can't draw.
+    Build a masked, two-sided leaf material from the separate alpha map and put it on the leaf slots."""
+    if "leaves_alpha" not in files:
+        return
+    try:
+        base = os.path.join(CACHE, asset_id, "foliage")
+        alpha_p = os.path.join(base, asset_id + "_leaves_alpha_1k.png")
+        diff_p = os.path.join(base, asset_id + "_leaves_diff_1k.jpg")
+        nor_p = os.path.join(base, asset_id + "_leaves_nor_gl_1k.jpg")
+        fetch(files["leaves_alpha"]["1k"]["png"]["url"], alpha_p)
+        fetch(files["leaves_diff"]["1k"]["jpg"]["url"], diff_p)
+        fetch(files["leaves_nor_gl"]["1k"]["jpg"]["url"], nor_p)
+        alpha = import_texture(alpha_p, "mask")
+        mat = new_material("M_%s_Leaves" % asset_id)
+        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+        mat.set_editor_property("two_sided", True)
+        mat.set_editor_property("opacity_mask_clip_value", 0.4)
+        S = unreal.MaterialSamplerType
+        P = unreal.MaterialProperty
+        MEL.connect_material_property(tex_node(mat, import_texture(diff_p), S.SAMPLERTYPE_COLOR, -700, -300), "RGB", P.MP_BASE_COLOR)
+        MEL.connect_material_property(tex_node(mat, import_texture(nor_p, "normal"), S.SAMPLERTYPE_NORMAL, -700, 0), "RGB", P.MP_NORMAL)
+        MEL.connect_material_property(tex_node(mat, alpha, S.SAMPLERTYPE_MASKS, -700, 300), "R", P.MP_OPACITY_MASK)
+        MEL.connect_material_property(const(mat, 0.6, -400, 500), "", P.MP_ROUGHNESS)
+        MEL.recompile_material(mat)
+        EAL.save_loaded_asset(mat)
+        for mesh in meshes:
+            slots = mesh.get_editor_property("static_materials")
+            for idx, slot in enumerate(slots):
+                mi = slot.get_editor_property("material_interface")
+                slot_name = str(slot.get_editor_property("material_slot_name"))
+                if "leav" in slot_name.lower() or (mi and "leav" in mi.get_name().lower()):
+                    mesh.set_material(idx, mat)
+                    log("leaf material applied to %s slot %d" % (mesh.get_name(), idx))
+            EAL.save_loaded_asset(mesh)
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] leaf fix failed for %s: %s" % (asset_id, e))
 
 
 def polyhaven_mesh(asset_id):
@@ -226,6 +278,7 @@ def polyhaven_mesh(asset_id):
             except Exception as e:  # Nanite is an optimisation, not required
                 log("Nanite not enabled for %s (%s)" % (asset_id, e))
             EAL.save_loaded_asset(mesh)
+        fix_foliage(asset_id, files, meshes)
         log("imported %s (%d mesh parts)" % (asset_id, len(meshes)))
         return meshes
     except Exception as e:

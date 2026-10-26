@@ -61,7 +61,8 @@ void ASCHUD::DrawHUD()
 {
 	Super::DrawHUD();
 	if (!Canvas) return;
-	S = FMath::Max(0.8f, Canvas->ClipY / 1080.f) * UIScale;
+	// scale to the smaller of width/height so panels never overlap in narrow editor windows
+	S = FMath::Max(0.45f, FMath::Min(Canvas->ClipX / 1920.f, Canvas->ClipY / 1080.f)) * UIScale;
 	const float W = Canvas->ClipX, H = Canvas->ClipY, Pad = 20.f * S;
 	UGameInstance* GI = GetGameInstance();
 	USCEconomySubsystem* E = GI ? GI->GetSubsystem<USCEconomySubsystem>() : nullptr;
@@ -172,8 +173,9 @@ void ASCHUD::DrawHUD()
 		{
 			TArray<FString> Lines;
 			D->GetStoryCard().ParseIntoArrayLines(Lines);
-			const float Bw = 760 * S, Bx = W / 2.f - Bw / 2.f, By = 130 * S;
-			Panel(Bx, By, Bw, (24 + Lines.Num() * 32) * S);
+			// bottom-centre, above the car, so it never covers the career panel or job card
+			const float Bh = (24 + Lines.Num() * 32) * S, Bw = FMath::Min(760 * S, W - 2 * Pad), Bx = W / 2.f - Bw / 2.f, By = H - Bh - 150 * S;
+			Panel(Bx, By, Bw, Bh);
 			for (int32 i = 0; i < Lines.Num(); ++i) Label(Lines[i], W / 2.f, By + (12 + i * 32) * S, i == 0 ? Accent : FLinearColor::White, i == 0 ? 0.65f : 0.8f, true);
 		}
 
@@ -181,7 +183,7 @@ void ASCHUD::DrawHUD()
 		const TArray<FSCToast>& Ts = D->GetToasts();
 		for (int32 i = 0; i < Ts.Num(); ++i)
 		{
-			const float Ty = H * 0.3f + i * 44 * S;
+			const float Ty = Pad + 100 * S + i * 44 * S; // just under the GPS panel
 			const float Tw = TextSize(Ts[i].Text, 0.75f * S).X + 32 * S;
 			FLinearColor C = Ts[i].Color; C.A = FMath::Clamp(Ts[i].Remaining * 2.f, 0.f, 1.f);
 			DrawRect(FLinearColor(PanelBg.R, PanelBg.G, PanelBg.B, PanelBg.A * C.A), W / 2.f - Tw / 2.f, Ty, Tw, 38 * S);
