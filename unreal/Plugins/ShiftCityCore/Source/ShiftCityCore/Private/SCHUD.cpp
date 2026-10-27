@@ -3,6 +3,7 @@
 #include "SCEconomySubsystem.h"
 #include "SCJobDirector.h"
 #include "SCSaveGame.h"
+#include "SCTraffic.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
@@ -12,6 +13,12 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+#include "CanvasItem.h"
+#include "Fonts/FontMeasure.h"
+#include "Fonts/SlateFontInfo.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
+#include "Styling/CoreStyle.h"
 
 namespace
 {
@@ -26,21 +33,32 @@ void ASCHUD::BeginPlay()
 	Super::BeginPlay();
 	for (TActorIterator<ASCJobDirector> It(GetWorld()); It; ++It) { Director = *It; break; }
 	if (!Director.IsValid()) Director = GetWorld()->SpawnActor<ASCJobDirector>();
+	for (TActorIterator<ASCTraffic> It(GetWorld()); It; ++It) { Traffic = *It; break; }
+}
+
+FSlateFontInfo ASCHUD::Font(float Scale) const
+{
+	// vector font rendered at the exact pixel size needed, so text stays sharp at any UI scale
+	const int32 Px = FMath::Clamp(FMath::RoundToInt(30.f * Scale * S), 9, 140);
+	return FCoreStyle::GetDefaultFontStyle(Scale >= 1.2f ? "Bold" : "Regular", Px);
 }
 
 FVector2D ASCHUD::TextSize(const FString& Text, float Scale) const
 {
-	float W = 0, H = 0;
-	GetTextSize(Text, W, H, GEngine->GetLargeFont(), Scale);
-	return FVector2D(W, H);
+	if (FSlateApplication::IsInitialized())
+		return FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Text, Font(Scale));
+	return FVector2D(Text.Len() * 15.f * Scale * S, 30.f * Scale * S);
 }
 
 void ASCHUD::Panel(float X, float Y, float W, float H) { DrawRect(PanelBg, X, Y, W, H); }
 
 void ASCHUD::Label(const FString& Text, float X, float Y, const FLinearColor& Color, float Scale, bool bCentre)
 {
-	if (bCentre) X -= TextSize(Text, Scale * S).X / 2.f;
-	DrawText(Text, Color, X, Y, GEngine->GetLargeFont(), Scale * S);
+	if (!Canvas) return;
+	if (bCentre) X -= TextSize(Text, Scale).X / 2.f;
+	FCanvasTextItem Item(FVector2D(X, Y), FText::FromString(Text), Font(Scale), Color);
+	Item.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.65f));
+	Canvas->DrawItem(Item);
 }
 
 void ASCHUD::Arrow(float CX, float CY, float AngleDeg, float Size, const FLinearColor& Color)
@@ -55,6 +73,75 @@ void ASCHUD::Arrow(float CX, float CY, float AngleDeg, float Size, const FLinear
 	DrawLine(Tip.X, Tip.Y, R.X, R.Y, Color, T);
 	DrawLine(L.X, L.Y, Notch.X, Notch.Y, Color, T);
 	DrawLine(R.X, R.Y, Notch.X, Notch.Y, Color, T);
+}
+
+namespace
+{
+	/** Clips segment A-B to the rectangle [Min, Max] (Liang-Barsky). Returns false if fully outside. */
+	bool ClipSegment(FVector2D& A, FVector2D& B, const FVector2D& Min, const FVector2D& Max)
+	{
+		float T0 = 0.f, T1 = 1.f;
+		const FVector2D D = B - A;
+		const float P[4] = { -D.X, D.X, -D.Y, D.Y };
+		const float Q[4] = { A.X - Min.X, Max.X - A.X, A.Y - Min.Y, Max.Y - A.Y };
+		for (int32 i = 0; i < 4; ++i)
+		{
+			if (FMath::IsNearlyZero(P[i])) { if (Q[i] < 0.f) return false; continue; }
+			const float R = Q[i] / P[i];
+			if (P[i] < 0.f) T0 = FMath::Max(T0, R); else T1 = FMath::Min(T1, R);
+			if (T0 > T1) return false;
+		}
+		const FVector2D A0 = A;
+		A = A0 + D * T0; B = A0 + D * T1;
+		return true;
+	}
+}
+
+void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool bDropoff)
+{
+	const float Size = 280.f * S, Pad = 20.f * S;
+	const FVector2D Min(Pad, Canvas->ClipY - Pad - Size), Max(Pad + Size, Canvas->ClipY - Pad);
+	const FVector2D Centre = (Min + Max) / 2.f + FVector2D(0, Size * 0.15f);
+	const float Scale = (Size * 0.5f) / 22000.f; // ~220 m from centre to edge
+	const FVector Me = Pawn->GetActorLocation();
+	const float Y = FMath::DegreesToRadians(CamYaw);
+	const FVector2D F(FMath::Cos(Y), FMath::Sin(Y)), Rt(-FMath::Sin(Y), FMath::Cos(Y));
+	auto ToMap = [&](const FVector& P) { const FVector2D R(P.X - Me.X, P.Y - Me.Y); return Centre + FVector2D(FVector2D::DotProduct(R, Rt), -FVector2D::DotProduct(R, F)) * Scale; };
+	auto Line = [&](const FVector& A, const FVector& B, const FLinearColor& C, float Thick)
+	{
+		FVector2D P = ToMap(A), Q = ToMap(B);
+		if (ClipSegment(P, Q, Min, Max)) DrawLine(P.X, P.Y, Q.X, Q.Y, C, Thick);
+	};
+	DrawRect(FLinearColor(0.08f, 0.12f, 0.16f, 0.85f), Min.X, Min.Y, Size, Size);
+	const float Lo = SC::Road(0) - SC::HW, Hi = SC::Road(SC::Grid) + SC::HW;
+	const FLinearColor RoadC(0.37f, 0.45f, 0.53f, 1.f);
+	for (int32 K = 0; K <= SC::Grid; ++K)
+	{
+		const float C = SC::Road(K);
+		Line(FVector(Lo, C, 0), FVector(Hi, C, 0), RoadC, FMath::Max(2.f, SC::RoadW * Scale));
+		Line(FVector(C, Lo, 0), FVector(C, Hi, 0), RoadC, FMath::Max(2.f, SC::RoadW * Scale));
+	}
+	if (bHasRoute && Target)
+		for (int32 i = 1; i < Route.Points.Num(); ++i) Line(Route.Points[i - 1], Route.Points[i], FLinearColor(0.3f, 0.76f, 1.f), 5.f * S);
+	if (ASCTraffic* Tr = bShowTrafficOnMinimap ? Traffic.Get() : nullptr)
+	{
+		TArray<FVector> Cars;
+		Tr->GetCarPositions(Cars);
+		for (const FVector& C : Cars)
+		{
+			const FVector2D P = ToMap(C);
+			if (P.X > Min.X && P.X < Max.X && P.Y > Min.Y && P.Y < Max.Y) DrawRect(FLinearColor(0.85f, 0.87f, 0.9f), P.X - 2 * S, P.Y - 2 * S, 4 * S, 4 * S);
+		}
+	}
+	if (Target)
+	{
+		FVector2D P = ToMap(Target->GetActorLocation());
+		P.X = FMath::Clamp(P.X, Min.X + 8 * S, Max.X - 8 * S);
+		P.Y = FMath::Clamp(P.Y, Min.Y + 8 * S, Max.Y - 8 * S);
+		const FLinearColor C = bDropoff ? FLinearColor(1.f, 0.7f, 0.28f) : FLinearColor(0.33f, 1.f, 0.82f);
+		DrawRect(C, P.X - 7 * S, P.Y - 7 * S, 14 * S, 14 * S);
+	}
+	Arrow(Centre.X, Centre.Y, FRotator::NormalizeAxis(Pawn->GetActorRotation().Yaw - CamYaw), 12 * S, FLinearColor(0.3f, 0.94f, 0.69f));
 }
 
 void ASCHUD::DrawHUD()
@@ -120,15 +207,42 @@ void ASCHUD::DrawHUD()
 				// ---- GPS arrow + distance (top-centre), relative to where the camera faces
 				if (Pawn && PC->PlayerCameraManager)
 				{
-					const FVector To = T->GetActorLocation() - Pawn->GetActorLocation();
+					// street-aware GPS: follow the road route, not a straight line
+					if ((RouteTimer -= GetWorld()->GetDeltaSeconds()) <= 0.f || RouteTarget.Get() != T)
+					{
+						RouteTimer = 0.25f;
+						RouteTarget = T;
+						Route = SC::FindRoute(Pawn->GetActorLocation(), Pawn->GetActorForwardVector(), T->GetActorLocation());
+						bHasRoute = true;
+					}
+					// aim the arrow at a point ~25 m ahead along the route
+					FVector Aim = T->GetActorLocation();
+					{
+						float Acc = 0.f;
+						for (int32 i = 1; i < Route.Points.Num(); ++i)
+						{
+							const float Seg = FVector::Dist2D(Route.Points[i - 1], Route.Points[i]);
+							if (Acc + Seg >= 2500.f) { Aim = FMath::Lerp(Route.Points[i - 1], Route.Points[i], (2500.f - Acc) / FMath::Max(1.f, Seg)); break; }
+							Acc += Seg;
+						}
+					}
+					const FVector To = Aim - Pawn->GetActorLocation();
 					const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(To.Y, To.X));
 					const float Rel = FRotator::NormalizeAxis(Yaw - PC->PlayerCameraManager->GetCameraRotation().Yaw);
 					const float Cx2 = W / 2.f;
-					Panel(Cx2 - 150 * S, Pad, 300 * S, 84 * S);
-					Arrow(Cx2 - 105 * S, Pad + 42 * S, Rel, 24 * S, bPick ? Accent : Gold);
-					const float Metres = To.Size2D() / 100.f;
-					Label(Metres > 950.f ? FString::Printf(TEXT("%.1f km"), Metres / 1000.f) : FString::Printf(TEXT("%.0f m"), FMath::RoundToFloat(Metres / 10.f) * 10.f), Cx2 - 60 * S, Pad + 14 * S, FLinearColor::White, 1.f);
-					Label(bPick ? TEXT("to pickup") : TEXT("to drop-off"), Cx2 - 60 * S, Pad + 50 * S, Muted, 0.6f);
+					auto Dist = [](float Cm) { const float M = Cm / 100.f; return M > 950.f ? FString::Printf(TEXT("%.1f km"), M / 1000.f) : FString::Printf(TEXT("%.0f m"), FMath::RoundToFloat(M / 10.f) * 10.f); };
+					FString Instr;
+					switch (Route.Next)
+					{
+					case SC::ETurn::Left: Instr = FString::Printf(TEXT("Turn left in %s"), *Dist(Route.NextDist)); break;
+					case SC::ETurn::Right: Instr = FString::Printf(TEXT("Turn right in %s"), *Dist(Route.NextDist)); break;
+					case SC::ETurn::UTurn: Instr = TEXT("Make a U-turn"); break;
+					default: Instr = FString::Printf(TEXT("Arrive in %s"), *Dist(Route.NextDist)); break;
+					}
+					Panel(Cx2 - 190 * S, Pad, 380 * S, 84 * S);
+					Arrow(Cx2 - 145 * S, Pad + 42 * S, Rel, 24 * S, bPick ? Accent : Gold);
+					Label(Instr, Cx2 - 100 * S, Pad + 12 * S, FLinearColor::White, 0.8f);
+					Label(FString::Printf(TEXT("%s to %s"), *Dist(Route.Length), bPick ? TEXT("pickup") : TEXT("drop-off")), Cx2 - 100 * S, Pad + 50 * S, Muted, 0.6f);
 
 					// ---- on-screen objective marker, clamped to the screen edge when off-screen
 					const FVector World = T->GetActorLocation() + FVector(0, 0, 350.f);
@@ -174,7 +288,7 @@ void ASCHUD::DrawHUD()
 			TArray<FString> Lines;
 			D->GetStoryCard().ParseIntoArrayLines(Lines);
 			// bottom-centre, above the car, so it never covers the career panel or job card
-			const float Bh = (24 + Lines.Num() * 32) * S, Bw = FMath::Min(760 * S, W - 2 * Pad), Bx = W / 2.f - Bw / 2.f, By = H - Bh - 150 * S;
+			const float Bh = (24 + Lines.Num() * 32) * S, Bw = FMath::Min(760 * S, W - 2 * (300 * S + Pad)), Bx = W / 2.f - Bw / 2.f, By = H - Bh - 150 * S;
 			Panel(Bx, By, Bw, Bh);
 			for (int32 i = 0; i < Lines.Num(); ++i) Label(Lines[i], W / 2.f, By + (12 + i * 32) * S, i == 0 ? Accent : FLinearColor::White, i == 0 ? 0.65f : 0.8f, true);
 		}
@@ -184,12 +298,15 @@ void ASCHUD::DrawHUD()
 		for (int32 i = 0; i < Ts.Num(); ++i)
 		{
 			const float Ty = Pad + 100 * S + i * 44 * S; // just under the GPS panel
-			const float Tw = TextSize(Ts[i].Text, 0.75f * S).X + 32 * S;
+			const float Tw = TextSize(Ts[i].Text, 0.75f).X + 32 * S;
 			FLinearColor C = Ts[i].Color; C.A = FMath::Clamp(Ts[i].Remaining * 2.f, 0.f, 1.f);
 			DrawRect(FLinearColor(PanelBg.R, PanelBg.G, PanelBg.B, PanelBg.A * C.A), W / 2.f - Tw / 2.f, Ty, Tw, 38 * S);
 			Label(Ts[i].Text, W / 2.f, Ty + 6 * S, C, 0.75f, true);
 		}
 	}
+
+	// ---- minimap (bottom-left), heading-up
+	if (Pawn && PC && PC->PlayerCameraManager) DrawMinimap(Pawn, PC->PlayerCameraManager->GetCameraRotation().Yaw, D ? D->GetTarget() : nullptr, D && D->HasJob() && D->GetJob().Stage == ESCJobStage::Dropoff);
 
 	// ---- speed (bottom-right)
 	if (bShowSpeed && Pawn)

@@ -7,50 +7,10 @@
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
 
-// Layout constants in centimetres (browser metres x 100). Browser (x, z) maps to Unreal (X, Y), height = Z.
+#include "SCCityLayout.h"
+
 namespace SC
 {
-	constexpr int32 Grid = 10;
-	constexpr float Pitch = 6400.f;
-	constexpr float Half = Grid * Pitch / 2.f;
-	constexpr float RoadW = 1400.f;
-	constexpr float HW = RoadW / 2.f;
-	constexpr float LaneW = 350.f;
-	constexpr float Walk = 400.f;
-	constexpr float KerbH = 15.f;
-	inline float Road(int32 K) { return -Half + K * Pitch; }
-
-	struct FDest { const TCHAR* Name; bool bAxisX; int32 I, J, Side; const TCHAR* Landmark; };
-	// Same ten places as the browser version (data/world.ts)
-	const FDest Dests[] = {
-		{ TEXT("Central Station"), true, 4, 2, 1, TEXT("station") },
-		{ TEXT("Riverside Apartments"), false, 7, 8, -1, TEXT("apartments") },
-		{ TEXT("City Hospital"), true, 2, 7, -1, TEXT("hospital") },
-		{ TEXT("Westside Mall"), false, 3, 1, 1, TEXT("mall") },
-		{ TEXT("University Quarter"), true, 6, 1, 1, TEXT("campus") },
-		{ TEXT("Harbour Hotel"), false, 5, 9, 1, TEXT("hotel") },
-		{ TEXT("Market Square"), true, 4, 7, 1, TEXT("market") },
-		{ TEXT("Old Town"), false, 8, 6, -1, TEXT("oldtown") },
-		{ TEXT("South Park"), true, 1, 9, -1, TEXT("park") },
-		{ TEXT("Arts District"), false, 5, 5, -1, TEXT("arts") },
-	};
-	/** Building height (cm) and facade style for each landmark. */
-	inline void LandmarkSpec(const FString& L, float& OutH, int32& OutStyle)
-	{
-		struct FSpec { const TCHAR* Name; float H; int32 Style; };
-		static const FSpec Specs[] = {
-			{ TEXT("station"), 1600.f, 0 }, { TEXT("apartments"), 4200.f, 3 }, { TEXT("hospital"), 3400.f, 3 },
-			{ TEXT("mall"), 1400.f, 4 }, { TEXT("campus"), 1800.f, 1 }, { TEXT("hotel"), 9600.f, 2 },
-			{ TEXT("market"), 900.f, 5 }, { TEXT("oldtown"), 1200.f, 1 }, { TEXT("arts"), 2000.f, 5 } };
-		for (const FSpec& Sp : Specs) if (L == Sp.Name) { OutH = Sp.H; OutStyle = Sp.Style; return; }
-	}
-
-	inline FVector DestPos(const FDest& D)
-	{
-		const float Along = Road(D.I) + Pitch / 2.f, Across = Road(D.J) + D.Side * (HW - LaneW / 2.f);
-		return D.bAxisX ? FVector(Along, Across, 0.f) : FVector(Across, Along, 0.f);
-	}
-
 	/** Geometry for one material section. Quads are emitted with both windings, so faces are visible
 	 *  whichever handedness the engine expects; the supplied normal is the lit (outside) side. */
 	struct FBuf
@@ -193,8 +153,9 @@ void ASCCityGenerator::Generate()
 	}
 
 	// subtle colour variations so neighbouring buildings of the same style don't look identical
-	static const FColor Tints[] = { FColor(255, 255, 255), FColor(255, 244, 228), FColor(236, 240, 246), FColor(250, 236, 220),
-		FColor(228, 228, 228), FColor(255, 250, 238), FColor(222, 230, 238), FColor(246, 232, 226) };
+	// colour washes over the scanned walls: white, cream, terracotta, sage, slate, sand, taupe, pale grey
+	static const FColor Tints[] = { FColor(255, 255, 255), FColor(255, 238, 212), FColor(236, 196, 168), FColor(212, 226, 204),
+		FColor(204, 214, 232), FColor(242, 226, 196), FColor(222, 206, 190), FColor(232, 234, 236) };
 	auto Tinted = [&](int32 Sec, FColor C) -> FBuf& { B[Sec].Tint = C; return B[Sec]; };
 	auto AddBuilding = [&](float X0, float Y0, float X1, float Y1, float H, int32 Style)
 	{

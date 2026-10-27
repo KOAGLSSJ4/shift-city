@@ -167,6 +167,96 @@ def make_material(name, base=None, tint=None, normal=None, rough=None, metal=Non
     return mat
 
 
+# Real scanned wall surface for each facade style (Poly Haven, CC0), blended with the window pattern
+STYLE_WALLS = ["concrete_wall_007", "brick_wall_02", "concrete_wall_008", "clay_plaster", "concrete_wall_006",
+               "concrete_brick_wall_001", "concrete_wall_005", "castle_brick_02_white", "dark_brick_wall",
+               "concrete_wall_008", "clay_plaster", "concrete_wall_004"]
+_wall_cache = {}
+
+
+def polyhaven_texture(asset_id):
+    """Downloads a Poly Haven texture set (1k) and returns (colour, normal, roughness) textures."""
+    if asset_id in _wall_cache:
+        return _wall_cache[asset_id]
+    try:
+        req = urllib.request.Request("https://api.polyhaven.com/files/" + asset_id, headers={"User-Agent": "ShiftCitySetup/1.0"})
+        files = json.loads(urllib.request.urlopen(req, timeout=60).read())
+        out = []
+        for key, kind in (("Diffuse", "color"), ("nor_gl", "normal"), ("Rough", "mask")):
+            url = files[key]["1k"]["jpg"]["url"]
+            local = os.path.join(CACHE, "textures", os.path.basename(url))
+            fetch(url, local)
+            out.append(import_texture(local, kind))
+        _wall_cache[asset_id] = tuple(out)
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] wall texture %s unavailable: %s" % (asset_id, e))
+        _wall_cache[asset_id] = (None, None, None)
+    return _wall_cache[asset_id]
+
+
+def make_facade_material(name, pattern, rough, metal, emissive, wall):
+    """Facade = scanned wall (tinted per building by vertex colour) with the window pattern on top.
+    The metallic map doubles as the window mask (windows are metallic, walls aren't)."""
+    wall_d, wall_n, wall_r = wall
+    mat = new_material(name)
+    mat.set_editor_property("two_sided", True)
+    S = unreal.MaterialSamplerType
+    P = unreal.MaterialProperty
+    E_ = unreal.MaterialExpressionMultiply
+    uv3 = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureCoordinate, -1400, -200)
+    uv3.set_editor_property("u_tiling", 3.0)
+    uv3.set_editor_property("v_tiling", 3.0)
+    pat = tex_node(mat, pattern, S.SAMPLERTYPE_COLOR, -1000, -500)
+    mask_src = tex_node(mat, metal, S.SAMPLERTYPE_MASKS, -1000, 100)
+    mask = MEL.create_material_expression(mat, unreal.MaterialExpressionSaturate, -500, 150)
+    boost = MEL.create_material_expression(mat, E_, -700, 150)
+    MEL.connect_material_expressions(mask_src, "R", boost, "A")
+    MEL.connect_material_expressions(const(mat, 1.3, -900, 250), "", boost, "B")
+    MEL.connect_material_expressions(boost, "", mask, "")
+    vc = MEL.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -1000, -100)
+    if wall_d is not None:
+        wd = tex_node(mat, wall_d, S.SAMPLERTYPE_COLOR, -1000, -300, uv3)
+        tinted = MEL.create_material_expression(mat, E_, -700, -300)
+        MEL.connect_material_expressions(wd, "RGB", tinted, "A")
+        MEL.connect_material_expressions(vc, "", tinted, "B")
+    else:
+        tinted = MEL.create_material_expression(mat, E_, -700, -300)
+        MEL.connect_material_expressions(pat, "RGB", tinted, "A")
+        MEL.connect_material_expressions(vc, "", tinted, "B")
+    base = MEL.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate, -300, -400)
+    MEL.connect_material_expressions(tinted, "", base, "A")
+    MEL.connect_material_expressions(pat, "RGB", base, "B")
+    MEL.connect_material_expressions(mask, "", base, "Alpha")
+    MEL.connect_material_property(base, "", P.MP_BASE_COLOR)
+    if wall_n is not None:
+        MEL.connect_material_property(tex_node(mat, wall_n, S.SAMPLERTYPE_NORMAL, -1000, 400, uv3), "RGB", P.MP_NORMAL)
+    rp = tex_node(mat, rough, S.SAMPLERTYPE_MASKS, -1000, 650)
+    if wall_r is not None:
+        wr = tex_node(mat, wall_r, S.SAMPLERTYPE_MASKS, -1000, 900, uv3)
+        rl = MEL.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate, -300, 700)
+        MEL.connect_material_expressions(wr, "R", rl, "A")
+        MEL.connect_material_expressions(rp, "R", rl, "B")
+        MEL.connect_material_expressions(mask, "", rl, "Alpha")
+        MEL.connect_material_property(rl, "", P.MP_ROUGHNESS)
+    else:
+        MEL.connect_material_property(rp, "R", P.MP_ROUGHNESS)
+    MEL.connect_material_property(mask_src, "R", P.MP_METALLIC)
+    # night window glow (off by default; night lighting will raise WindowGlow)
+    euv = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureCoordinate, -1400, 1150)
+    euv.set_editor_property("v_tiling", 0.25)
+    e = tex_node(mat, emissive, S.SAMPLERTYPE_COLOR, -1000, 1150, euv)
+    gp = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -1000, 1400)
+    gp.set_editor_property("parameter_name", "WindowGlow")
+    gp.set_editor_property("default_value", 0.0)
+    em = MEL.create_material_expression(mat, E_, -300, 1200)
+    MEL.connect_material_expressions(e, "RGB", em, "A")
+    MEL.connect_material_expressions(gp, "", em, "B")
+    MEL.connect_material_property(em, "", P.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(mat)
+    EAL.save_loaded_asset(mat)
+    return mat
+
+
 def build_materials():
     t = lambda f: os.path.join(SRC, "textures", f)
     f = lambda n: os.path.join(SRC, "facades", n)
@@ -183,23 +273,20 @@ def build_materials():
     white = make_material("M_PaintWhite", tint=(0.85, 0.85, 0.82), rough_value=0.55)
     yellow = make_material("M_PaintYellow", tint=(0.85, 0.6, 0.08), rough_value=0.55)
     grass = make_material("M_Grass", tint=(0.09, 0.16, 0.05), rough_value=0.95)
-    # windows glow very slightly at golden hour (evening interiors), not at all at midday
-    glow = 0.06 if GOLDEN_HOUR else 0.0
     facades = []
     i = 0
     while os.path.exists(f("T_Facade%d_D.png" % i)):
-        facades.append(make_material(
-            "M_Facade%d" % i, import_texture(f("T_Facade%d_D.png" % i)), None,
-            brick_n if i in (1, 5, 8) else wall_n, import_texture(f("T_Facade%d_R.png" % i), "mask"),
-            import_texture(f("T_Facade%d_M.png" % i), "mask"), import_texture(f("T_Facade%d_E.png" % i)),
-            emissive_v_tiling=0.25, normal_tiling=2.0, vertex_tint=True, glow=glow))
+        wall = polyhaven_texture(STYLE_WALLS[i % len(STYLE_WALLS)])
+        facades.append(make_facade_material(
+            "M_Facade%d" % i, import_texture(f("T_Facade%d_D.png" % i)), import_texture(f("T_Facade%d_R.png" % i), "mask"),
+            import_texture(f("T_Facade%d_M.png" % i), "mask"), import_texture(f("T_Facade%d_E.png" % i)), wall))
         i += 1
     shops = []
     for i in range(6):
         shops.append(make_material(
             "M_Shop%d" % i, import_texture(f("T_Shop%d_D.png" % i)), None, None,
             import_texture(f("T_Shop%d_R.png" % i), "mask"), import_texture(f("T_Shop%d_M.png" % i), "mask"),
-            import_texture(f("T_Shop%d_E.png" % i)), glow=0.04 if GOLDEN_HOUR else 0.0))
+            import_texture(f("T_Shop%d_E.png" % i)), glow=0.0))
     return dict(asphalt=asphalt, sidewalk=walk, kerb=kerb, roof=roof, paint_white=white, paint_yellow=yellow,
                 grass=grass, facades=facades, shopfronts=shops)
 
@@ -274,6 +361,12 @@ def polyhaven_mesh(asset_id):
             try:
                 ns = mesh.get_editor_property("nanite_settings")
                 ns.set_editor_property("enabled", True)
+                if "tree" in asset_id:
+                    # keeps leaf cards from thinning out when Nanite simplifies distant trees
+                    try:
+                        ns.set_editor_property("preserve_area", True)
+                    except Exception:
+                        pass
                 unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem).set_nanite_settings(mesh, ns, True)
             except Exception as e:  # Nanite is an optimisation, not required
                 log("Nanite not enabled for %s (%s)" % (asset_id, e))
@@ -292,6 +385,41 @@ def find_class(asset_name):
         if path.split("/")[-1].split(".")[0] == asset_name:
             return EAL.load_blueprint_class(path.split(".")[0])
     return None
+
+
+def make_signal_materials():
+    lamp = new_material("M_SignalLamp")
+    P = unreal.MaterialProperty
+    col = MEL.create_material_expression(lamp, unreal.MaterialExpressionVectorParameter, -700, 0)
+    col.set_editor_property("parameter_name", "Color")
+    col.set_editor_property("default_value", unreal.LinearColor(1, 0.1, 0.05, 1))
+    glow = MEL.create_material_expression(lamp, unreal.MaterialExpressionScalarParameter, -700, 250)
+    glow.set_editor_property("parameter_name", "Glow")
+    glow.set_editor_property("default_value", 1.0)
+    m = MEL.create_material_expression(lamp, unreal.MaterialExpressionMultiply, -300, 100)
+    MEL.connect_material_expressions(col, "", m, "A")
+    MEL.connect_material_expressions(glow, "", m, "B")
+    MEL.connect_material_property(m, "", P.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(color(lamp, (0.02, 0.02, 0.02), -300, -150), "", P.MP_BASE_COLOR)
+    MEL.recompile_material(lamp)
+    EAL.save_loaded_asset(lamp)
+    pole = make_material("M_SignalPole", tint=(0.04, 0.045, 0.05), rough_value=0.45, metal_value=0.8)
+    return lamp, pole
+
+
+def find_car_meshes():
+    """Skeletal car bodies from the Vehicle template, reused as traffic."""
+    cars = []
+    for path in EAL.list_assets("/Game", recursive=True):
+        if "/Vehicles/" not in path and "Vehicle" not in path:
+            continue
+        data = EAL.find_asset_data(path)
+        if str(data.asset_class_path.asset_name) == "SkeletalMesh":
+            mesh = unreal.load_asset(path)
+            if mesh:
+                cars.append(mesh)
+    log("traffic will use %d car model(s)" % len(cars))
+    return cars
 
 
 def setup_level(mats, lamp, tree):
@@ -336,6 +464,16 @@ def setup_level(mats, lamp, tree):
     setp(gen, "tree_meshes", tree)
     gen.generate()
 
+    try:
+        sig_lamp, sig_pole = make_signal_materials()
+        traffic = eas.spawn_actor_from_class(unreal.load_class(None, "/Script/ShiftCityCore.SCTraffic"), unreal.Vector(0, 0, 0))
+        setp(traffic, "car_meshes", find_car_meshes())
+        setp(traffic, "lamp_material", sig_lamp)
+        setp(traffic, "pole_material", sig_pole)
+        traffic.rerun_construction_scripts()
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] traffic not added: %s" % e)
+
     spawn = gen.get_spawn_transform()
     eas.spawn_actor_from_class(unreal.PlayerStart, spawn.translation, spawn.rotation.rotator())
 
@@ -354,7 +492,7 @@ def setup_level(mats, lamp, tree):
     les.save_current_level()
 
 
-REQUIRED_GENERATOR_VERSION = 2
+REQUIRED_GENERATOR_VERSION = 3
 
 
 def check_code_is_current():

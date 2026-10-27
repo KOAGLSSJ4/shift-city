@@ -52,7 +52,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Shift City") bool bSpawnDestinations = true;
 
 	/** Bumped whenever the generator changes, so the setup script can tell if the C++ was rebuilt. */
-	UFUNCTION(BlueprintPure, Category = "Shift City") static int32 GetGeneratorVersion() { return 2; }
+	UFUNCTION(BlueprintPure, Category = "Shift City") static int32 GetGeneratorVersion() { return 3; }
 
 	/** Where the player should start (next to Central Station, facing along the road). */
 	UFUNCTION(BlueprintPure, Category = "Shift City") FTransform GetSpawnTransform() const;
