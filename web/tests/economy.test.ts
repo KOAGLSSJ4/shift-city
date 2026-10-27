@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSave, loadSave, migrateLegacy, normalize } from '../src/core/Save';
-import { addXP, buyUpgrade, buyVehicle, claimGoal, convertArcadePoints, payJob, recordArcadeRun } from '../src/gameplay/Economy';
+import { addXP, arcadeXp, buyUpgrade, buyVehicle, claimGoal, convertArcadePoints, payJob, recordArcadeRun } from '../src/gameplay/Economy';
 import { vehicleById } from '../src/data/vehicles';
 
 describe('economy', () => {
@@ -24,6 +24,13 @@ describe('economy', () => {
     expect(recordArcadeRun(s, 'r1', 900, 3)).toBe(900);
     expect(recordArcadeRun(s, 'r1', 900, 3)).toBe(0);
     expect(s.arcade.points).toBe(900); expect(s.arcade.best).toBe(900);
+    expect(s.xp).toBe(2); // a little XP, once
+  });
+  it('arcade XP is small and capped', () => {
+    expect(arcadeXp(0)).toBe(0);
+    expect(arcadeXp(300)).toBe(2);
+    expect(arcadeXp(15000)).toBe(10);
+    expect(arcadeXp(10_000_000)).toBe(15);
   });
   it('keeps a sorted local top 10', () => {
     const s = defaultSave();

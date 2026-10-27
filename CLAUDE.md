@@ -58,6 +58,9 @@ passengers/pedestrians → port the web's original car designs.
   portal SDKs, release builds, LAUNCH.md.
 - Poki undecided (David's call): launch Vercel site + itch.io + CrazyGames now. If Poki later, David would
   pull the game from other web sites to go exclusive; Steam may come first; Poki may never happen.
+- Since then: 10 cars (Shift Classic = original starter restored via `ClassicCar.ts`; Stellato 12 = Italian-style
+  V12 GT), Arcade gives a little XP (`arcadeXp`, capped 15/run vs 30 per city job).
+- Plan agreed: launch → gather feedback → story v1.1 (see Decisions). Don't start story before David says.
 - Waiting on David: follow LAUNCH.md (Vercel, itch.io, CrazyGames), optional Upstash for world board.
 - Not verified on real devices yet: phone touch play, real ad fill on portals.
 

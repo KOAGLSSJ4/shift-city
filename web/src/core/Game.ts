@@ -17,7 +17,7 @@ import { BALANCE } from '../data/balancing';
 import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
-import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
+import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
@@ -595,7 +595,9 @@ export class Game {
       },
       over: (score: number, near: number, coins: number) => {
         bestBefore = this.save.arcade.best;
+        const lvl = this.save.level;
         const pts = recordArcadeRun(this.save, this.arcade.runId, score, near);
+        if (this.save.level > lvl) setTimeout(() => { this.toast(`LEVEL UP! Level ${this.save.level}`, 'good'); this.audio.levelUp(); }, 1200);
         this.persist();
         this.lastRun = { score: Math.floor(score), near, time: this.arcade.time, runId: this.arcade.runId, date: Math.max(0, ...this.save.arcade.top.filter((e) => e.score === Math.floor(score)).map((e) => e.date)), posted: false };
         setTimeout(() => this.showArcadeOver(score, near, coins, pts, score > bestBefore && score > 0), 900);
@@ -629,7 +631,8 @@ export class Game {
     $('o-coins').textContent = String(coins);
     $('newbest').hidden = !best;
     this.refreshPoints();
-    $('o-points').textContent = `+${pts.toLocaleString()} arcade points · ${this.save.arcade.points.toLocaleString()} banked`;
+    const xp = pts > 0 ? arcadeXp(score) : 0;
+    $('o-points').textContent = `+${pts.toLocaleString()} arcade points${xp ? ` · +${xp} XP` : ''} · ${this.save.arcade.points.toLocaleString()} banked`;
     if (best) { this.confetti(); this.audio.levelUp(); }
     $('tab-world').hidden = !leaderboardEnabled();
     $('o-double').hidden = !platform.hasAds || pts <= 0;

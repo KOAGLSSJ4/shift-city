@@ -61,7 +61,11 @@ export function convertArcadePoints(s: SaveData): number {
   return cash;
 }
 
-/** Records an arcade run exactly once (guarded by run id). Returns points awarded. */
+/** A little XP for an arcade run, so Arcade-only players still level up (slowly). */
+export const arcadeXp = (score: number) =>
+  score > 0 ? Math.min(BALANCE.arcadeXpMax, Math.max(BALANCE.arcadeXpMin, Math.round(score / BALANCE.arcadeXpPerPoints))) : 0;
+
+/** Records an arcade run exactly once (guarded by run id). Returns points awarded (XP is added too). */
 export function recordArcadeRun(s: SaveData, runId: string, score: number, nearMisses: number): number {
   if (s.arcade.lastRunId === runId) return 0;
   s.arcade.lastRunId = runId;
@@ -74,6 +78,7 @@ export function recordArcadeRun(s: SaveData, runId: string, score: number, nearM
   s.arcade.best = Math.max(s.arcade.best, score);
   s.arcade.points += Math.floor(score);
   s.stats.nearMisses += nearMisses;
+  addXP(s, arcadeXp(score));
   return Math.floor(score);
 }
 
