@@ -95,7 +95,7 @@ struct FSCBalance
 {
 	GENERATED_BODY()
 	UPROPERTY(BlueprintReadOnly) float ArcadePointsPerUnit = 100.f;
-	UPROPERTY(BlueprintReadOnly) float CashPerUnit = 5.f;
+	UPROPERTY(BlueprintReadOnly) float CashPerUnit = 8.f;
 	UPROPERTY(BlueprintReadOnly) int32 XpPerJob = 30;
 	UPROPERTY(BlueprintReadOnly) int32 XpPerStoryChapter = 55;
 	UPROPERTY(BlueprintReadOnly) float BaseFare = 7.f;
