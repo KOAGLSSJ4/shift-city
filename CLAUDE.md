@@ -40,6 +40,15 @@ top-down heading-up) → time of day (day/golden/night, lit windows via `WindowG
 (wet roads, rain, windscreen drops) → Arcade Rush → contextual tutorial pointer → audio →
 passengers/pedestrians → fictional car models (replace real brands before release).
 
+## Where we left off (2026-10-27)
+- Last push: HUD text via Roboto font asset, round minimap, brighter midday lighting, traffic spawn log.
+  David has NOT yet tested it. First thing next session: ask for a Play screenshot + the Output Log line
+  `[ShiftCity] traffic: spawned N cars using M car model(s)` (traffic lights showed, cars didn't).
+- Proposed and pending David's yes: a self-hosted GitHub Actions runner on his laptop that builds the
+  Unreal C++ on every push, so Claude can read compile errors without David in the loop.
+- Then ship bigger batches: main menu + garage + goals + settings together.
+- Estimates given to David: ~2-3 weeks part-time to match the web game, ~1-2 months to a demo.
+
 ## Decisions
 - One monorepo (`web/` + `unreal/`), David's call. Push to `main` (he pulls with GitHub Desktop).
 - Traffic dots hidden on the minimap (clean GPS look).
