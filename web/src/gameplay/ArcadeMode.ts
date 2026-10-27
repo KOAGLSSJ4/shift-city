@@ -10,8 +10,12 @@ export const ARCADE_ORIGIN = new THREE.Vector3(3000, 0, 0);
 const LANE = 3.7;
 const CHUNK = 120;
 const CHUNKS = 5;
+/** All arcade traffic moves at one speed, so obstacle rows never converge. */
+const FLOW_SPEED = 12;
+/** Obstacles within this many metres of each other count as one wall the player must find a gap in. */
+const ESCAPE_BAND = 20;
 
-interface Obstacle { mesh: THREE.Object3D; lane: number; x: number; z: number; speed: number; len: number; active: boolean; passed: boolean; minLat: number; hit: boolean; fly: number; laneChange: number }
+interface Obstacle { mesh: THREE.Object3D; lane: number; x: number; z: number; speed: number; len: number; active: boolean; passed: boolean; minLat: number; hit: boolean; fly: number; laneChange: number; canChange: boolean }
 interface Coin { mesh: THREE.Mesh; active: boolean; z: number; x: number; kind: 'coin' | 'magnet' | 'x2' | 'nitro' }
 
 export interface ArcadeEvents {
@@ -48,7 +52,7 @@ export class ArcadeMode {
       const mesh = isTruck ? this.buildTruck() : buildTrafficCar(bodies[i % bodies.length], colors[i % colors.length]);
       mesh.visible = false;
       this.group.add(mesh);
-      this.obstacles.push({ mesh, lane: 0, x: 0, z: 0, speed: 0, len: isTruck ? 9 : mesh.userData.length, active: false, passed: false, minLat: 9, hit: false, fly: 0, laneChange: 0 });
+      this.obstacles.push({ mesh, lane: 0, x: 0, z: 0, speed: 0, len: isTruck ? 9 : mesh.userData.length, active: false, passed: false, minLat: 9, hit: false, fly: 0, laneChange: 0, canChange: false });
     }
     const coinGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.12, 24); coinGeo.rotateZ(Math.PI / 2);
     const coinMat = new THREE.MeshStandardMaterial({ color: 0xffcf49, metalness: 1, roughness: 0.18, emissive: 0x7a4a00, emissiveIntensity: 0.5 });
@@ -196,6 +200,12 @@ export class ArcadeMode {
         continue;
       }
       o.z += o.speed * dt;
+      // later in a run, a car may drift into a neighbouring lane — but only if that still leaves an escape lane
+      if (o.canChange && !o.laneChange && o.z - this.z < 80 && o.z - this.z > 45) {
+        o.canChange = false;
+        const dir = o.lane === 1 ? -1 : o.lane === -1 ? 1 : (Math.random() < 0.5 ? -1 : 1);
+        if (this.leavesEscape(o, o.lane + dir)) o.laneChange = dir;
+      }
       if (o.laneChange) {
         o.x += Math.sign(o.laneChange) * 3.2 * dt;
         if (Math.abs(o.x - (o.lane + Math.sign(o.laneChange)) * LANE) < 0.05 || Math.abs(o.x) > LANE) { o.lane += Math.sign(o.laneChange); o.x = o.lane * LANE; o.laneChange = 0; }
@@ -247,18 +257,43 @@ export class ArcadeMode {
 
   events: ArcadeEvents | null = null;
 
+  /** Lanes covered by obstacles whose z lies within the band around z (a car mid lane change covers both). */
+  private occupied(z: number, band: number, skip?: Obstacle) {
+    const occ = new Set<number>();
+    for (const o of this.obstacles) {
+      if (!o.active || o.fly > 0 || o === skip || Math.abs(o.z - z) > band) continue;
+      occ.add(o.lane);
+      if (o.laneChange) occ.add(o.lane + Math.sign(o.laneChange));
+    }
+    return occ;
+  }
+
+  /** True if moving obstacle o to lane `to` keeps at least one lane open around it. */
+  private leavesEscape(o: Obstacle, to: number) {
+    if (to < -1 || to > 1) return false;
+    const occ = this.occupied(o.z, ESCAPE_BAND, o);
+    if (occ.has(to)) return false; // would drive into another car
+    occ.add(o.lane); occ.add(to); // both lanes are blocked while it moves across
+    return occ.size < 3;
+  }
+
   private spawnRow(z: number) {
     const lanes = [-1, 0, 1].sort(() => Math.random() - 0.5);
-    const blocked = Math.random() < Math.min(0.75, 0.25 + this.time * 0.006) ? 2 : 1;
+    let blocked = Math.random() < Math.min(0.75, 0.25 + this.time * 0.006) ? 2 : 1;
+    // never close the road: lanes already taken near this row count against it
+    const near = this.occupied(z, ESCAPE_BAND);
+    lanes.sort((a, b) => Number(near.has(b)) - Number(near.has(a))); // reuse lanes that are already blocked first
+    while (blocked > 0 && new Set([...near, ...lanes.slice(0, blocked)]).size >= 3) blocked--;
     for (let i = 0; i < blocked; i++) {
       const o = this.obstacles.find((x) => !x.active);
       if (!o) break;
-      Object.assign(o, { active: true, passed: false, hit: false, fly: 0, minLat: 9, lane: lanes[i], x: lanes[i] * LANE, z, speed: 8 + Math.random() * 8, laneChange: 0 });
-      // later in a run, some cars drift into the free lane (telegraphed by being slower)
-      if (this.time > 25 && blocked === 1 && Math.random() < 0.25) o.laneChange = lanes[i] === 1 ? -1 : lanes[i] === -1 ? 1 : (Math.random() < 0.5 ? -1 : 1);
+      // every car flows at the same speed, so rows keep their spacing and can never bunch up into a wall
+      Object.assign(o, { active: true, passed: false, hit: false, fly: 0, minLat: 9, lane: lanes[i], x: lanes[i] * LANE, z, speed: FLOW_SPEED, laneChange: 0 });
+      o.canChange = this.time > 25 && blocked === 1 && Math.random() < 0.25;
       o.mesh.visible = true; o.mesh.rotation.set(0, 0, 0); o.mesh.position.set(o.x, 0, z);
     }
-    const free = lanes[blocked];
+    if (blocked === 0) return;
+    const free = lanes.slice(blocked).find((l) => !near.has(l)) ?? lanes[blocked];
     const r = Math.random();
     if (r < 0.08) this.spawnItem(free * LANE, z, (['magnet', 'x2', 'nitro'] as const)[Math.floor(Math.random() * 3)]);
     else if (r < 0.8) for (let k = 0; k < 6; k++) this.spawnItem(free * LANE, z - 10 + k * 3.2, 'coin');
