@@ -18,8 +18,8 @@ function run(cmd: (string | number)[]) {
 
 let handler: (req: unknown, res: unknown) => Promise<unknown>;
 beforeAll(async () => {
-  process.env.UPSTASH_REDIS_REST_URL = 'https://redis.test';
-  process.env.UPSTASH_REDIS_REST_TOKEN = 't';
+  vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://redis.test');
+  vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 't');
   vi.stubGlobal('fetch', async (_url: string, init: { body: string }) => ({ ok: true, json: async () => JSON.parse(init.body).map((c: (string | number)[]) => ({ result: run(c) })) }));
   // @ts-expect-error plain JS serverless function
   handler = (await import('../api/leaderboard.js')).default;
