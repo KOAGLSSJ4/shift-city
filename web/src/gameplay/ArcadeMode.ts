@@ -21,10 +21,19 @@ const ESCAPE_BAND = 20;
 interface Obstacle { mesh: THREE.Object3D; lane: number; x: number; z: number; speed: number; len: number; active: boolean; passed: boolean; minLat: number; hit: boolean; fly: number; laneChange: number; canChange: boolean;
   /** Indicated lane-change direction (blinkers on) before the car actually moves. */
   pending: number; blinkT: number; blinkers: THREE.Object3D[] }
-interface Coin { mesh: THREE.Mesh; active: boolean; z: number; x: number; kind: 'coin' | 'magnet' | 'x2' | 'nitro' }
+export type ItemKind = 'coin' | PowerKind | 'mystery';
+export type PowerKind = 'magnet' | 'x2' | 'nitro' | 'shield' | 'jet';
+interface Coin { mesh: THREE.Object3D; active: boolean; z: number; x: number; y: number; kind: ItemKind; pop: number }
+
+/** How long each power-up lasts (the shield lasts until it saves you, or this long). */
+export const POWER_TIME: Record<PowerKind, number> = { magnet: 12, x2: 12, nitro: 4, shield: 25, jet: 7 };
+const POWER_WEIGHT: [PowerKind, number][] = [['magnet', 26], ['x2', 20], ['shield', 20], ['jet', 16], ['nitro', 18]];
+const FLY_HEIGHT = 5.2;
 
 export interface ArcadeEvents {
-  coin(kind: Coin['kind']): void;
+  coin(kind: ItemKind): void;
+  /** Mystery box result, already applied (e.g. '+500', 'EXTRA LIFE', a power-up name). */
+  mystery(result: string): void;
   nearMiss(points: number, streak: number): void;
   crash(heartsLeft: number): void;
   over(score: number, nearMisses: number, coins: number): void;
@@ -38,12 +47,15 @@ export class ArcadeMode {
   score = 0; coins = 0; streak = 0; nearMisses = 0; hearts = 3; distance = 0;
   speed = 26; time = 0;
   lane = 0; x = 0; z = 0;
-  invuln = 0; magnet = 0; double = 0; nitro = 0;
+  invuln = 0; magnet = 0; double = 0; nitro = 0; shield = 0; jet = 0; y = 0;
   runId = '';
   private chunks: THREE.Group[] = [];
   private obstacles: Obstacle[] = [];
   private items: Coin[] = [];
   private nextRow = 60;
+  private nextPower = 0;
+  private nextMystery = 0;
+  private fx!: { magnet: THREE.Mesh; shield: THREE.Mesh; flames: THREE.Group };
   private laneCooldown = 0;
   private def!: VehicleDef;
 
@@ -74,16 +86,28 @@ export class ArcadeMode {
     }
     const coinGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.12, 24); coinGeo.rotateZ(Math.PI / 2);
     const coinMat = new THREE.MeshStandardMaterial({ color: 0xffcf49, metalness: 1, roughness: 0.18, emissive: 0x7a4a00, emissiveIntensity: 0.5 });
-    const pMats = { magnet: 0xff4fd8, x2: 0x54ffd0, nitro: 0x4c8dff };
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 140; i++) {
       const m = new THREE.Mesh(coinGeo, coinMat); m.visible = false; this.group.add(m);
-      this.items.push({ mesh: m, active: false, z: 0, x: 0, kind: 'coin' });
+      this.items.push({ mesh: m, active: false, z: 0, x: 0, y: 1, kind: 'coin', pop: 0 });
     }
-    for (const [kind, col] of Object.entries(pMats)) for (let i = 0; i < 2; i++) {
-      const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.75), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.2, roughness: 0.2 }));
-      m.visible = false; this.group.add(m);
-      this.items.push({ mesh: m, active: false, z: 0, x: 0, kind: kind as Coin['kind'] });
+    for (const kind of ['magnet', 'x2', 'nitro', 'shield', 'jet', 'mystery'] as const) for (let i = 0; i < 2; i++) {
+      const m = makeIcon(kind); m.visible = false; this.group.add(m);
+      this.items.push({ mesh: m, active: false, z: 0, x: 0, y: 1.2, kind, pop: 0 });
     }
+    // power-up effects that ride along with the player car
+    const magnet = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.06, 8, 48), new THREE.MeshBasicMaterial({ color: 0xff4fd8, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+    magnet.rotation.x = Math.PI / 2;
+    const shield = new THREE.Mesh(new THREE.SphereGeometry(2.9, 32, 16), new THREE.MeshBasicMaterial({ color: 0x54d8ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));
+    shield.scale.set(0.85, 0.6, 1);
+    const flames = new THREE.Group();
+    const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+    for (const sx of [-0.55, 0.55]) {
+      const f = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.6, 12), flameMat);
+      f.rotation.x = Math.PI; f.position.set(sx, -0.5, -0.9);
+      flames.add(f);
+    }
+    for (const m of [magnet, shield, flames]) { m.visible = false; this.group.add(m); }
+    this.fx = { magnet, shield, flames };
     this.group.visible = false;
   }
 
@@ -153,7 +177,7 @@ export class ArcadeMode {
     this.rig = rig; this.def = def;
     this.group.visible = true;
     this.group.add(rig.root);
-    Object.assign(this, { running: false, countdown: 3, score: 0, coins: 0, streak: 0, nearMisses: 0, hearts: 3, distance: 0, speed: 24, time: 0, lane: 0, x: 0, z: 0, invuln: 0, magnet: 0, double: 0, nitro: 0, nextRow: 70 });
+    Object.assign(this, { running: false, countdown: 3, score: 0, coins: 0, streak: 0, nearMisses: 0, hearts: 3, distance: 0, speed: 24, time: 0, lane: 0, x: 0, z: 0, y: 0, invuln: 0, magnet: 0, double: 0, nitro: 0, shield: 0, jet: 0, nextRow: 70, nextPower: 7, nextMystery: 28 });
     this.runId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     this.obstacles.forEach((o) => { o.active = false; o.mesh.visible = false; });
     this.items.forEach((c) => { c.active = false; c.mesh.visible = false; });
@@ -167,6 +191,14 @@ export class ArcadeMode {
   }
 
   get multiplier() { return Math.min(8, 1 + Math.floor(this.streak / 4)) * (this.double > 0 ? 2 : 1); }
+  /** Active timed power-ups for the HUD: remaining seconds and full duration. */
+  get powers(): { kind: PowerKind; left: number; total: number }[] {
+    const out: { kind: PowerKind; left: number; total: number }[] = [];
+    const add = (kind: PowerKind, left: number) => { if (left > 0) out.push({ kind, left, total: POWER_TIME[kind] }); };
+    add('jet', this.jet); add('nitro', this.nitro); add('magnet', this.magnet); add('x2', this.double); add('shield', this.shield);
+    return out;
+  }
+
   get topSpeed() { return 46 + Math.min(30, (this.def?.stats.top ?? 40) * 0.25); }
 
   /** steer: +1 left, -1 right (hit-based so each tap is one lane). */
@@ -199,6 +231,12 @@ export class ArcadeMode {
     this.magnet = Math.max(0, this.magnet - dt);
     this.double = Math.max(0, this.double - dt);
     this.nitro = Math.max(0, this.nitro - dt);
+    this.shield = Math.max(0, this.shield - dt);
+    const wasFlying = this.jet > 0;
+    this.jet = Math.max(0, this.jet - dt);
+    if (wasFlying && this.jet <= 0) this.invuln = Math.max(this.invuln, 1.0); // a moment of grace after landing
+    const wantY = this.jet > 0.5 ? FLY_HEIGHT : 0;
+    this.y += (wantY - this.y) * (1 - Math.exp(-dt * (wantY > this.y ? 4 : 3)));
     this.score += this.speed * dt * 0.5 * this.multiplier * (this.def?.arcade ?? 1);
 
     // recycle scenery
@@ -239,11 +277,15 @@ export class ArcadeMode {
       }
       o.mesh.position.set(o.x, 0, o.z);
       const dz = Math.abs(o.z - this.z), lat = Math.abs(o.x - this.x);
-      const overlapZ = dz < (o.len + pLen) / 2 - 0.3;
+      const airborne = this.y > 1.4 || this.jet > 0; // safe from take-off to touch-down
+      const overlapZ = !airborne && dz < (o.len + pLen) / 2 - 0.3;
       if (overlapZ) o.minLat = Math.min(o.minLat, lat);
       if (overlapZ && lat < 2.05 && !o.hit) {
         if (this.invuln > 0 || this.nitro > 0) {
           if (this.nitro > 0) { o.hit = true; o.fly = 0.01; this.events?.popup('SMASH +100', 'gold'); this.score += 100 * this.multiplier; }
+        } else if (this.shield > 0) {
+          o.hit = true; o.fly = 0.01; this.shield = 0; this.invuln = 1.2;
+          this.events?.popup('SHIELD SAVED YOU!', 'cyan');
         } else {
           o.hit = true; o.fly = 0.01;
           this.hearts--; this.streak = 0; this.invuln = 1.6; this.speed *= 0.65;
@@ -266,16 +308,26 @@ export class ArcadeMode {
     // coins & power-ups
     for (const c of this.items) {
       if (!c.active) continue;
-      if (this.magnet > 0 && c.kind === 'coin' && Math.abs(c.z - this.z) < 30) c.x += (this.x - c.x) * Math.min(1, dt * 6);
-      c.mesh.position.set(c.x, 1.0 + Math.sin(this.time * 4 + c.z) * 0.15, c.z);
-      c.mesh.rotation.y += dt * 4;
-      if (Math.abs(c.z - this.z) < 1.8 && Math.abs(c.x - this.x) < 1.6) {
-        c.active = false; c.mesh.visible = false;
-        if (c.kind === 'coin') { this.coins++; this.score += 10 * this.multiplier; }
-        else if (c.kind === 'magnet') this.magnet = 10;
-        else if (c.kind === 'x2') this.double = 10;
-        else if (c.kind === 'nitro') { this.nitro = 4; }
-        this.events?.coin(c.kind);
+      if (c.pop > 0) {
+        // collected: zip into the car and shrink away
+        c.pop += dt;
+        c.x += (this.x - c.x) * Math.min(1, dt * 18); c.y += (this.y + 1.2 - c.y) * Math.min(1, dt * 18); c.z += (this.z - c.z) * Math.min(1, dt * 18);
+        const k = Math.max(0.01, 1 - c.pop * 5);
+        c.mesh.scale.setScalar(k);
+        c.mesh.position.set(c.x, c.y, c.z);
+        if (c.pop > 0.2) { c.active = false; c.mesh.visible = false; c.mesh.scale.setScalar(1); }
+        continue;
+      }
+      // the magnet pulls coins from every lane (and from the sky lane while flying)
+      if (this.magnet > 0 && c.kind === 'coin' && c.z - this.z < 45 && c.z - this.z > -2) {
+        const f = Math.min(1, dt * 7);
+        c.x += (this.x - c.x) * f; c.y += (this.y + 1 - c.y) * f; c.z += (this.z - c.z) * f * 0.5;
+      }
+      c.mesh.position.set(c.x, c.y + Math.sin(this.time * 4 + c.z) * 0.15, c.z);
+      c.mesh.rotation.y += dt * (c.kind === 'coin' ? 5 : 2.5);
+      if (Math.abs(c.z - this.z) < 1.9 && Math.abs(c.x - this.x) < 1.7 && Math.abs(c.y - (this.y + 1)) < 2.2) {
+        c.pop = 0.001;
+        this.collect(c.kind);
       } else if (c.z < this.z - 10) { c.active = false; c.mesh.visible = false; }
     }
     void prevX;
@@ -283,6 +335,42 @@ export class ArcadeMode {
   }
 
   events: ArcadeEvents | null = null;
+
+  private collect(kind: ItemKind) {
+    if (kind === 'coin') { this.coins++; this.score += 10 * this.multiplier; }
+    else if (kind === 'mystery') { this.openMystery(); return; }
+    else this.activate(kind);
+    this.events?.coin(kind);
+  }
+
+  private activate(kind: PowerKind) {
+    const t = POWER_TIME[kind];
+    if (kind === 'magnet') this.magnet = t;
+    else if (kind === 'x2') this.double = t;
+    else if (kind === 'nitro') this.nitro = t;
+    else if (kind === 'shield') this.shield = t;
+    else if (kind === 'jet') { this.jet = t; this.skyCoins(); }
+  }
+
+  /** Mystery box: a points bundle, a coin shower, an extra life or a random power-up. */
+  private openMystery() {
+    const r = Math.random();
+    let result: string;
+    if (r < 0.3) { const pts = [250, 500, 1000][Math.floor(Math.random() * 3)] * this.multiplier; this.score += pts; result = `+${pts.toLocaleString()}`; }
+    else if (r < 0.5) { this.coins += 25; this.score += 250 * this.multiplier; result = '+25 COINS'; }
+    else if (r < 0.65 && this.hearts < 3) { this.hearts++; result = 'EXTRA LIFE ♥'; }
+    else { const k = pickPower(); this.activate(k); result = POWER_LABEL[k]; }
+    this.events?.mystery(result);
+  }
+
+  /** A weaving trail of coins up in the sky for the length of a Sky Boost. */
+  private skyCoins() {
+    const len = this.speed * POWER_TIME.jet * 0.9;
+    for (let d = 30; d < len; d += 4.5) {
+      const lane = Math.round(Math.sin(d / 40) * 1.2);
+      this.spawnItem(THREE.MathUtils.clamp(lane, -1, 1) * LANE, this.z + d, 'coin', FLY_HEIGHT + 1);
+    }
+  }
 
   /** Lanes covered by obstacles whose z lies within the band around z (a car mid lane change covers both). */
   private occupied(z: number, band: number, skip?: Obstacle) {
@@ -323,20 +411,40 @@ export class ArcadeMode {
     }
     if (blocked === 0) return;
     const free = lanes.slice(blocked).find((l) => !near.has(l)) ?? lanes[blocked];
+    // a power-up every 8-13 s and a mystery box every ~30 s, always in a lane you can reach
+    if (this.time >= this.nextPower) { this.nextPower = this.time + 8 + Math.random() * 5; this.spawnItem(free * LANE, z, pickPower()); return; }
+    if (this.time >= this.nextMystery) { this.nextMystery = this.time + 26 + Math.random() * 10; this.spawnItem(free * LANE, z, 'mystery'); return; }
+    const open = [-1, 0, 1].filter((l) => !lanes.slice(0, blocked).includes(l) && !near.has(l));
     const r = Math.random();
-    if (r < 0.08) this.spawnItem(free * LANE, z, (['magnet', 'x2', 'nitro'] as const)[Math.floor(Math.random() * 3)]);
-    else if (r < 0.8) for (let k = 0; k < 6; k++) this.spawnItem(free * LANE, z - 10 + k * 3.2, 'coin');
+    if (r < 0.45) for (let k = 0; k < 6; k++) this.spawnItem(free * LANE, z - 10 + k * 3.2, 'coin');
+    else if (r < 0.65) for (let k = 0; k < 10; k++) this.spawnItem(free * LANE, z - 16 + k * 3.2, 'coin');
+    else if (r < 0.85 && open.length > 1) {
+      // weave: the line slides from one open lane into the other
+      const [a, b] = Math.random() < 0.5 ? open : [...open].reverse();
+      for (let k = 0; k < 8; k++) { const t = THREE.MathUtils.smoothstep(k, 2, 5); this.spawnItem((a + (b - a) * t) * LANE, z - 12 + k * 3.2, 'coin'); }
+    }
   }
 
-  private spawnItem(x: number, z: number, kind: Coin['kind']) {
+  private spawnItem(x: number, z: number, kind: ItemKind, y = kind === 'coin' ? 1.0 : 1.3) {
     const c = this.items.find((i) => !i.active && i.kind === kind);
     if (!c) return;
-    c.active = true; c.x = x; c.z = z; c.mesh.visible = true;
+    Object.assign(c, { active: true, x, z, y, pop: 0 });
+    c.mesh.visible = true; c.mesh.scale.setScalar(1);
+    c.mesh.position.set(x, y, z);
   }
 
   private place(dt: number) {
     const rig = this.rig;
-    rig.root.position.set(this.x, 0, this.z);
+    rig.root.position.set(this.x, this.y, this.z);
+    const { magnet, shield, flames } = this.fx;
+    magnet.visible = this.magnet > 0 && (this.magnet > 2 || Math.floor(this.time * 8) % 2 === 0);
+    magnet.position.set(this.x, this.y + 0.4, this.z);
+    magnet.scale.setScalar(1 + Math.sin(this.time * 10) * 0.06);
+    shield.visible = this.shield > 0 && (this.shield > 2 || Math.floor(this.time * 8) % 2 === 0);
+    shield.position.set(this.x, this.y + 0.7, this.z);
+    flames.visible = this.jet > 0 || this.y > 0.3;
+    flames.position.set(this.x, this.y, this.z);
+    flames.scale.y = 0.8 + Math.random() * 0.4;
     rig.root.rotation.y = 0;
     const lean = THREE.MathUtils.clamp((this.lane * LANE - this.x) * 0.06, -0.12, 0.12);
     rig.root.rotation.y = lean;
@@ -347,5 +455,52 @@ export class ArcadeMode {
   }
 
   /** World-space player position (arcade group is offset from the city). */
-  worldPos(out = new THREE.Vector3()) { return out.set(this.x, 0, this.z).add(ARCADE_ORIGIN); }
+  worldPos(out = new THREE.Vector3()) { return out.set(this.x, this.y, this.z).add(ARCADE_ORIGIN); }
+}
+
+export const POWER_LABEL: Record<PowerKind, string> = { magnet: 'MAGNET!', x2: 'DOUBLE SCORE!', nitro: 'NITRO!', shield: 'SHIELD!', jet: 'SKY BOOST!' };
+
+function pickPower(): PowerKind {
+  const total = POWER_WEIGHT.reduce((n, [, w]) => n + w, 0);
+  let r = Math.random() * total;
+  for (const [k, w] of POWER_WEIGHT) if ((r -= w) < 0) return k;
+  return 'magnet';
+}
+
+/** Chunky floating pickup icons, each with a glowing halo so they read from far away. */
+function makeIcon(kind: PowerKind | 'mystery'): THREE.Group {
+  const g = new THREE.Group();
+  const glow = (c: number) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1.1, roughness: 0.25, metalness: 0.3 });
+  const col = { magnet: 0xff3b5c, x2: 0x54ffd0, nitro: 0x4c8dff, shield: 0x54d8ff, jet: 0xffa040, mystery: 0xffcf49 }[kind];
+  if (kind === 'magnet') {
+    const u = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.17, 10, 24, Math.PI), glow(col)); u.rotation.z = Math.PI;
+    const tips = new THREE.MeshStandardMaterial({ color: 0xe8ecef, metalness: 1, roughness: 0.2 });
+    for (const x of [-0.5, 0.5]) { const t = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.3, 0.36), tips); t.position.set(x, 0.12, 0); g.add(t); }
+    g.add(u);
+  } else if ((kind === 'x2' || kind === 'mystery') && typeof document === 'undefined') {
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), glow(col))); // headless (tests): no canvas for the label
+  } else if (kind === 'x2' || kind === 'mystery') {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const x = c.getContext('2d')!;
+    x.fillStyle = kind === 'x2' ? '#0b3d33' : '#4a3200'; x.fillRect(0, 0, 128, 128);
+    x.fillStyle = kind === 'x2' ? '#54ffd0' : '#ffcf49'; x.font = '900 76px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(kind === 'x2' ? '2×' : '?', 64, 70);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.9, roughness: 0.3 })));
+  } else if (kind === 'nitro') {
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.1, 18), glow(col));
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.25, 12), new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 1, roughness: 0.2 })); cap.position.y = 0.66;
+    g.add(can, cap); g.rotation.z = 0.4;
+  } else if (kind === 'shield') {
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.42, 0.18, 6), glow(col)); s.rotation.x = Math.PI / 2;
+    g.add(s);
+  } else {
+    for (const x of [-0.25, 0.25]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 14), glow(col)); t.position.x = x; g.add(t); }
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.3), new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 1, roughness: 0.2 })); fin.position.y = 0.2; g.add(fin);
+  }
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.75, 1.0, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.name = 'halo';
+  g.add(halo);
+  g.scale.setScalar(1.15);
+  return g;
 }

@@ -7,7 +7,7 @@ import { CameraRig } from '../graphics/CameraRig';
 import { City } from '../world/City';
 import { Traffic } from '../world/Traffic';
 import { CityMode } from '../gameplay/CityMode';
-import { ArcadeMode, ARCADE_ORIGIN } from '../gameplay/ArcadeMode';
+import { ArcadeMode, ARCADE_ORIGIN, POWER_LABEL, type PowerKind } from '../gameplay/ArcadeMode';
 import { buildModelCar, buildProceduralCar, loadModel, setCarLights, type CarRig } from '../vehicles/CarFactory';
 import { Rain } from '../graphics/Rain';
 import { Input } from './Input';
@@ -27,6 +27,7 @@ import { Minimap } from '../ui/Minimap';
 
 type State = 'loading' | 'menu' | 'city' | 'arcade' | 'over';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+const POWER_ICON: Record<PowerKind, string> = { magnet: '🧲', x2: '2×', nitro: '⚡', shield: '🛡️', jet: '🚀' };
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const money = (n: number) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 const GFX_LABEL: Record<GraphicsMode, string> = { rendered: 'Rendered', photoreal: 'Photoreal', hyper: 'Hyper-real' };
@@ -229,7 +230,6 @@ export class Game {
     if (this.state === 'arcade' && !this.paused) {
       const tap = inp.hit('KeyA', 'ArrowLeft', 'TouchLeft') ? 1 : inp.hit('KeyD', 'ArrowRight', 'TouchRight') ? -1 : 0;
       this.arcade.update(dt, tap, 0);
-      if (this.hudTimer <= 0) this.updateArcadeHud();
     }
 
     // camera
@@ -267,6 +267,7 @@ export class Game {
     if ((this.hudTimer -= dt) <= 0) {
       this.hudTimer = 0.05;
       if (this.state === 'city') this.updateCityHud();
+      if (this.state === 'arcade') this.updateArcadeHud();
       if (this.save.settings.showFps) $('fps').textContent = `${this.gfx.stats.fps} fps · ${Math.round(this.gfx.stats.scale * 100)}% res · ${this.gfx.stats.calls} draws`;
     }
     if (this.state === 'city' && this.cam.view === 'cockpit' && (this.screenTimer -= dt) <= 0) { this.screenTimer = 0.1; this.drawCarScreens(); }
@@ -581,8 +582,9 @@ export class Game {
     return {
       coin: (k: string) => {
         if (k === 'coin') this.audio.coin(1 + Math.min(0.5, this.arcade.multiplier * 0.04));
-        else { this.audio.power(); this.popup(k === 'magnet' ? 'MAGNET!' : k === 'x2' ? 'DOUBLE SCORE!' : 'NITRO!', 'cyan'); }
+        else { this.audio.power(); this.popup(POWER_LABEL[k as PowerKind], 'cyan'); }
       },
+      mystery: (result: string) => { this.audio.levelUp(); this.popup(`MYSTERY BOX: ${result}`, 'gold'); },
       nearMiss: (pts: number, streak: number) => {
         this.audio.whoosh();
         this.popup(`NEAR MISS +${pts}${streak % 4 === 0 ? `  ·  x${this.arcade.multiplier}!` : ''}`, 'gold');
@@ -613,11 +615,14 @@ export class Game {
     $('a-streak').style.width = `${((a.streak % 4) / 4) * 100}%`;
     $('a-hearts').textContent = '♥'.repeat(Math.max(0, a.hearts)) + '♡'.repeat(Math.max(0, 3 - a.hearts));
     $('a-coins').textContent = `◎ ${a.coins}  ·  ${Math.round(a.speed * 3.6)} km/h`;
-    const p: string[] = [];
-    if (a.magnet > 0) p.push(`MAGNET ${a.magnet.toFixed(0)}s`);
-    if (a.double > 0) p.push(`x2 ${a.double.toFixed(0)}s`);
-    if (a.nitro > 0) p.push(`NITRO ${a.nitro.toFixed(1)}s`);
-    $('a-power').textContent = p.join(' · ');
+    // power-up timers (bars rebuilt only when the set of active power-ups changes)
+    const list = $('a-power'), active = a.powers;
+    const key = active.map((p) => p.kind).join();
+    if (list.dataset.key !== key) {
+      list.dataset.key = key;
+      list.innerHTML = active.map((p) => `<div class="pw ${p.kind}"><span>${POWER_ICON[p.kind]}</span><i><b></b></i></div>`).join('');
+    }
+    active.forEach((p, i) => { (list.children[i]?.querySelector('b') as HTMLElement | null)?.style.setProperty('width', `${(p.left / p.total) * 100}%`); });
     $('a-count').textContent = a.countdown > 0 ? String(Math.ceil(a.countdown)) : a.time < 0.8 && a.running ? 'GO!' : '';
   }
 

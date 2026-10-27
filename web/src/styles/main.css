@@ -113,7 +113,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .a-left { position: absolute; top: 18px; left: 20px; font-size: 22px; font-weight: 800; text-shadow: 0 3px 14px rgba(0,0,0,.7); line-height: 1.5; }
 #a-hearts { color: var(--danger); letter-spacing: 3px; }
 #a-coins { color: var(--gold); }
-#a-power { font-size: 14px; color: var(--accent); }
+#a-power { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+#a-power .pw { display: flex; align-items: center; gap: 8px; font-size: 18px; animation: pwIn .25s ease; }
+#a-power .pw span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: rgba(10,18,28,.7); font-size: 16px; font-weight: 900; }
+#a-power .pw i { width: 110px; height: 7px; border-radius: 7px; background: #ffffff22; overflow: hidden; }
+#a-power .pw b { display: block; height: 100%; width: 100%; border-radius: 7px; transition: width .1s linear; }
+#a-power .magnet b { background: #ff4fd8; } #a-power .x2 b { background: #54ffd0; } #a-power .nitro b { background: #4c8dff; }
+#a-power .shield b { background: #54d8ff; } #a-power .jet b { background: #ffa040; }
+#a-power .x2 span { color: #54ffd0; }
+@keyframes pwIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
 .a-count { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 900; text-shadow: 0 8px 40px rgba(0,0,0,.6); }
 .a-hint { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: #ffffffaa; font-weight: 600; font-size: 13px; }
 .popup { position: fixed; left: 50%; top: 30%; transform: translateX(-50%); font-weight: 900; font-size: 30px; color: #fff; text-shadow: 0 4px 18px rgba(0,0,0,.7); animation: pop 1s ease forwards; pointer-events: none; z-index: 8; white-space: nowrap; }

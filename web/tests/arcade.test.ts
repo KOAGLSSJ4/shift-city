@@ -31,3 +31,46 @@ describe('arcade traffic', () => {
     }
   });
 });
+
+describe('arcade power-ups', () => {
+  const run = () => {
+    const a = new ArcadeMode(mats, rig);
+    a.start(rig, def);
+    a.countdown = 0; a.running = true;
+    return a;
+  };
+  const items = (a: ArcadeMode) => (a as unknown as { items: { active: boolean; kind: string; pop: number }[] }).items;
+
+  it('puts a power-up on the road every few seconds', () => {
+    const a = run();
+    const seen = new Set<unknown>();
+    let powers = 0;
+    for (let f = 0; f < 60 * 60; f++) {
+      a.invuln = 99; a.hearts = 3;
+      a.update(1 / 60, 0, 0);
+      for (const it of items(a)) if (it.active && it.kind !== 'coin' && !seen.has(it)) { seen.add(it); powers++; }
+      for (const it of items(a)) if (!it.active) seen.delete(it);
+    }
+    expect(powers).toBeGreaterThanOrEqual(5); // 60 s of play
+  });
+
+  it('Sky Boost flies over traffic without losing hearts, then lands', () => {
+    const a = run();
+    for (let f = 0; f < 60 * 8; f++) { a.invuln = 99; a.update(1 / 60, 0, 0); } // let traffic fill the road
+    a.invuln = 0; a.hearts = 3;
+    (a as unknown as { activate(k: string): void }).activate('jet');
+    let maxY = 0;
+    for (let f = 0; f < 60 * 6; f++) { a.update(1 / 60, 0, 0); maxY = Math.max(maxY, a.y); expect(a.hearts).toBe(3); }
+    expect(maxY).toBeGreaterThan(4);
+    for (let f = 0; f < 60 * 4; f++) { a.invuln = 99; a.update(1 / 60, 0, 0); }
+    expect(a.y).toBeLessThan(0.3);
+  });
+
+  it('a shield absorbs one crash', () => {
+    const a = run();
+    a.shield = 20;
+    for (let f = 0; f < 60 * 40 && a.shield > 0; f++) a.update(1 / 60, 0, 0); // sit in the middle lane until something hits
+    expect(a.shield).toBe(0);
+    expect(a.hearts).toBe(3);
+  });
+});
