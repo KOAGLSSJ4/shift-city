@@ -14,19 +14,19 @@
 
 namespace
 {
-	constexpr int32 N = SC::Grid + 1;
-	int32 NodeId(int32 I, int32 J) { return J * N + I; }
-	FVector NodeLoc(int32 Id) { return SC::NodePos(Id % N, Id / N); }
+	constexpr int32 GridNodes = SC::Grid + 1;
+	int32 NodeId(int32 I, int32 J) { return J * GridNodes + I; }
+	FVector NodeLoc(int32 Id) { return SC::NodePos(Id % GridNodes, Id / GridNodes); }
 	void Neighbours(int32 Id, TArray<int32>& Out)
 	{
 		Out.Reset();
-		const int32 I = Id % N, J = Id / N;
+		const int32 I = Id % GridNodes, J = Id / GridNodes;
 		if (I > 0) Out.Add(NodeId(I - 1, J));
 		if (I < SC::Grid) Out.Add(NodeId(I + 1, J));
 		if (J > 0) Out.Add(NodeId(I, J - 1));
 		if (J < SC::Grid) Out.Add(NodeId(I, J + 1));
 	}
-	constexpr float Cycle = 22.f;
+	constexpr float SignalCycle = 22.f;
 }
 
 ASCTraffic::ASCTraffic()
@@ -42,8 +42,8 @@ ASCTraffic::ASCTraffic()
 
 ESCSignal ASCTraffic::SignalFor(bool bAlongX, float Time)
 {
-	const float C = FMath::Fmod(FMath::Fmod(Time, Cycle) + Cycle, Cycle);
-	const float Local = bAlongX ? FMath::Fmod(C + 11.f, Cycle) : C;
+	const float C = FMath::Fmod(FMath::Fmod(Time, SignalCycle) + SignalCycle, SignalCycle);
+	const float Local = bAlongX ? FMath::Fmod(C + 11.f, SignalCycle) : C;
 	return Local < 8.f ? ESCSignal::Green : Local < 10.5f ? ESCSignal::Yellow : ESCSignal::Red;
 }
 
@@ -134,7 +134,7 @@ void ASCTraffic::SpawnCars()
 	for (int32 k = 0; k < CarCount; ++k)
 	{
 		FSCTrafficCar C;
-		C.From = Rng.RandRange(0, N * N - 1);
+		C.From = Rng.RandRange(0, GridNodes * GridNodes - 1);
 		Neighbours(C.From, Nb);
 		C.To = Nb[Rng.RandRange(0, Nb.Num() - 1)];
 		C.Lane = Rng.RandRange(0, 1);
