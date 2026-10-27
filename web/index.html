@@ -90,6 +90,11 @@
     <div class="big" id="o-score">0</div>
     <div class="o-grid"><div><b id="o-best">0</b><small>Best</small></div><div><b id="o-near">0</b><small>Near misses</small></div><div><b id="o-coins">0</b><small>Coins</small></div></div>
     <p id="o-points"></p>
+    <div class="board">
+      <div class="board-tabs"><button class="on" data-board="local">Your best</button><button data-board="world" id="tab-world" hidden>World</button></div>
+      <ol id="board-list"></ol>
+      <form class="name-row" id="name-row" hidden><input id="p-name" maxlength="14" placeholder="Your name for the world board" autocomplete="off" /><button class="action small" id="p-submit" type="submit">Post</button></form>
+    </div>
     <div class="row"><button class="action" id="o-again">Play again (Enter)</button><button class="action secondary" id="o-convert">Convert points</button></div>
     <div class="row"><button class="ghost" id="o-garage">Garage</button><button class="ghost" id="o-menu">Menu</button></div>
   </div>

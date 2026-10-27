@@ -25,6 +25,13 @@ describe('economy', () => {
     expect(recordArcadeRun(s, 'r1', 900, 3)).toBe(0);
     expect(s.arcade.points).toBe(900); expect(s.arcade.best).toBe(900);
   });
+  it('keeps a sorted local top 10', () => {
+    const s = defaultSave();
+    for (let i = 0; i < 14; i++) recordArcadeRun(s, `r${i}`, (i * 37) % 23 * 100 + 50, 0);
+    expect(s.arcade.top.length).toBe(10);
+    for (let i = 1; i < 10; i++) expect(s.arcade.top[i - 1].score).toBeGreaterThanOrEqual(s.arcade.top[i].score);
+    expect(normalize({ arcade: { top: 'junk' } }).arcade.top).toEqual([]);
+  });
   it('blocks locked or unaffordable cars and deducts on purchase', () => {
     const s = defaultSave(); s.wallet = 1000;
     expect(buyVehicle(s, 'comfort').ok).toBe(false); // level 2 required

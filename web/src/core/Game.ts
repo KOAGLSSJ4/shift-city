@@ -19,12 +19,14 @@ import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
 import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
+import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import type { Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
 
 type State = 'loading' | 'menu' | 'city' | 'arcade' | 'over';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const money = (n: number) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 const GFX_LABEL: Record<GraphicsMode, string> = { rendered: 'Rendered', photoreal: 'Photoreal', hyper: 'Hyper-real' };
 const VIEW_LABEL: Record<CameraView, string> = { cockpit: 'Cockpit cam', chase: 'Chase cam', top: 'Top-down' };
@@ -275,6 +277,7 @@ export class Game {
   private handleKeys() {
     const i = this.input;
     if (this.state === 'loading') return;
+    if (document.activeElement instanceof HTMLInputElement && document.activeElement.type === 'text') return; // typing a name
     if (i.hit('Escape')) {
       if (!$('garage').hidden || !$('goals').hidden || !$('settings').hidden) this.closeModals();
       else if (this.state === 'menu') { if (this.sessionMode) this.startCity(this.sessionMode); }
@@ -291,7 +294,7 @@ export class Game {
       if (i.hit('KeyN')) this.cityMode.decline();
       if (i.hit('KeyR')) this.cityMode.resetCar();
     }
-    if (this.state === 'over' && i.hit('Enter', 'NumpadEnter', 'Space')) this.startArcade();
+    if (this.state === 'over' && i.hit('Enter', 'NumpadEnter', 'Space') && !(document.activeElement instanceof HTMLInputElement)) this.startArcade();
   }
 
   private setView(v: CameraView) {
@@ -571,6 +574,7 @@ export class Game {
         bestBefore = this.save.arcade.best;
         const pts = recordArcadeRun(this.save, this.arcade.runId, score, near);
         this.persist();
+        this.lastRun = { score: Math.floor(score), near, time: this.arcade.time, runId: this.arcade.runId, date: Math.max(0, ...this.save.arcade.top.filter((e) => e.score === Math.floor(score)).map((e) => e.date)), posted: false };
         setTimeout(() => this.showArcadeOver(score, near, coins, pts, score > bestBefore && score > 0), 900);
       },
       popup: (t: string, c?: string) => this.popup(t, c),
@@ -604,6 +608,46 @@ export class Game {
     this.refreshPoints();
     $('o-points').textContent = `+${pts.toLocaleString()} arcade points · ${this.save.arcade.points.toLocaleString()} banked`;
     if (best) { this.confetti(); this.audio.levelUp(); }
+    $('tab-world').hidden = !leaderboardEnabled();
+    this.showBoard('local');
+    // returning players post automatically; first-timers are asked for a name
+    if (leaderboardEnabled() && this.lastRun && this.lastRun.score > 0) {
+      if (this.save.playerName) this.postScore();
+      else { $('name-row').hidden = false; }
+    } else $('name-row').hidden = true;
+  }
+
+  private lastRun: { score: number; near: number; time: number; runId: string; date: number; posted: boolean } | null = null;
+
+  private async showBoard(which: 'local' | 'world') {
+    document.querySelectorAll<HTMLElement>('[data-board]').forEach((b) => b.classList.toggle('on', b.dataset.board === which));
+    const list = $('board-list');
+    const row = (rank: number, name: string, car: string, score: number, me: boolean) =>
+      `<li class="${me ? 'me' : ''}"><i>${rank}</i><span>${esc(name)} <small class="muted">· ${esc(car)}</small></span><b>${score.toLocaleString()}</b></li>`;
+    if (which === 'local') {
+      const top = this.save.arcade.top;
+      list.innerHTML = top.length
+        ? top.map((e, i) => row(i + 1, new Date(e.date).toLocaleDateString(), vehicleById(e.car).name, e.score, !!this.lastRun && e.date === this.lastRun.date && e.score === this.lastRun.score)).join('')
+        : '<li class="empty">No runs yet</li>';
+      return;
+    }
+    list.innerHTML = '<li class="empty">Loading…</li>';
+    const top = await fetchWorldTop();
+    if (!$('board-list').isConnected || !document.querySelector('[data-board="world"].on')) return;
+    list.innerHTML = top === null ? '<li class="empty">World board unavailable right now</li>'
+      : top.length ? top.map((e, i) => row(i + 1, e.name, e.car, e.score, e.name === this.save.playerName && !!this.lastRun && e.score === this.lastRun.score)).join('')
+      : '<li class="empty">Be the first on the board!</li>';
+  }
+
+  private async postScore() {
+    const r = this.lastRun;
+    if (!r || r.posted || !this.save.playerName) return;
+    r.posted = true;
+    $('name-row').hidden = true;
+    const rank = await submitWorldScore({ name: this.save.playerName, score: r.score, time: r.time, near: r.near, car: vehicleById(this.save.selected).name, runId: r.runId });
+    if (rank === null) return;
+    this.toast(rank <= 10 ? `World rank #${rank}! You're on the board` : `World rank #${rank}`, 'good');
+    if (document.querySelector('[data-board="world"].on')) this.showBoard('world');
   }
 
   private refreshPoints() {
@@ -804,6 +848,16 @@ export class Game {
     on('goals-close', () => this.closeModals());
     on('g-convert', () => this.convert());
     on('o-convert', () => this.convert());
+    document.querySelectorAll<HTMLElement>('[data-board]').forEach((b) => b.addEventListener('click', () => this.showBoard(b.dataset.board as 'local' | 'world')));
+    $('name-row').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $<HTMLInputElement>('p-name').value.replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 14);
+      if (!name) return;
+      this.save.playerName = name;
+      this.persist();
+      (document.activeElement as HTMLElement)?.blur();
+      this.postScore().then(() => this.showBoard('world'));
+    });
     on('o-again', () => this.startArcade());
     on('o-garage', () => this.openGarage());
     on('o-menu', () => this.showMenu());

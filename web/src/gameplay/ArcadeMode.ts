@@ -10,12 +10,16 @@ export const ARCADE_ORIGIN = new THREE.Vector3(3000, 0, 0);
 const LANE = 3.7;
 const CHUNK = 120;
 const CHUNKS = 5;
+const blinkGeo = new THREE.BoxGeometry(0.12, 0.1, 0.22);
+const blinkMat = new THREE.MeshStandardMaterial({ color: 0xffa020, emissive: 0xff9a10, emissiveIntensity: 4 });
 /** All arcade traffic moves at one speed, so obstacle rows never converge. */
 const FLOW_SPEED = 12;
 /** Obstacles within this many metres of each other count as one wall the player must find a gap in. */
 const ESCAPE_BAND = 20;
 
-interface Obstacle { mesh: THREE.Object3D; lane: number; x: number; z: number; speed: number; len: number; active: boolean; passed: boolean; minLat: number; hit: boolean; fly: number; laneChange: number; canChange: boolean }
+interface Obstacle { mesh: THREE.Object3D; lane: number; x: number; z: number; speed: number; len: number; active: boolean; passed: boolean; minLat: number; hit: boolean; fly: number; laneChange: number; canChange: boolean;
+  /** Indicated lane-change direction (blinkers on) before the car actually moves. */
+  pending: number; blinkT: number; blinkers: THREE.Object3D[] }
 interface Coin { mesh: THREE.Mesh; active: boolean; z: number; x: number; kind: 'coin' | 'magnet' | 'x2' | 'nitro' }
 
 export interface ArcadeEvents {
@@ -52,7 +56,20 @@ export class ArcadeMode {
       const mesh = isTruck ? this.buildTruck() : buildTrafficCar(bodies[i % bodies.length], colors[i % colors.length]);
       mesh.visible = false;
       this.group.add(mesh);
-      this.obstacles.push({ mesh, lane: 0, x: 0, z: 0, speed: 0, len: isTruck ? 9 : mesh.userData.length, active: false, passed: false, minLat: 9, hit: false, fly: 0, laneChange: 0, canChange: false });
+      const len = isTruck ? 9 : mesh.userData.length, wid = isTruck ? 2.5 : mesh.userData.width;
+      // amber indicators at the four corners: [right side, left side] (+x is the car's left)
+      const blinkers = [-1, 1].map((sx) => {
+        const g = new THREE.Group();
+        for (const sz of [-1, 1]) {
+          const b = new THREE.Mesh(blinkGeo, blinkMat);
+          b.position.set(sx * (wid / 2 - 0.05), isTruck ? 1.0 : 0.75, sz * (len / 2 - 0.1));
+          g.add(b);
+        }
+        g.visible = false;
+        mesh.add(g);
+        return g;
+      });
+      this.obstacles.push({ mesh, lane: 0, x: 0, z: 0, speed: 0, len, active: false, passed: false, minLat: 9, hit: false, fly: 0, laneChange: 0, canChange: false, pending: 0, blinkT: 0, blinkers });
     }
     const coinGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.12, 24); coinGeo.rotateZ(Math.PI / 2);
     const coinMat = new THREE.MeshStandardMaterial({ color: 0xffcf49, metalness: 1, roughness: 0.18, emissive: 0x7a4a00, emissiveIntensity: 0.5 });
@@ -200,12 +217,21 @@ export class ArcadeMode {
         continue;
       }
       o.z += o.speed * dt;
-      // later in a run, a car may drift into a neighbouring lane — but only if that still leaves an escape lane
-      if (o.canChange && !o.laneChange && o.z - this.z < 80 && o.z - this.z > 45) {
+      // later in a run, a car may drift into a neighbouring lane: it signals first, then moves only if
+      // that still leaves an escape lane
+      if (o.canChange && !o.pending && !o.laneChange && o.z - this.z < 110 && o.z - this.z > 60) {
         o.canChange = false;
         const dir = o.lane === 1 ? -1 : o.lane === -1 ? 1 : (Math.random() < 0.5 ? -1 : 1);
-        if (this.leavesEscape(o, o.lane + dir)) o.laneChange = dir;
+        if (this.leavesEscape(o, o.lane + dir)) { o.pending = dir; o.blinkT = 1.2; }
       }
+      if (o.pending && (o.blinkT -= dt) <= 0) {
+        if (this.leavesEscape(o, o.lane + o.pending)) o.laneChange = o.pending;
+        o.pending = 0;
+      }
+      const signal = o.pending || o.laneChange;
+      const on = !!signal && Math.floor(this.time * 3) % 2 === 0;
+      o.blinkers[0].visible = on && signal < 0;
+      o.blinkers[1].visible = on && signal > 0;
       if (o.laneChange) {
         o.x += Math.sign(o.laneChange) * 3.2 * dt;
         if (Math.abs(o.x - (o.lane + Math.sign(o.laneChange)) * LANE) < 0.05 || Math.abs(o.x) > LANE) { o.lane += Math.sign(o.laneChange); o.x = o.lane * LANE; o.laneChange = 0; }
@@ -264,6 +290,7 @@ export class ArcadeMode {
       if (!o.active || o.fly > 0 || o === skip || Math.abs(o.z - z) > band) continue;
       occ.add(o.lane);
       if (o.laneChange) occ.add(o.lane + Math.sign(o.laneChange));
+      if (o.pending) occ.add(o.lane + o.pending);
     }
     return occ;
   }
@@ -288,7 +315,8 @@ export class ArcadeMode {
       const o = this.obstacles.find((x) => !x.active);
       if (!o) break;
       // every car flows at the same speed, so rows keep their spacing and can never bunch up into a wall
-      Object.assign(o, { active: true, passed: false, hit: false, fly: 0, minLat: 9, lane: lanes[i], x: lanes[i] * LANE, z, speed: FLOW_SPEED, laneChange: 0 });
+      Object.assign(o, { active: true, passed: false, hit: false, fly: 0, minLat: 9, lane: lanes[i], x: lanes[i] * LANE, z, speed: FLOW_SPEED, laneChange: 0, pending: 0, blinkT: 0 });
+      o.blinkers.forEach((b) => (b.visible = false));
       o.canChange = this.time > 25 && blocked === 1 && Math.random() < 0.25;
       o.mesh.visible = true; o.mesh.rotation.set(0, 0, 0); o.mesh.position.set(o.x, 0, z);
     }

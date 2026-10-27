@@ -65,6 +65,11 @@ export function convertArcadePoints(s: SaveData): number {
 export function recordArcadeRun(s: SaveData, runId: string, score: number, nearMisses: number): number {
   if (s.arcade.lastRunId === runId) return 0;
   s.arcade.lastRunId = runId;
+  if (score > 0) {
+    s.arcade.top.push({ score: Math.floor(score), car: s.selected, date: Date.now(), near: nearMisses });
+    s.arcade.top.sort((a, b) => b.score - a.score);
+    s.arcade.top.length = Math.min(10, s.arcade.top.length);
+  }
   s.arcade.runs++;
   s.arcade.best = Math.max(s.arcade.best, score);
   s.arcade.points += Math.floor(score);
@@ -121,5 +126,8 @@ export function claimGoal(s: SaveData, id: string): Result {
   addXP(s, g.xp);
   return { ok: true, msg: `Goal claimed: +$${g.reward} · +${g.xp} XP` };
 }
+
+/** 1-based rank of a score in the local top 10, or 0 if it didn't make it. */
+export const localRank = (s: SaveData, score: number, date: number) => s.arcade.top.findIndex((e) => e.score === Math.floor(score) && e.date === date) + 1;
 
 export const claimableGoals = (s: SaveData) => GOALS.filter((g) => !s.claimedGoals.includes(g.id) && goalProgress(s, g) >= g.goal).length;

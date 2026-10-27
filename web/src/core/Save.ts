@@ -13,6 +13,7 @@ export interface Settings {
   time: TimeOfDay; weather: Weather; showFps: boolean;
 }
 export type CameraView = 'cockpit' | 'chase' | 'top';
+export interface ArcadeScore { score: number; car: string; date: number; near: number }
 
 export interface SaveData {
   version: number;
@@ -22,7 +23,9 @@ export interface SaveData {
   owned: string[];
   selected: string;
   upgrades: Record<string, Upgrades>;
-  arcade: { best: number; points: number; runs: number; lastRunId: string };
+  arcade: { best: number; points: number; runs: number; lastRunId: string; top: ArcadeScore[] };
+  /** Name used on the leaderboards. */
+  playerName: string;
   story: { chapter: number };
   stats: { trips: number; earned: number; km: number; food: number; nearMisses: number; rating: number; ratings: number };
   paidJobs: string[];
@@ -37,7 +40,8 @@ export function defaultSave(): SaveData {
     wallet: 0, xp: 0, level: 1,
     owned: ['metro'], selected: 'metro',
     upgrades: {},
-    arcade: { best: 0, points: 0, runs: 0, lastRunId: '' },
+    arcade: { best: 0, points: 0, runs: 0, lastRunId: '', top: [] },
+    playerName: '',
     story: { chapter: 0 },
     stats: { trips: 0, earned: 0, km: 0, food: 0, nearMisses: 0, rating: 4.9, ratings: 1 },
     paidJobs: [], claimedGoals: [], tutorialDone: false,
@@ -94,6 +98,9 @@ export function normalize(raw: any): SaveData {
   if (!s.owned.includes(s.selected)) s.selected = 'metro';
   if (!Array.isArray(s.paidJobs)) s.paidJobs = [];
   if (!Array.isArray(s.claimedGoals)) s.claimedGoals = [];
+  if (!Array.isArray(s.arcade.top)) s.arcade.top = [];
+  s.arcade.top = s.arcade.top.filter((e) => e && Number.isFinite(e.score)).slice(0, 10);
+  if (typeof s.playerName !== 'string') s.playerName = '';
   s.wallet = Math.max(0, num(s.wallet));
   s.level = Math.max(1, Math.floor(num(s.level, 1)));
   return s;

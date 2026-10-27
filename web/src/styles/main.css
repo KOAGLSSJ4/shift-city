@@ -128,6 +128,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .o-grid div { background: #ffffff0a; border-radius: 12px; padding: 10px; }
 .o-grid b { display: block; font-size: 20px; }
 .o-grid small { color: var(--muted); font-size: 11px; }
+.board { margin: 6px 0 12px; text-align: left; }
+.board-tabs { display: flex; gap: 6px; margin-bottom: 6px; }
+.board-tabs button { flex: 1; background: #ffffff0a; color: var(--muted); border: 1px solid transparent; border-radius: 10px; padding: 6px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.board-tabs button.on { color: #fff; border-color: var(--line); background: #ffffff14; }
+#board-list { margin: 0; padding: 0; list-style: none; max-height: 170px; overflow-y: auto; font-size: 13px; }
+#board-list li { display: flex; gap: 8px; padding: 4px 8px; border-radius: 8px; }
+#board-list li:nth-child(odd) { background: #ffffff06; }
+#board-list li.me { background: #4cf0af22; color: #fff; font-weight: 700; }
+#board-list li i { width: 22px; color: var(--muted); font-style: normal; }
+#board-list li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#board-list li.empty { color: var(--muted); justify-content: center; }
+.name-row { display: flex; gap: 6px; margin-top: 8px; }
+.name-row input { flex: 1; min-width: 0; background: #ffffff10; border: 1px solid var(--line); border-radius: 10px; color: #fff; padding: 8px 10px; font: inherit; }
 #o-points { color: var(--gold); font-weight: 600; }
 .newbest { color: var(--gold); font-weight: 900; font-size: 22px; animation: pulse 0.6s infinite alternate; }
 @keyframes pulse { to { transform: scale(1.12); } }
