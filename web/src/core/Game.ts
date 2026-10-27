@@ -63,6 +63,11 @@ export class Game {
     this.garageSel = this.save.selected;
     this.audio.setEnabled(this.save.settings.audio);
     this.audio.setVolume(this.save.settings.volume);
+    // browsers only allow sound after a gesture: the first tap or key press starts the menu music
+    const firstGesture = () => { this.audio.unlock(); removeEventListener('pointerdown', firstGesture); removeEventListener('keydown', firstGesture); };
+    addEventListener('pointerdown', firstGesture);
+    addEventListener('keydown', firstGesture);
+    document.addEventListener('visibilitychange', () => this.audio.setSuspended(document.hidden));
     this.tutorial = new Tutorial(() => { this.save.tutorialDone = true; this.persist(); });
     (window as any).__game = this;
   }
@@ -148,6 +153,7 @@ export class Game {
     this.ensureCityRig();
     this.refreshMenu();
     this.tutorial.event('menuOpened');
+    this.audio.music('menu');
   }
 
   private ensureCityRig() {
@@ -166,6 +172,7 @@ export class Game {
     if (this.sessionMode !== mode || !this.cityMode.job) { this.cityMode.start(mode); this.renderJob(null); }
     this.sessionMode = mode;
     this.state = 'city';
+    this.audio.music('city');
     this.cam.cut();
     this.updateCareer();
     if (!this.save.tutorialDone && !this.tutorial.active) this.tutorial.start();
@@ -183,6 +190,7 @@ export class Game {
     this.rig.root.parent?.remove(this.rig.root);
     this.arcade.start(this.rig, vehicleById(this.save.selected));
     this.state = 'arcade';
+    this.audio.music('arcade');
     this.cam.cut();
   }
 
@@ -199,6 +207,7 @@ export class Game {
       this.traffic.update(this.paused ? 0 : dt, this.time, { pos: this.cityMode.physics.pos, heading: this.cityMode.physics.heading });
       this.city.updateSignals(this.time);
     }
+    if (this.state === 'arcade' && this.arcade.running && this.arcade.time > 60) this.audio.music('arcade-climax');
     if (this.state === 'arcade' && !this.paused) {
       const tap = inp.hit('KeyA', 'ArrowLeft', 'TouchLeft') ? 1 : inp.hit('KeyD', 'ArrowRight', 'TouchRight') ? -1 : 0;
       this.arcade.update(dt, tap, 0);
@@ -247,6 +256,14 @@ export class Game {
     this.gfx.speed01 = this.state === 'arcade' ? Math.min(1, sp / 70) : this.state === 'city' ? Math.min(1, Math.max(0, sp - 15) / 40) : 0;
     const top = effectiveStats(vehicleById(this.save.selected), upgradesOf(this.save, this.save.selected)).top;
     this.audio.engine(Math.min(1, sp / top), this.state === 'arcade' ? 0.7 : inp.throttle, (this.state === 'city' || this.state === 'arcade') && !this.paused);
+    const driving = (this.state === 'city' || this.state === 'arcade') && !this.paused;
+    const rain = this.save.settings.weather === 'rain' ? 1 : 0;
+    this.audio.ambience(this.state === 'city' && !this.paused ? 1 : this.state === 'menu' ? 0.4 : 0, driving || this.state === 'menu' ? rain : 0);
+    if (this.state === 'city' && driving) {
+      const ph = this.cityMode.physics;
+      const wet = rain ? 0.4 : 1; // wet tyres hiss rather than squeal
+      this.audio.skid(wet * (Math.max(0, Math.abs(ph.vLat) - 1.5) / 4 + (ph.braking && ph.vLong > 12 ? 0.5 : 0) + Math.max(0, Math.abs(ph.accelLat) - 8) / 6));
+    } else this.audio.skid(0);
     this.tutorial.update(dt, this.cam.camera, this.state === 'city' && this.cityMode.target ? new THREE.Vector3(this.cityMode.target.x, 0, this.cityMode.target.z) : null, this.paused);
 
     if ((this.saveTimer += dt) > 5) { this.saveTimer = 0; if (this.state === 'city') this.persist(); }
@@ -369,14 +386,14 @@ export class Game {
         if (job.stage === 'pickup') this.tutorial.event('accepted');
         if (job.stage === 'dropoff') {
           this.tutorial.event('pickedUp');
-          this.audio.success();
+          this.audio.chime();
           this.toast(job.food ? `Order collected from ${job.restaurant}` : `${job.customer} is on board`, 'good');
         }
       },
       complete: (job: Job, pay: { fare: number; tip: number; total: number; xp: number }, stars: number) => {
         const lvl = this.save.level;
         this.earnPop(`+${money(pay.total)}`, `★ ${stars.toFixed(1)}${pay.tip ? ` · tip ${money(pay.tip)}` : ''} · +${pay.xp} XP`);
-        this.audio.coin(); this.audio.success();
+        this.audio.cash(); this.audio.success();
         if (job.chapter !== null) { this.showStoryCard(job.chapter, 'outro'); }
         this.renderJob(null);
         this.updateCareer();
@@ -680,7 +697,7 @@ export class Game {
 
   private refreshSettings() {
     const st = this.save.settings;
-    for (const k of ['master', 'engine', 'sfx'] as const) {
+    for (const k of ['master', 'music', 'engine', 'sfx'] as const) {
       $<HTMLInputElement>(`vol-${k}`).value = String(Math.round(st.volume[k] * 100));
       $(`vol-${k}-v`).textContent = st.audio ? `${Math.round(st.volume[k] * 100)}` : 'off';
     }
@@ -723,7 +740,7 @@ export class Game {
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(b.dataset.gfx as GraphicsMode)));
     document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, b.dataset.time as TimeOfDay)));
     document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, undefined, b.dataset.weather as Weather)));
-    for (const k of ['master', 'engine', 'sfx'] as const) {
+    for (const k of ['master', 'music', 'engine', 'sfx'] as const) {
       const el = $<HTMLInputElement>(`vol-${k}`);
       el.addEventListener('input', () => {
         this.audio.unlock();
@@ -733,7 +750,7 @@ export class Game {
         this.audio.setVolume(this.save.settings.volume);
         this.refreshSettings();
       });
-      el.addEventListener('change', () => { if (k !== 'engine') this.audio.preview(); this.persist(); });
+      el.addEventListener('change', () => { if (k === 'master' || k === 'sfx') this.audio.preview(); this.persist(); });
     }
     on('s-mute', () => { this.save.settings.audio = !this.save.settings.audio; this.audio.setEnabled(this.save.settings.audio); this.persist(); this.refreshSettings(); });
     $<HTMLInputElement>('s-fps').addEventListener('change', (e) => { this.save.settings.showFps = (e.target as HTMLInputElement).checked; $('fps').hidden = !this.save.settings.showFps; this.persist(); });

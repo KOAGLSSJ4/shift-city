@@ -1,6 +1,7 @@
 # Third-party assets
 
-Downloaded by `npm run fetch-assets` into `public/assets/` (not committed to git).
+Downloaded by `npm run fetch-assets` into `public/assets/` (not committed to git). Music, props and tree
+impostors are committed. Credits are optional for CC0 but shown on the in-game credits screen anyway.
 
 | Asset | Source | Licence | Used for |
 |---|---|---|---|
@@ -13,6 +14,8 @@ Downloaded by `npm run fetch-assets` into `public/assets/` (not committed to git
 | `brick_wall_02` | [Poly Haven](https://polyhaven.com/a/brick_wall_02) | CC0 | Brick facade surface detail |
 | Street props in `public/props/` — `street_lamp_01`, `fire_hydrant`, `metal_trash_can`, `modular_street_seating`, `utility_box_01`, `exterior_aircon_unit`, `water_manhole_cover`, `concrete_road_barrier` | [Poly Haven](https://polyhaven.com/models) | CC0 | Simplified (~1–5k triangles each) with glTF-Transform, 512px WebP textures, Draco geometry. Source: `scripts/fetch-polyhaven-models.mjs` |
 | Tree impostors in `public/trees/` — from `tree_small_02` and `island_tree_01` | [Poly Haven](https://polyhaven.com/models) | CC0 | The full scanned trees (1.7–4.7M triangles) photographed from 3 angles by `scripts/bake-impostors.cjs` and shown on crossed cards |
+| Music `public/music/city_rearview.mp3`, `city_autumn.mp3`, `city_dreampop.mp3`, `menu_families.mp3` — "City In The Rearview", "Autumn", "Dream Pop", "Families" | HoliznaCC0, [Chill Beats collection on OpenGameArt](https://opengameart.org/content/chill-beats-collection) | CC0 | City driving playlist + menu (loudness-normalised to −16 LUFS, 96 kbps) |
+| Music `public/music/arcade_cool_highway.mp3`, `arcade_cool_highway_climax.mp3` — "Cool Highway [Remake]" + "Climax" | MintoDog, [OpenGameArt](https://opengameart.org/node/163159) | CC0 | Arcade Rush loop; the faster Climax version kicks in after 60 s |
 | Draco decoder (`public/draco/`) | three.js r170 | MIT | Decoding the compressed glTF props |
 
 ## Important
