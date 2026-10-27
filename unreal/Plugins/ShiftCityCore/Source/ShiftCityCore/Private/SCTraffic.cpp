@@ -152,7 +152,7 @@ void ASCTraffic::SpawnCars()
 		if (CarMeshes.Num() > 0 && CarMeshes[k % CarMeshes.Num()])
 		{
 			USkeletalMeshComponent* Sk = NewObject<USkeletalMeshComponent>(this);
-			Sk->SetSkeletalMesh(CarMeshes[k % CarMeshes.Num()]);
+			Sk->SetSkeletalMeshAsset(CarMeshes[k % CarMeshes.Num()]);
 			Sk->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Sk->SetupAttachment(Box);
 			Sk->SetRelativeLocation(FVector(0, 0, -70.f));
