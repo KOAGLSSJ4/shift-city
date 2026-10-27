@@ -51,7 +51,7 @@ export function buyUpgrade(s: SaveData, id: string, track: UpgradeTrack): Result
   return { ok: true, msg: `${track} upgraded to level ${up[track]}` };
 }
 
-/** 100 arcade points → $5. Only whole units convert; the remainder stays. */
+/** 100 arcade points → $8 (BALANCE.cashPerUnit). Only whole units convert; the remainder stays. */
 export function convertArcadePoints(s: SaveData): number {
   const units = Math.floor(s.arcade.points / BALANCE.arcadePointsPerUnit);
   if (units <= 0) return 0;
@@ -61,9 +61,9 @@ export function convertArcadePoints(s: SaveData): number {
   return cash;
 }
 
-/** A little XP for an arcade run, so Arcade-only players still level up (slowly). */
+/** XP for an arcade run, so Arcade-only players level up too: scales with the score, no cap. */
 export const arcadeXp = (score: number) =>
-  score > 0 ? Math.min(BALANCE.arcadeXpMax, Math.max(BALANCE.arcadeXpMin, Math.round(score / BALANCE.arcadeXpPerPoints))) : 0;
+  score > 0 ? Math.max(BALANCE.arcadeXpMin, Math.round(score / BALANCE.arcadeXpPerPoints)) : 0;
 
 /** Records an arcade run exactly once (guarded by run id). Returns points awarded (XP is added too). */
 export function recordArcadeRun(s: SaveData, runId: string, score: number, nearMisses: number): number {

@@ -45,7 +45,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Shift City") bool BuyUpgrade(const FString& Id, const FString& Track, FString& OutMessage);
 
 	// ---- arcade
-	/** 100 arcade points -> $5 (configurable). Only whole units convert. Returns cash added. */
+	/** 100 arcade points -> $8 (configurable via balancing.json). Only whole units convert. Returns cash added. */
 	UFUNCTION(BlueprintCallable, Category = "Shift City") float ConvertArcadePoints();
 	/** Records a finished run exactly once per RunId. Returns points awarded. */
 	UFUNCTION(BlueprintCallable, Category = "Shift City") int32 RecordArcadeRun(const FString& RunId, int32 Score, int32 NearMisses);

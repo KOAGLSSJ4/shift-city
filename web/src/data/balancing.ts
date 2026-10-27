@@ -1,11 +1,10 @@
 export const BALANCE = {
   arcadePointsPerUnit: 100,
-  cashPerUnit: 5,
+  cashPerUnit: 8,
   xpPerJob: 30,
   xpPerStoryChapter: 55,
-  arcadeXpPerPoints: 1500, // one XP per this many arcade points…
-  arcadeXpMin: 2,          // …at least this much for any scoring run…
-  arcadeXpMax: 15,         // …and at most this (a city job gives 30)
+  arcadeXpPerPoints: 1000, // one XP per this many arcade points (no cap)…
+  arcadeXpMin: 3,          // …and at least this much for any scoring run
   baseFare: 7,
   farePerMetre: 0.045,
   pickupRadius: 8,

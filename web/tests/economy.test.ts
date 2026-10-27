@@ -4,10 +4,10 @@ import { addXP, arcadeXp, buyUpgrade, buyVehicle, claimGoal, convertArcadePoints
 import { vehicleById } from '../src/data/vehicles';
 
 describe('economy', () => {
-  it('converts 100 arcade points to $5 and keeps the remainder', () => {
+  it('converts 100 arcade points to $8 and keeps the remainder', () => {
     const s = defaultSave(); s.arcade.points = 250;
-    expect(convertArcadePoints(s)).toBe(10);
-    expect(s.wallet).toBe(10);
+    expect(convertArcadePoints(s)).toBe(16);
+    expect(s.wallet).toBe(16);
     expect(s.arcade.points).toBe(50);
     expect(convertArcadePoints(s)).toBe(0);
   });
@@ -24,13 +24,13 @@ describe('economy', () => {
     expect(recordArcadeRun(s, 'r1', 900, 3)).toBe(900);
     expect(recordArcadeRun(s, 'r1', 900, 3)).toBe(0);
     expect(s.arcade.points).toBe(900); expect(s.arcade.best).toBe(900);
-    expect(s.xp).toBe(2); // a little XP, once
+    expect(s.xp).toBe(3); // XP once, not per call
   });
-  it('arcade XP is small and capped', () => {
+  it('arcade XP scales with the score, with a floor and no cap', () => {
     expect(arcadeXp(0)).toBe(0);
-    expect(arcadeXp(300)).toBe(2);
-    expect(arcadeXp(15000)).toBe(10);
-    expect(arcadeXp(10_000_000)).toBe(15);
+    expect(arcadeXp(300)).toBe(3);
+    expect(arcadeXp(15000)).toBe(15);
+    expect(arcadeXp(80000)).toBe(80);
   });
   it('keeps a sorted local top 10', () => {
     const s = defaultSave();

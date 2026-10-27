@@ -50,7 +50,7 @@ src/
 - **Street-aware GPS**: Dijkstra over the road graph, glowing chevrons painted along the route, turn-by-turn prompt, route on minimap, edge-of-screen arrow for off-screen objectives.
 - **Story**: the 5 v4 chapters with named passengers, intro/outro lines and time-bonus tips.
 - **Arcade Rush**: endless 3-lane highway, 3-2-1 countdown, coins, near-miss streaks → x8 multiplier, magnet / x2 / nitro power-ups, trucks, lane-changing traffic, 3 hearts, speed ramp, new-best confetti, instant restart (Enter).
-- **Economy/garage**: 8 vehicles with visibly different bodies (hatch, sedan, SUV, GT, supercar, limo, hypercar + 1 authored glTF), real stat differences, 3 upgrade tracks (engine/brakes/handling) that change physics, 100 arcade pts = $5 conversion, 9 claimable goals, levels/XP.
+- **Economy/garage**: 8 vehicles with visibly different bodies (hatch, sedan, SUV, GT, supercar, limo, hypercar + 1 authored glTF), real stat differences, 3 upgrade tracks (engine/brakes/handling) that change physics, 100 arcade pts = $8 conversion, 9 claimable goals, levels/XP.
 - **Tutorial**: 6 contextual steps, bouncing pointer that tracks live UI elements and world objectives, glow highlight, advances only on real actions, skip + replay, saved completion flag.
 - **Save**: `shift-city-save` v5 with migration from `shift-city-v4`/`v3` and their mission keys.
 - **Photoreal mode**: 2k HDRI image-based lighting + sky, sun direction extracted from the HDRI, Poly Haven scanned PBR road/sidewalk/wall materials, clearcoat car paint, reflective window glass, 4k soft shadows, GTAO ambient occlusion, bloom, SMAA, AgX tone mapping, adaptive resolution.

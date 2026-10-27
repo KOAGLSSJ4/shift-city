@@ -711,7 +711,7 @@ export class Game {
     $<HTMLButtonElement>('o-convert').disabled = cash <= 0;
     $<HTMLButtonElement>('o-convert').textContent = cash > 0 ? `Convert → ${money(cash)}` : 'Convert points';
     $<HTMLButtonElement>('g-convert').disabled = cash <= 0;
-    $('g-points').textContent = `${p.toLocaleString()} arcade points (100 = $5)`;
+    $('g-points').textContent = `${p.toLocaleString()} arcade points (${BALANCE.arcadePointsPerUnit} = $${BALANCE.cashPerUnit})`;
   }
 
   private convert() {
