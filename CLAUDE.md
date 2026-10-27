@@ -56,8 +56,8 @@ passengers/pedestrians → port the web's original car designs.
 - Shipped to `main`: arcade lane-block fix, original car designs (Ferrari removed), music + SFX,
   mission types + passenger personalities, arcade blinkers + local/world leaderboards, mobile layout,
   portal SDKs, release builds, LAUNCH.md.
-- Waiting on David: (1) Poki exclusivity decision (Poki prefers 5-year web exclusive; non-exclusive =
-  flat fee), (2) follow LAUNCH.md to deploy Vercel / upload zips, (3) optional Upstash for world board.
+- Poki deferred (David's call): launch Vercel site + itch.io + CrazyGames first, Poki last (non-exclusive).
+- Waiting on David: follow LAUNCH.md (Vercel, itch.io, CrazyGames), optional Upstash for world board.
 - Not verified on real devices yet: phone touch play, real ad fill on portals.
 
 ## Where we left off (Unreal, 2026-10-27)
@@ -75,7 +75,7 @@ passengers/pedestrians → port the web's original car designs.
 - Assets: Poly Haven CC0 first; Sketchfab CC-BY cars later (credit screen). No NonCommercial assets.
 - Cars are original procedural designs (web `src/vehicles/designs.ts`, lofted bodies in `CarBody.ts`, preview at
   `web/dev/cars.html`). The Ferrari placeholder is gone; vehicle ids stay stable for saves.
-- Ship the web version first (Vercel site + itch.io + CrazyGames + Poki), Unreal continues in parallel.
+- Ship the web version first (Vercel site + itch.io + CrazyGames, then Poki last), Unreal continues in parallel.
 - Story v1.1 (after launch): FT "Uber Game"-style week (comic-panel cutscenes, evening choices, stats that
   change the driving, several endings). Tone: upbeat with real stakes, more good endings than bad, no
   personal/family storyline for the driver. Story lives in a data file shared with Unreal.

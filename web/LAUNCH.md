@@ -2,16 +2,12 @@
 
 Four places, one game. You don't build anything yourself: GitHub builds the upload files for you.
 
-## ⚠️ Decide first: Poki or everywhere?
+## Order (decided)
 
-Poki's preferred deal is **web-exclusive for 5 years**. On the open web the game would then be only on
-Poki, so not on CrazyGames or itch.io, and probably not on your own site either (check the contract).
-In return Poki pays a revenue share on the players it brings. Poki's other option, **non-exclusive**,
-pays a one-time flat fee with no revenue share, and it's meant for games already live elsewhere.
-Steam, the app stores and consoles are never covered by Poki exclusivity, so the Unreal version is unaffected.
-
-- **Everywhere now** (fast): your site + itch.io + CrazyGames today, then offer Poki the non-exclusive deal.
-- **Poki first** (bigger audience, slower): apply to Poki before going live anywhere else and wait for their answer.
+Your site, itch.io and CrazyGames first. **Poki comes last**, once the others are live. Because the
+game will already be on other sites, Poki will offer its **non-exclusive** deal: a one-time flat
+fee with no revenue share. Their exclusive deal (5 years, revenue share) needs the game to be on Poki
+only. Steam and the app stores are never affected.
 
 ## Get the upload files
 
@@ -53,7 +49,7 @@ Vercel redeploys by itself every time we push to `main`.
    The CrazyGames SDK is already built in: loading, gameplay start/stop, ad breaks between Arcade runs,
    and a "watch an ad: double your points" button.
 
-## 4. Poki
+## 4. Poki (last, after the others are live)
 
 1. **developers.poki.com** → *Submit your game*. Poki picks the games it publishes, so you're applying.
 2. When they accept, upload `shift-city-poki.zip` in their dashboard. The Poki SDK is already built in.
