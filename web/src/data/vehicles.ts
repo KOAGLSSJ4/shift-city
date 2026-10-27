@@ -1,6 +1,6 @@
 // Vehicle catalog. Every car is an original Shift City design (see vehicles/designs.ts); ids are
 // kept stable because saves reference them.
-export type BodyType = 'classic' | 'hatch' | 'sedan' | 'suv' | 'gt' | 'super' | 'hybrid' | 'royal' | 'hyper';
+export type BodyType = 'classic' | 'hatch' | 'sedan' | 'suv' | 'gt' | 'super' | 'hybrid' | 'gtv12' | 'royal' | 'hyper';
 
 export interface VehicleStats {
   accel: number;   // m/s² at full throttle
@@ -58,6 +58,10 @@ export const VEHICLES: VehicleDef[] = [
     fare: 1.7, arcade: 1.6, seats: 2, comfort: 2, premium: 1,
     stats: { accel: 11.8, top: 82, brake: 13.5, grip: 1.35, steer: 0.55 },
     dims: { length: 4.55, width: 1.95, height: 1.2, wheelbase: 2.65 } },
+  { id: 'stellato', name: 'Stellato 12 Berlinetta', kind: 'Grand Tourer', level: 15, cost: 22000, color: 0xc8102e, body: 'gtv12',
+    fare: 1.8, arcade: 1.7, seats: 2, comfort: 3, premium: 1,
+    stats: { accel: 11.4, top: 86, brake: 13.5, grip: 1.32, steer: 0.54 },
+    dims: { length: 4.7, width: 1.97, height: 1.27, wheelbase: 2.72 } },
   { id: 'royal_gt', name: 'Sovereign Limousine', kind: 'VIP Luxury', level: 17, cost: 32000, color: 0x1c1d24, body: 'royal',
     fare: 2.4, arcade: 1.3, seats: 4, comfort: 5, premium: 2,
     stats: { accel: 7.8, top: 64, brake: 11, grip: 1.05, steer: 0.5 },

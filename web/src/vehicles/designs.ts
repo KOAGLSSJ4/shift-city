@@ -140,6 +140,42 @@ export const DESIGNS: Record<DesignBody, CarDesign> = {
       k.box('carbon', 1.4, 0.02, 0.18, 0, 0.88, -2.2, [0.12, 0, 0]);
     },
   },
+  // Stellato 12: Italian-style front-engine V12 berlinetta. Long bonnet, cabin set far back,
+  // egg-crate grille, flank vents, quad round tail lamps. Original design, no real model or badge.
+  gtv12: {
+    L: 4.7, W: 1.97, H: 1.27, wb: 2.72, wr: 0.36, rim: 0.73, tireW: 0.29,
+    rimStyle: pairs(5, 0.11, 0.04), rimColor: 0xc9ccd1, accent: 0xf2c200,
+    top: [[-2.35, 0.84], [-2.28, 0.92], [-1.9, 0.95], [-1.2, 0.9], [-0.2, 0.84], [0.8, 0.8], [1.6, 0.72], [2.1, 0.6], [2.3, 0.48], [2.35, 0.4]],
+    bottom: [[-2.35, 0.32], [-2.15, 0.15], [-1.7, 0.12], [1.7, 0.12], [2.2, 0.16], [2.35, 0.24]],
+    hw: [[-2.35, 0.8], [-2.05, 0.96], [-1.4, 0.985], [-0.5, 0.92], [0.6, 0.93], [1.5, 0.97], [2.1, 0.9], [2.35, 0.74]],
+    waist: 0.45, nTop: 3, nBot: 7, tumble: 0.14, fender: 0.045,
+    roof: [[-2.0, 0.94], [-1.5, 1.04], [-0.9, 1.22], [-0.4, 1.27], [0.0, 1.25], [0.6, 0.92], [0.75, 0.81]],
+    gw: 0.86, gTumble: 0.24, roofF: -0.15, roofR: -0.6, roofStyle: 'paint', cPillar: -1.05,
+    details(k) {
+      // wide oval egg-crate grille
+      k.rrect('front', -0.46, 0.18, 0.46, 0.36, 0.09, 'decal');
+      for (const y of [0.23, 0.27, 0.31]) k.ribbon('front', [[-0.42, y], [0.42, y]], 0.008, 'trim', { lift: 0.01 });
+      for (let x = -0.36; x <= 0.37; x += 0.09) k.ribbon('front', [[x, 0.2], [x, 0.34]], 0.008, 'trim', { lift: 0.01 });
+      k.ribbon('front', [[-0.4, 0.37], [0, 0.385], [0.4, 0.37]], 0.012, 'chrome', { lift: 0.008 });
+      // swept headlights climbing the wings
+      k.poly('front', [[0.48, 0.42], [0.84, 0.47], [0.8, 0.53], [0.52, 0.47]], 'lens', { mirror: true });
+      k.ribbon('front', [[0.52, 0.435], [0.82, 0.49]], 0.016, 'head', { mirror: true, lift: 0.01 });
+      k.box('carbon', 1.1, 0.02, 0.16, 0, 0.13, 2.12);
+      // flank vent behind the front wheel and a sill line
+      k.poly('side', [[0.62, 0.62], [0.95, 0.66], [0.9, 0.5], [0.66, 0.46]], 'decal');
+      for (const y of [0.52, 0.57, 0.62]) k.ribbon('side', [[0.66, y], [0.92, y + 0.02]], 0.012, 'paint', { lift: 0.012 });
+      k.ribbon('side', [[-1.4, 0.24], [1.3, 0.24]], 0.04, 'carbon', { lift: 0.005 });
+      // quad round tail lamps, diffuser, quad pipes
+      for (const x of [0.38, 0.62]) {
+        k.ellipse('rear', x, 0.7, 0.085, 0.085, 'lens', { mirror: true });
+        k.ellipse('rear', x, 0.7, 0.062, 0.062, 'tail', { mirror: true, lift: 0.01 });
+      }
+      k.poly('rear', [[-0.72, 0.14], [0.72, 0.14], [0.62, 0.34], [-0.62, 0.34]], 'decal');
+      for (const x of [-0.3, 0, 0.3]) k.box('carbon', 0.02, 0.17, 0.26, x, 0.22, -2.27);
+      for (const x of [0.48, 0.6]) k.cyl('chrome', 0.042, 0.14, x, 0.27, -2.3, 'z', true);
+      plate(k, 0.44);
+    },
+  },
   // Ardente R9: curvy mid-engine hybrid; strong haunches, twin round tail lamps, side scoops
   hybrid: {
     L: 4.55, W: 1.95, H: 1.2, wb: 2.65, wr: 0.35, rim: 0.72, tireW: 0.29,

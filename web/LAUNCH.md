@@ -10,6 +10,22 @@ first. Ask Poki up front whether that's enough to qualify, because their non-exc
 games that are "already live on other web platforms". Steam, app stores and consoles are never covered
 by Poki exclusivity.
 
+## Which build goes where, and how the money works
+
+| Where | Upload file | Ads | Extras |
+|---|---|---|---|
+| Your site (Vercel) | none (Vercel builds it from GitHub) | no | World leaderboard |
+| itch.io | `shift-city-itch` | no | players can pay what they want or tip |
+| CrazyGames | `shift-city-crazygames` | yes, from CrazyGames | – |
+| Poki | `shift-city-poki` | yes, from Poki | – |
+
+- The portals supply and sell the ads. You don't sign up with any ad company or pick the ads.
+- The game only signals good moments: between Arcade runs (at most once every 3 minutes), plus an
+  optional "watch an ad: double your points" button. Sound mutes and the game pauses during ads.
+- The portal splits the ad money with you and pays out monthly. The exact share is in each portal's
+  developer agreement, so read it when you sign up.
+- Your own site and itch.io have no ads for now. Ads on your own site could be added later if it gets traffic.
+
 ## Get the upload files
 
 1. Open the repo on GitHub → **Actions** tab → **Web release builds** → click the newest green run.

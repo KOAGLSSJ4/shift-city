@@ -152,6 +152,25 @@
       "steer": 0.55
     },
     {
+      "id": "stellato",
+      "name": "Stellato 12 Berlinetta",
+      "kind": "Grand Tourer",
+      "level": 15,
+      "cost": 22000,
+      "color": "#c8102e",
+      "body": "gtv12",
+      "fare": 1.8,
+      "arcade": 1.7,
+      "seats": 2,
+      "comfort": 3,
+      "premium": 1,
+      "accel": 11.4,
+      "topSpeed": 86,
+      "brake": 13.5,
+      "grip": 1.32,
+      "steer": 0.54
+    },
+    {
       "id": "royal_gt",
       "name": "Sovereign Limousine",
       "kind": "VIP Luxury",
