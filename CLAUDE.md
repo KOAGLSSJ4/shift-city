@@ -2,7 +2,8 @@
 
 Rideshare / delivery / arcade driving game by David (K Studios). Two versions in one repo:
 `web/` (browser, Three.js + TS, the free playable taster and fast prototype) and `unreal/` (UE 5.8, the
-hyper-real paid PC version). Goal now: **port every web feature to Unreal with realistic graphics.**
+hyper-real paid PC version). Goal now: **ship the web version** (own site on Vercel + itch.io + CrazyGames
++ Poki, see `web/LAUNCH.md`), then keep porting every web feature to Unreal with realistic graphics.
 David is not building levels by hand: everything should be generated in code or by the one-click
 setup script. Keep instructions to him step-by-step and non-technical.
 
@@ -15,6 +16,17 @@ setup script. Keep instructions to him step-by-step and non-technical.
 - Claude can't compile or run Unreal in the cloud: re-read new C++ for API/compile risks before pushing.
   MSVC treats C4459 (global names like `N` shadowing engine template params) as errors.
 - Watch his C: drive: keep caches on D: (VS IntelliSense fallback = `D:\VSCache`).
+
+## Web structure (web/)
+- Vite + Three.js + TS. `npm run dev`, `npm test` (vitest), `npm run release` (builds web/itch/crazygames/poki
+  into `release/`, zips the portal uploads). GitHub Actions `web-release.yml` does the release on every push.
+- Targets via `VITE_TARGET`; `src/core/Platform.ts` wraps the Poki/CrazyGames SDKs (no-ops elsewhere).
+- Cars: `src/vehicles/CarBody.ts` (lofted bodies + projected decals), `designs.ts` (8 original designs),
+  studio at `/dev/cars.html`. Missions/personalities: `src/gameplay/Missions.ts`.
+- World leaderboard: `web/api/leaderboard.js` (Vercel + Upstash env vars), own-site build only.
+- Music: CC0 tracks in `public/music` (credits in ASSETS.md + in-game Credits).
+- Testing in the cloud: Playwright + swiftshader is slow (~0.2x speed); use `?gfx=rendered` and
+  `window.__game` to drive state.
 
 ## Unreal structure (unreal/)
 - `Plugins/ShiftCityCore` (C++): `USCEconomySubsystem` (money/XP/garage/goals/save), `ASCJobDirector`
@@ -40,7 +52,15 @@ top-down heading-up) → time of day (day/golden/night, lit windows via `WindowG
 (wet roads, rain, windscreen drops) → Arcade Rush → contextual tutorial pointer → audio →
 passengers/pedestrians → port the web's original car designs.
 
-## Where we left off (2026-10-27)
+## Where we left off (web, 2026-10-27)
+- Shipped to `main`: arcade lane-block fix, original car designs (Ferrari removed), music + SFX,
+  mission types + passenger personalities, arcade blinkers + local/world leaderboards, mobile layout,
+  portal SDKs, release builds, LAUNCH.md.
+- Waiting on David: (1) Poki exclusivity decision (Poki prefers 5-year web exclusive; non-exclusive =
+  flat fee), (2) follow LAUNCH.md to deploy Vercel / upload zips, (3) optional Upstash for world board.
+- Not verified on real devices yet: phone touch play, real ad fill on portals.
+
+## Where we left off (Unreal, 2026-10-27)
 - Last push: HUD text via Roboto font asset, round minimap, brighter midday lighting, traffic spawn log.
   David has NOT yet tested it. First thing next session: ask for a Play screenshot + the Output Log line
   `[ShiftCity] traffic: spawned N cars using M car model(s)` (traffic lights showed, cars didn't).
