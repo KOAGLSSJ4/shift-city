@@ -1,5 +1,6 @@
 #include "SCTraffic.h"
 #include "SCCityLayout.h"
+#include "ShiftCityCore.h"
 #include "Components/BoxComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -126,6 +127,7 @@ void ASCTraffic::BeginPlay()
 	Super::BeginPlay();
 	Rng.Initialize(Seed);
 	SpawnCars();
+	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] traffic: spawned %d cars using %d car model(s)"), Cars.Num(), CarMeshes.Num());
 }
 
 void ASCTraffic::SpawnCars()

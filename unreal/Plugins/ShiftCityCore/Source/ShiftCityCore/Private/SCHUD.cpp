@@ -7,6 +7,7 @@
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
+#include "UObject/UObjectGlobals.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -31,6 +32,7 @@ namespace
 void ASCHUD::BeginPlay()
 {
 	Super::BeginPlay();
+	HudFont = LoadObject<UFont>(nullptr, TEXT("/Engine/EngineFonts/Roboto.Roboto"));
 	for (TActorIterator<ASCJobDirector> It(GetWorld()); It; ++It) { Director = *It; break; }
 	if (!Director.IsValid()) Director = GetWorld()->SpawnActor<ASCJobDirector>();
 	for (TActorIterator<ASCTraffic> It(GetWorld()); It; ++It) { Traffic = *It; break; }
@@ -40,6 +42,8 @@ FSlateFontInfo ASCHUD::Font(float Scale) const
 {
 	// vector font rendered at the exact pixel size needed, so text stays sharp at any UI scale
 	const int32 Px = FMath::Clamp(FMath::RoundToInt(30.f * Scale * S), 9, 140);
+	// Use the engine's Roboto font asset (a UObject) - Canvas text needs a font object, not just a composite font
+	if (HudFont) return FSlateFontInfo(HudFont.Get(), Px, Scale >= 1.2f ? FName("Bold") : FName("Regular"));
 	return FCoreStyle::GetDefaultFontStyle(Scale >= 1.2f ? "Bold" : "Regular", Px);
 }
 
@@ -56,8 +60,16 @@ void ASCHUD::Label(const FString& Text, float X, float Y, const FLinearColor& Co
 {
 	if (!Canvas) return;
 	if (bCentre) X -= TextSize(Text, Scale).X / 2.f;
-	FCanvasTextItem Item(FVector2D(X, Y), FText::FromString(Text), Font(Scale), Color);
+	const FSlateFontInfo Info = Font(Scale);
+	if (!Info.FontObject)
+	{
+		// last resort: the classic bitmap font, always available
+		DrawText(Text, Color, X, Y, GEngine->GetLargeFont(), Scale * S);
+		return;
+	}
+	FCanvasTextItem Item(FVector2D(X, Y), FText::FromString(Text), Info, Color);
 	Item.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.65f));
+	Item.BlendMode = SE_BLEND_Translucent;
 	Canvas->DrawItem(Item);
 }
 
@@ -77,20 +89,18 @@ void ASCHUD::Arrow(float CX, float CY, float AngleDeg, float Size, const FLinear
 
 namespace
 {
-	/** Clips segment A-B to the rectangle [Min, Max] (Liang-Barsky). Returns false if fully outside. */
-	bool ClipSegment(FVector2D& A, FVector2D& B, const FVector2D& Min, const FVector2D& Max)
+	/** Clips segment A-B to a circle. Returns false if it lies entirely outside. */
+	bool ClipToCircle(FVector2D& A, FVector2D& B, const FVector2D& C, float R)
 	{
-		float T0 = 0.f, T1 = 1.f;
-		const FVector2D D = B - A;
-		const float P[4] = { -D.X, D.X, -D.Y, D.Y };
-		const float Q[4] = { A.X - Min.X, Max.X - A.X, A.Y - Min.Y, Max.Y - A.Y };
-		for (int32 i = 0; i < 4; ++i)
-		{
-			if (FMath::IsNearlyZero(P[i])) { if (Q[i] < 0.f) return false; continue; }
-			const float R = Q[i] / P[i];
-			if (P[i] < 0.f) T0 = FMath::Max(T0, R); else T1 = FMath::Min(T1, R);
-			if (T0 > T1) return false;
-		}
+		const FVector2D D = B - A, F = A - C;
+		const float a = FVector2D::DotProduct(D, D);
+		if (a < 1e-6f) return FVector2D::Distance(A, C) <= R;
+		const float b = 2.f * FVector2D::DotProduct(F, D), c = FVector2D::DotProduct(F, F) - R * R;
+		const float Disc = b * b - 4.f * a * c;
+		if (Disc <= 0.f) return false;
+		const float Sq = FMath::Sqrt(Disc);
+		const float T0 = FMath::Max(0.f, (-b - Sq) / (2.f * a)), T1 = FMath::Min(1.f, (-b + Sq) / (2.f * a));
+		if (T0 >= T1) return false;
 		const FVector2D A0 = A;
 		A = A0 + D * T0; B = A0 + D * T1;
 		return true;
@@ -99,10 +109,10 @@ namespace
 
 void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool bDropoff)
 {
-	const float Size = 280.f * S, Pad = 20.f * S;
-	const FVector2D Min(Pad, Canvas->ClipY - Pad - Size), Max(Pad + Size, Canvas->ClipY - Pad);
-	const FVector2D Centre = (Min + Max) / 2.f + FVector2D(0, Size * 0.15f);
-	const float Scale = (Size * 0.5f) / 22000.f; // ~220 m from centre to edge
+	// round, heading-up map like an in-car sat-nav
+	const float Radius = 105.f * S, Pad = 20.f * S;
+	const FVector2D Centre(Pad + Radius, Canvas->ClipY - Pad - Radius);
+	const float Scale = Radius / 20000.f; // ~200 m from centre to rim
 	const FVector Me = Pawn->GetActorLocation();
 	const float Y = FMath::DegreesToRadians(CamYaw);
 	const FVector2D F(FMath::Cos(Y), FMath::Sin(Y)), Rt(-FMath::Sin(Y), FMath::Cos(Y));
@@ -110,9 +120,25 @@ void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool
 	auto Line = [&](const FVector& A, const FVector& B, const FLinearColor& C, float Thick)
 	{
 		FVector2D P = ToMap(A), Q = ToMap(B);
-		if (ClipSegment(P, Q, Min, Max)) DrawLine(P.X, P.Y, Q.X, Q.Y, C, Thick);
+		if (ClipToCircle(P, Q, Centre, Radius - Thick * 0.5f)) DrawLine(P.X, P.Y, Q.X, Q.Y, C, Thick);
 	};
-	DrawRect(FLinearColor(0.08f, 0.12f, 0.16f, 0.85f), Min.X, Min.Y, Size, Size);
+	// filled disc (triangle fan) + rim
+	{
+		const int32 Segs = 48;
+		TArray<FCanvasUVTri> Tris;
+		const FLinearColor Bg(0.08f, 0.12f, 0.16f, 0.82f);
+		for (int32 i = 0; i < Segs; ++i)
+		{
+			const float A0 = 2.f * PI * i / Segs, A1 = 2.f * PI * (i + 1) / Segs;
+			FCanvasUVTri T;
+			T.V0_Pos = Centre; T.V1_Pos = Centre + FVector2D(FMath::Cos(A0), FMath::Sin(A0)) * Radius; T.V2_Pos = Centre + FVector2D(FMath::Cos(A1), FMath::Sin(A1)) * Radius;
+			T.V0_Color = T.V1_Color = T.V2_Color = Bg;
+			Tris.Add(T);
+		}
+		FCanvasTriangleItem Fan(Tris, nullptr);
+		Fan.BlendMode = SE_BLEND_Translucent;
+		Canvas->DrawItem(Fan);
+	}
 	const float Lo = SC::Road(0) - SC::HW, Hi = SC::Road(SC::Grid) + SC::HW;
 	const FLinearColor RoadC(0.37f, 0.45f, 0.53f, 1.f);
 	for (int32 K = 0; K <= SC::Grid; ++K)
@@ -130,16 +156,22 @@ void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool
 		for (const FVector& C : Cars)
 		{
 			const FVector2D P = ToMap(C);
-			if (P.X > Min.X && P.X < Max.X && P.Y > Min.Y && P.Y < Max.Y) DrawRect(FLinearColor(0.85f, 0.87f, 0.9f), P.X - 2 * S, P.Y - 2 * S, 4 * S, 4 * S);
+			if (FVector2D::Distance(P, Centre) < Radius - 4 * S) DrawRect(FLinearColor(0.85f, 0.87f, 0.9f), P.X - 2 * S, P.Y - 2 * S, 4 * S, 4 * S);
 		}
 	}
 	if (Target)
 	{
 		FVector2D P = ToMap(Target->GetActorLocation());
-		P.X = FMath::Clamp(P.X, Min.X + 8 * S, Max.X - 8 * S);
-		P.Y = FMath::Clamp(P.Y, Min.Y + 8 * S, Max.Y - 8 * S);
+		const FVector2D Off = P - Centre;
+		if (Off.Size() > Radius - 9 * S) P = Centre + Off.GetSafeNormal() * (Radius - 9 * S); // pin to the rim
 		const FLinearColor C = bDropoff ? FLinearColor(1.f, 0.7f, 0.28f) : FLinearColor(0.33f, 1.f, 0.82f);
 		DrawRect(C, P.X - 7 * S, P.Y - 7 * S, 14 * S, 14 * S);
+	}
+	for (int32 i = 0; i < 48; ++i)
+	{
+		const float A0 = 2.f * PI * i / 48, A1 = 2.f * PI * (i + 1) / 48;
+		const FVector2D P = Centre + FVector2D(FMath::Cos(A0), FMath::Sin(A0)) * Radius, Q = Centre + FVector2D(FMath::Cos(A1), FMath::Sin(A1)) * Radius;
+		DrawLine(P.X, P.Y, Q.X, Q.Y, FLinearColor(1.f, 1.f, 1.f, 0.35f), 2.f * S);
 	}
 	Arrow(Centre.X, Centre.Y, FRotator::NormalizeAxis(Pawn->GetActorRotation().Yaw - CamYaw), 12 * S, FLinearColor(0.3f, 0.94f, 0.69f));
 }

@@ -9,6 +9,7 @@
 #include "SCHUD.generated.h"
 
 class ASCJobDirector;
+class UFont;
 class ASCDestination;
 class ASCTraffic;
 
@@ -38,6 +39,7 @@ private:
 
 	void DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool bDropoff);
 
+	UPROPERTY() TObjectPtr<UFont> HudFont;
 	TWeakObjectPtr<ASCJobDirector> Director;
 	TWeakObjectPtr<ASCTraffic> Traffic;
 	SC::FRoute Route;

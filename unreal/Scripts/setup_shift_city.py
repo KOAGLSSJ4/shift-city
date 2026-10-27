@@ -16,7 +16,7 @@ import urllib.request
 import unreal
 
 IMPORT_TREES = True       # ~100 MB download; set False for a quicker first run
-GOLDEN_HOUR = True        # False = midday sun
+GOLDEN_HOUR = False       # True = low golden-hour sun (moodier, darker streets)
 
 PROJECT = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
 SRC = os.path.join(PROJECT, "SourceArt")
@@ -432,7 +432,7 @@ def setup_level(mats, lamp, tree):
     else:
         les.new_level(level)
 
-    pitch = -14.0 if GOLDEN_HOUR else -45.0
+    pitch = -14.0 if GOLDEN_HOUR else -55.0
     sun = eas.spawn_actor_from_class(unreal.DirectionalLight, unreal.Vector(0, 0, 2000), unreal.Rotator(0.0, pitch, 135.0))
     sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
     sc.set_mobility(unreal.ComponentMobility.MOVABLE)
@@ -455,6 +455,19 @@ def setup_level(mats, lamp, tree):
         unreal.log_warning("[ShiftCity] no volumetric clouds: %s" % e)
     pp = eas.spawn_actor_from_class(unreal.PostProcessVolume, unreal.Vector(0, 0, 0))
     setp(pp, "unbound", True)
+    try:
+        # brighten the street canyons: exposure bias up a stop, and stop auto-exposure going too dark
+        st = pp.get_editor_property("settings")
+        for k, v in (("override_auto_exposure_bias", True), ("auto_exposure_bias", 1.0),
+                     ("override_auto_exposure_min_brightness", True), ("auto_exposure_min_brightness", 0.6)):
+            try:
+                st.set_editor_property(k, v)
+            except Exception:
+                pass
+        pp.set_editor_property("settings", st)
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] exposure not set: %s" % e)
+    setp(skc, "intensity", 1.5)
 
     gen_class = unreal.load_class(None, "/Script/ShiftCityCore.SCCityGenerator")
     gen = eas.spawn_actor_from_class(gen_class, unreal.Vector(0, 0, 0))
@@ -492,7 +505,7 @@ def setup_level(mats, lamp, tree):
     les.save_current_level()
 
 
-REQUIRED_GENERATOR_VERSION = 3
+REQUIRED_GENERATOR_VERSION = 4
 
 
 def check_code_is_current():
