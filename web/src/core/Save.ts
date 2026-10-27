@@ -108,6 +108,11 @@ export function normalize(raw: any): SaveData {
 
 export interface Storage { getItem(k: string): string | null; setItem(k: string, v: string): void }
 
+/** Whether this device already has a Shift City save (current or legacy). */
+export function hasSave(store: Storage | null = safeStorage()): boolean {
+  try { return !!store && !!(store.getItem(SAVE_KEY) ?? store.getItem('shift-city-v4') ?? store.getItem('shift-city-v3')); } catch { return false; }
+}
+
 export function loadSave(store: Storage | null = safeStorage()): SaveData {
   if (!store) return defaultSave();
   try {

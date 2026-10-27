@@ -1,8 +1,11 @@
 // Optional world leaderboard (Vercel function in web/api/leaderboard.js). Every call fails quietly:
 // on portals or without the backend the game just shows the local top 10.
+import { TARGET } from './Platform';
+
 export interface WorldEntry { name: string; score: number; car: string }
 
-const ENDPOINT: string = import.meta.env.VITE_LEADERBOARD_URL ?? (import.meta.env.VITE_TARGET === 'web' ? 'api/leaderboard' : '');
+// The own-site build (Vercel) hosts the API next to the game; portal builds only get one if a URL is set.
+const ENDPOINT: string = import.meta.env.VITE_LEADERBOARD_URL ?? (TARGET === 'web' ? 'api/leaderboard' : '');
 
 export const leaderboardEnabled = () => !!ENDPOINT;
 

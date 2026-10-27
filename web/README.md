@@ -73,6 +73,11 @@ src/
 - Photographic trees: real scanned trees baked to lightweight impostors (`scripts/bake-impostors.cjs`).
 - Asset pipeline: `fetch-polyhaven-models.mjs` (download) → glTF-Transform `optimize` (simplify, WebP, Draco) → `public/props/`.
 
+## Launching
+
+See [LAUNCH.md](LAUNCH.md): Vercel site, itch.io, CrazyGames and Poki. `npm run release` builds every target
+into `release/` (GitHub Actions does it on every push and attaches the upload zips).
+
 ## Not yet implemented / known gaps
 
 See the session report. Headline items: authored building/tree/vehicle assets for true photorealism, pedestrians,

@@ -1,3 +1,5 @@
+/* Inter (SIL Open Font License), self-hosted so the game makes no third-party requests */
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('../fonts/inter-latin.woff2') format('woff2'); }
 :root {
   --accent: #4cf0af; --accent2: #4cc3ff; --gold: #ffcf49; --danger: #ff5a6a;
   --panel: rgba(10, 18, 28, 0.72); --line: rgba(255, 255, 255, 0.12); --text: #eef5ff; --muted: #9fb2c6;
@@ -225,6 +227,47 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .a-score b { font-size: 38px; }
 }
 
+/* Phones held sideways: short screens need a compact menu and HUD that leave room for the thumbs */
+@media (pointer: coarse) and (max-height: 520px) {
+  .screen { justify-content: flex-start; overflow-y: auto; padding: 10px 0 16px; }
+  #menu .brand { font-size: 38px; }
+  .tagline { display: none; }
+  .modes { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .mode-card { min-height: 0; padding: 10px 12px; gap: 3px; }
+  .mode-card b { font-size: 18px; }
+  .mode-card span { font-size: 11.5px; }
+  .settings { margin: 10px 0 8px; gap: 8px; }
+  .seg button { padding: 6px 9px; font-size: 12px; }
+  .menu-actions .ghost { padding: 7px 12px; font-size: 13px; }
+  .career { top: 8px; left: 8px; padding: 6px 10px; min-width: 0; }
+  .career .sub { display: none; }
+  .wallet { font-size: 18px; }
+  #minimap { width: 96px; height: 96px; top: 66px; left: 8px; bottom: auto; }
+  .job { top: 8px; right: 8px; bottom: auto; width: 270px; padding: 8px 10px; }
+  .job h3 { font-size: 14px; margin: 3px 0 2px; }
+  .job p { font-size: 11.5px; line-height: 1.35; }
+  .toolbar { top: 8px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); max-width: none; flex-wrap: nowrap; }
+  .toolbar button { padding: 6px 9px; font-size: 12px; }
+  #btn-garage, #btn-goals, #btn-gfx { display: none; }
+  .nav { top: 50px; bottom: auto; padding: 6px 12px; min-width: 0; }
+  .nav-arrow { width: 32px; height: 32px; font-size: 18px; }
+  .speedo { display: block; left: 50%; right: auto; bottom: 8px; transform: translateX(-50%); min-width: 0; padding: 4px 12px; text-align: center; }
+  .speedo b { font-size: 24px; }
+  .speedo .muted { display: none; }
+  #touch { bottom: 12px; }
+  #tutorial { top: auto; bottom: 96px; left: 50%; width: 320px; margin-left: -160px; padding: 10px 12px; }
+  #tutorial p { font-size: 12px; margin-bottom: 6px; }
+  .chat { bottom: 96px; }
+  .side-modal { width: min(420px, 100vw); }
+}
+#rotate { display: none; }
+@media (pointer: coarse) and (orientation: portrait) {
+  body.playing #rotate { display: flex; position: fixed; inset: 0; z-index: 50; background: rgba(4, 8, 14, .94); flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 30px; }
+  #rotate b { font-size: 22px; }
+  #rotate .phone { width: 46px; height: 80px; border: 3px solid var(--accent); border-radius: 10px; animation: turn 1.8s ease-in-out infinite; }
+}
+@keyframes turn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+
 /* Settings */
 .s-h { margin: 18px 0 8px; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 .slider { display: grid; grid-template-columns: 110px 1fr 40px; align-items: center; gap: 10px; margin: 8px 0; font-size: 14px; }
@@ -238,3 +281,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #view-hint { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 9; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; font-size: 13px; max-width: calc(100vw - 32px); text-align: center; backdrop-filter: blur(10px); pointer-events: none; animation: toast 3.6s ease forwards; }
 #view-hint b { color: var(--accent); }
+
+.credits p { color: #c2d1e0; font-size: 13.5px; line-height: 1.55; margin: 6px 0; }
+.credits b { color: #fff; }
+#o-double { width: 100%; margin: 4px 0 8px; }
+.action.gold { background: linear-gradient(90deg, var(--gold), #ff9a3d); color: #1b1004; }

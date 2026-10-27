@@ -12,7 +12,7 @@ import { buildModelCar, buildProceduralCar, loadModel, setCarLights, type CarRig
 import { Rain } from '../graphics/Rain';
 import { Input } from './Input';
 import { Audio } from './Audio';
-import { loadSave, writeSave, type CameraView, type GraphicsMode, type SaveData, type TimeOfDay, type Weather } from './Save';
+import { hasSave, loadSave, writeSave, type CameraView, type GraphicsMode, type SaveData, type TimeOfDay, type Weather } from './Save';
 import { BALANCE } from '../data/balancing';
 import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
@@ -20,6 +20,7 @@ import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, typ
 import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
+import { platform } from './Platform';
 import type { Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
@@ -32,6 +33,8 @@ const GFX_LABEL: Record<GraphicsMode, string> = { rendered: 'Rendered', photorea
 const VIEW_LABEL: Record<CameraView, string> = { cockpit: 'Cockpit cam', chase: 'Chase cam', top: 'Top-down' };
 
 export class Game {
+  /** True when no save existed yet (first launch on this device). */
+  private readonly firstRun = !hasSave();
   readonly save: SaveData = loadSave();
   readonly input = new Input();
   readonly audio = new Audio();
@@ -66,6 +69,8 @@ export class Game {
     this.garageSel = this.save.selected;
     this.audio.setEnabled(this.save.settings.audio);
     this.audio.setVolume(this.save.settings.volume);
+    // first launch on a phone, tablet or low-memory device starts on the light graphics tier
+    if (this.firstRun && lowEndDevice()) this.save.settings.graphics = 'rendered';
     // browsers only allow sound after a gesture: the first tap or key press starts the menu music
     const firstGesture = () => { this.audio.unlock(); removeEventListener('pointerdown', firstGesture); removeEventListener('keydown', firstGesture); };
     addEventListener('pointerdown', firstGesture);
@@ -78,6 +83,9 @@ export class Game {
   async init() {
     const bar = $('load-bar'), txt = $('load-text');
     const progress = (f: number, t: string) => { bar.style.width = `${Math.round(f * 100)}%`; txt.textContent = t; };
+    const sdk = platform.init();
+    // ads pause the game and silence it
+    platform.onAd = (on) => { this.audio.setSuspended(on || document.hidden); if (on) this.paused = this.state === 'city' || this.state === 'arcade' ? true : this.paused; };
     progress(0.05, 'Building city…');
     await nextFrame();
     this.city = new City(this.mats);
@@ -85,11 +93,15 @@ export class Game {
     this.gfx.scene.add(this.city.group, this.traffic.group);
     progress(0.25, 'Loading sky and lighting…');
     await this.gfx.loadEnvironment((f) => progress(0.25 + f * 0.3, 'Loading sky and lighting…'));
-    progress(0.6, 'Loading photoreal materials…');
-    await this.mats.loadPhotoreal();
+    // ?gfx=rendered|photoreal|hyper overrides the saved choice (handy for testing / weak devices)
+    const q = new URLSearchParams(location.search).get('gfx');
+    const startMode: GraphicsMode = q === 'rendered' || q === 'photoreal' || q === 'hyper' ? q : this.save.settings.graphics;
+    // scanned textures (~8 MB) are only fetched when a photoreal tier is actually used
+    if (startMode !== 'rendered') {
+      progress(0.6, 'Loading photoreal materials…');
+      await this.ensurePhotoreal();
+    }
     progress(0.8, 'Preparing vehicles…');
-    // warm the authored model cache so Photoreal garage cars appear instantly
-    await Promise.all(VEHICLES.filter((v) => v.model).map((v) => loadModel(v.model!)));
     this.rig = await this.buildRig(vehicleById(this.save.selected));
     this.gfx.scene.add(this.rig.root);
     this.cityMode = new CityMode(this.city, this.traffic, this.rig, this.save, this.cityEvents());
@@ -101,20 +113,20 @@ export class Game {
     const flat = new Set<THREE.Material>([this.mats.asphalt, this.mats.paintWhite, this.mats.paintYellow, this.mats.lampPool]);
     for (const g of [this.city.group, this.arcade.group]) g.traverse((o) => { const m = (o as THREE.Mesh).material; if (m && !Array.isArray(m) && flat.has(m)) this.gfx.reflection.hide(o); });
     this.gfx.reflection.hide(this.rain.mesh);
-    // ?gfx=rendered|photoreal overrides the saved choice (handy for testing / weak devices)
-    const q = new URLSearchParams(location.search).get('gfx');
     this.gfx.scene.add(this.rain.mesh);
     this.gfx.onSlow = () => {
       if (this.slowWarned || this.save.settings.graphics === 'rendered') return;
       this.slowWarned = true;
       this.toast(`Your device is struggling with ${this.save.settings.graphics === 'hyper' ? 'Hyper-real' : 'Photoreal'} — try a lower graphics setting (⚙)`, 'bad');
     };
-    await this.applyGraphics(q === 'rendered' || q === 'photoreal' || q === 'hyper' ? q : this.save.settings.graphics);
+    await this.applyGraphics(startMode);
     this.cam.setView(this.save.settings.camera);
     this.bindUI();
     progress(1, 'Ready');
+    await sdk;
     $('loading').hidden = true;
     this.showMenu();
+    platform.loadingFinished();
     this.clock.start();
     this.gfx.renderer.setAnimationLoop(() => this.frame());
     // street detail (Poly Haven props + photographic trees) streams in after the menu is up
@@ -149,6 +161,7 @@ export class Game {
     if (this.state === 'arcade') this.arcade.stop();
     this.state = 'menu';
     this.paused = false;
+    document.body.classList.remove('playing');
     $('menu').hidden = false;
     $('hud').hidden = true; $('arcade-hud').hidden = true; $('arcade-over').hidden = true; $('touch').hidden = true;
     $('tutorial').hidden = true; $('pointer').hidden = true; $('edge-arrow').hidden = true;
@@ -175,6 +188,7 @@ export class Game {
     if (this.sessionMode !== mode || !this.cityMode.job) { this.cityMode.start(mode); this.renderJob(null); }
     this.sessionMode = mode;
     this.state = 'city';
+    document.body.classList.add('playing');
     this.audio.music('city');
     this.cam.cut();
     this.updateCareer();
@@ -193,6 +207,7 @@ export class Game {
     this.rig.root.parent?.remove(this.rig.root);
     this.arcade.start(this.rig, vehicleById(this.save.selected));
     this.state = 'arcade';
+    document.body.classList.add('playing');
     this.audio.music('arcade');
     this.cam.cut();
   }
@@ -269,6 +284,7 @@ export class Game {
     } else this.audio.skid(0);
     this.tutorial.update(dt, this.cam.camera, this.state === 'city' && this.cityMode.target ? new THREE.Vector3(this.cityMode.target.x, 0, this.cityMode.target.z) : null, this.paused);
 
+    platform.gameplay((this.state === 'city' || this.state === 'arcade') && !this.paused && !document.hidden);
     if ((this.saveTimer += dt) > 5) { this.saveTimer = 0; if (this.state === 'city') this.persist(); }
     this.gfx.render(this.cam.camera, dt);
     inp.consume();
@@ -279,7 +295,7 @@ export class Game {
     if (this.state === 'loading') return;
     if (document.activeElement instanceof HTMLInputElement && document.activeElement.type === 'text') return; // typing a name
     if (i.hit('Escape')) {
-      if (!$('garage').hidden || !$('goals').hidden || !$('settings').hidden) this.closeModals();
+      if (!$('garage').hidden || !$('goals').hidden || !$('settings').hidden || !$('credits').hidden) this.closeModals();
       else if (this.state === 'menu') { if (this.sessionMode) this.startCity(this.sessionMode); }
       else this.showMenu();
     }
@@ -294,7 +310,7 @@ export class Game {
       if (i.hit('KeyN')) this.cityMode.decline();
       if (i.hit('KeyR')) this.cityMode.resetCar();
     }
-    if (this.state === 'over' && i.hit('Enter', 'NumpadEnter', 'Space') && !(document.activeElement instanceof HTMLInputElement)) this.startArcade();
+    if (this.state === 'over' && i.hit('Enter', 'NumpadEnter', 'Space') && !(document.activeElement instanceof HTMLInputElement)) this.arcadeAgain();
   }
 
   private setView(v: CameraView) {
@@ -323,8 +339,15 @@ export class Game {
     (el as any)._t = setTimeout(() => (el.hidden = true), 3600);
   }
 
+  private photoreal: Promise<void> | null = null;
+  private ensurePhotoreal() { return (this.photoreal ??= this.mats.loadPhotoreal()); }
+
   /** Graphics tier, time of day and weather are independent of gameplay and never touch the save's progress. */
   async applyGraphics(mode: GraphicsMode = this.save.settings.graphics, time: TimeOfDay = this.save.settings.time, weather: Weather = this.save.settings.weather) {
+    if (mode !== 'rendered' && !this.photoreal) {
+      this.toast('Loading photoreal textures…');
+      await this.ensurePhotoreal();
+    }
     Object.assign(this.save.settings, { graphics: mode, time, weather });
     this.persist();
     this.refreshMenu();
@@ -609,6 +632,8 @@ export class Game {
     $('o-points').textContent = `+${pts.toLocaleString()} arcade points · ${this.save.arcade.points.toLocaleString()} banked`;
     if (best) { this.confetti(); this.audio.levelUp(); }
     $('tab-world').hidden = !leaderboardEnabled();
+    $('o-double').hidden = !platform.hasAds || pts <= 0;
+    if (best) platform.happy();
     this.showBoard('local');
     // returning players post automatically; first-timers are asked for a name
     if (leaderboardEnabled() && this.lastRun && this.lastRun.score > 0) {
@@ -617,7 +642,34 @@ export class Game {
     } else $('name-row').hidden = true;
   }
 
-  private lastRun: { score: number; near: number; time: number; runId: string; date: number; posted: boolean } | null = null;
+  /** Between runs is the natural ad break on portals (rate-limited inside the platform adapter). */
+  private async arcadeAgain() {
+    if (this.adBusy) return;
+    this.adBusy = true;
+    await platform.commercialBreak();
+    this.adBusy = false;
+    this.startArcade();
+  }
+  private adBusy = false;
+
+  private async doublePoints() {
+    const r = this.lastRun;
+    if (!r || this.adBusy || r.doubled) return;
+    this.adBusy = true;
+    const ok = await platform.rewarded();
+    this.adBusy = false;
+    this.paused = false;
+    $('o-double').hidden = true;
+    if (!ok) { this.toast('Ad not available right now', 'bad'); return; }
+    r.doubled = true;
+    this.save.arcade.points += r.score;
+    this.persist();
+    this.refreshPoints();
+    $('o-points').textContent = `+${(r.score * 2).toLocaleString()} arcade points (doubled!) · ${this.save.arcade.points.toLocaleString()} banked`;
+    this.audio.coin();
+  }
+
+  private lastRun: { score: number; near: number; time: number; runId: string; date: number; posted: boolean; doubled?: boolean } | null = null;
 
   private async showBoard(which: 'local' | 'world') {
     document.querySelectorAll<HTMLElement>('[data-board]').forEach((b) => b.classList.toggle('on', b.dataset.board === which));
@@ -684,7 +736,7 @@ export class Game {
   }
 
   private closeModals() {
-    $('garage').hidden = true; $('goals').hidden = true; $('settings').hidden = true;
+    $('garage').hidden = true; $('goals').hidden = true; $('settings').hidden = true; $('credits').hidden = true;
     if (this.previewId && this.previewId !== this.save.selected) this.swapRig(vehicleById(this.save.selected));
     this.previewId = null;
     this.paused = false;
@@ -817,6 +869,8 @@ export class Game {
     on('menu-settings', () => this.openSettings());
     on('btn-settings', () => ($('settings').hidden ? this.openSettings() : this.closeModals()));
     on('s-close', () => this.closeModals());
+    on('menu-credits', () => { this.closeModals(); $('credits').hidden = false; });
+    on('c-close', () => this.closeModals());
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(b.dataset.gfx as GraphicsMode)));
     document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, b.dataset.time as TimeOfDay)));
     document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, undefined, b.dataset.weather as Weather)));
@@ -848,6 +902,7 @@ export class Game {
     on('goals-close', () => this.closeModals());
     on('g-convert', () => this.convert());
     on('o-convert', () => this.convert());
+    on('o-double', () => this.doublePoints());
     document.querySelectorAll<HTMLElement>('[data-board]').forEach((b) => b.addEventListener('click', () => this.showBoard(b.dataset.board as 'local' | 'world')));
     $('name-row').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -858,7 +913,7 @@ export class Game {
       (document.activeElement as HTMLElement)?.blur();
       this.postScore().then(() => this.showBoard('world'));
     });
-    on('o-again', () => this.startArcade());
+    on('o-again', () => this.arcadeAgain());
     on('o-garage', () => this.openGarage());
     on('o-menu', () => this.showMenu());
     this.input.bindTouch($('touch'));
@@ -917,4 +972,5 @@ export class Game {
 
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
 const isTouch = () => matchMedia('(pointer: coarse)').matches;
+const lowEndDevice = () => isTouch() || ((navigator as { deviceMemory?: number }).deviceMemory ?? 8) <= 4 || (navigator.hardwareConcurrency ?? 8) <= 4;
 export { ARCADE_ORIGIN };

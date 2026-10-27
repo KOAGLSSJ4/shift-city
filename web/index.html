@@ -4,11 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Shift City</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet" />
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="rotate"><div class="phone"></div><b>Turn your phone sideways</b><span class="muted">Shift City plays in landscape.</span></div>
 
 <div id="loading" class="screen">
   <div class="brand">SHIFT<span>CITY</span></div>
@@ -34,6 +33,7 @@
       <button class="ghost" id="menu-goals">Goals <i class="badge" id="goals-badge" hidden></i></button>
       <button class="ghost" id="menu-tutorial">Replay tutorial</button>
       <button class="ghost" id="menu-settings">Settings &amp; sound</button>
+      <button class="ghost" id="menu-credits">Credits</button>
     </div>
     <div class="menu-stats" id="menu-stats"></div>
   </div>
@@ -90,6 +90,7 @@
     <div class="big" id="o-score">0</div>
     <div class="o-grid"><div><b id="o-best">0</b><small>Best</small></div><div><b id="o-near">0</b><small>Near misses</small></div><div><b id="o-coins">0</b><small>Coins</small></div></div>
     <p id="o-points"></p>
+    <button class="action gold" id="o-double" hidden>▶ Watch an ad: double these points</button>
     <div class="board">
       <div class="board-tabs"><button class="on" data-board="local">Your best</button><button data-board="world" id="tab-world" hidden>World</button></div>
       <ol id="board-list"></ol>
@@ -110,6 +111,21 @@
 <div id="goals" class="side-modal" hidden>
   <div class="modal-head"><h2>Goals</h2><button class="close" id="goals-close">✕</button></div>
   <div id="goals-list"></div>
+</div>
+
+<div id="credits" class="side-modal" hidden>
+  <div class="modal-head"><h2>Credits</h2><button class="close" id="c-close">✕</button></div>
+  <div class="credits">
+    <p><b>Shift City</b> by K Studios.</p>
+    <h4 class="s-h">Music</h4>
+    <p>"City In The Rearview", "Autumn", "Dream Pop", "Families" by <b>HoliznaCC0</b> (CC0)<br>"Cool Highway" by <b>MintoDog</b> (CC0), via OpenGameArt</p>
+    <h4 class="s-h">Art</h4>
+    <p>Skies, road and wall textures, street props and scanned trees from <b>Poly Haven</b> (CC0): Greg Zaal, Jarod Guest and the Poly Haven team</p>
+    <p>All cars are original Shift City designs, built in code.</p>
+    <h4 class="s-h">Tech</h4>
+    <p>three.js (MIT) · Inter typeface by Rasmus Andersson (SIL OFL)</p>
+    <p class="muted">Every name, brand and passenger in the game is fictional.</p>
+  </div>
 </div>
 
 <div id="settings" class="side-modal" hidden>

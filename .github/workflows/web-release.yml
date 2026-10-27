@@ -1,0 +1,39 @@
+# Builds the browser game for every launch target and attaches the upload zips to the run.
+# Download them from GitHub → Actions → "Web release builds" → latest run → Artifacts. Each artifact
+# downloads as a zip with index.html at the root: that zip is exactly what the portals want uploaded.
+name: Web release builds
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/web-release.yml']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run fetch-assets
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shift-city-itch
+          path: web/release/itch/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shift-city-crazygames
+          path: web/release/crazygames/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shift-city-poki
+          path: web/release/poki/
