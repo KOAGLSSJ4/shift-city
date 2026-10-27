@@ -7,7 +7,8 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import type { BodyType, VehicleDef } from '../data/vehicles';
 import { binaryUrl } from '../core/AssetUrl';
 import { BodyShape, Kit, mergeParts, rimGeometry, tireGeometry, type PartKey } from './CarBody';
-import { DESIGNS } from './designs';
+import { DESIGNS, type DesignBody } from './designs';
+import { buildClassicCar } from './ClassicCar';
 
 export interface CarRig {
   root: THREE.Group;          // positioned/rotated by gameplay
@@ -28,16 +29,16 @@ export interface CarRig {
   dispose(): void;
 }
 
-const tireMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.85 });
-const rimMat = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 1, roughness: 0.25 });
-const blackTrim = new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 0.5, metalness: 0.2 });
-const chrome = new THREE.MeshStandardMaterial({ color: 0xe8ecef, metalness: 1, roughness: 0.08, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
-const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0f15, metalness: 0.2, roughness: 0.03, transparent: true, opacity: 0.82, clearcoat: 1, side: THREE.FrontSide });
-const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff6e0, emissiveIntensity: 1.6, roughness: 0.1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
-const interiorMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1f, roughness: 0.8 });
-const leatherMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.6 });
-const plateMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
-const leatherWheel = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.55 });
+export const tireMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.85 });
+export const rimMat = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 1, roughness: 0.25 });
+export const blackTrim = new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 0.5, metalness: 0.2 });
+export const chrome = new THREE.MeshStandardMaterial({ color: 0xe8ecef, metalness: 1, roughness: 0.08, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+export const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0f15, metalness: 0.2, roughness: 0.03, transparent: true, opacity: 0.82, clearcoat: 1, side: THREE.FrontSide });
+export const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff6e0, emissiveIntensity: 1.6, roughness: 0.1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+export const interiorMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1f, roughness: 0.8 });
+export const leatherMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.6 });
+export const plateMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+export const leatherWheel = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.55 });
 /** Decal materials draw on top of the panel they are projected onto. */
 const DECAL = { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 };
 const satinBlack = new THREE.MeshStandardMaterial({ color: 0x101113, roughness: 0.6, metalness: 0.1, ...DECAL });
@@ -54,7 +55,7 @@ const trafficDark = new THREE.MeshStandardMaterial({ color: 0x0c0d0f, roughness:
 const trafficBright = new THREE.MeshStandardMaterial({ color: 0xc4c8cc, metalness: 0.9, roughness: 0.3, ...DECAL });
 
 /** Two forward spot lights; only switched on at night (lights cost shader work). */
-function makeHeadlights(width: number, y: number, front: number) {
+export function makeHeadlights(width: number, y: number, front: number) {
   const g = new THREE.Group();
   for (const sx of [-1, 1]) {
     const l = new THREE.SpotLight(0xfff1dc, 60, 70, 0.42, 0.55, 1.6);
@@ -74,7 +75,9 @@ export function makePaint(color: number, photoreal: boolean) {
 }
 
 /** Procedural car. `detail` adds interior, mirrors and spoked rims (player car). */
-export function buildProceduralCar(body: BodyType, color: number, opts: { detail: boolean; photoreal: boolean }): CarRig {
+export function buildProceduralCar(kind: BodyType, color: number, opts: { detail: boolean; photoreal: boolean }): CarRig {
+  if (kind === 'classic') return buildClassicCar(color, opts);
+  const body = kind;
   const d = DESIGNS[body], shape = bodyShape(body), p = cabin(body);
   const root = new THREE.Group();
   const bodyG = new THREE.Group();
@@ -259,7 +262,7 @@ export function setCarLights(night: boolean) {
 }
 
 /** Cheap traffic car: shared cached geometry, six draw calls (paint, glass, dark, bright, head, tail). */
-export function buildTrafficCar(body: BodyType, color: number): THREE.Group {
+export function buildTrafficCar(body: DesignBody, color: number): THREE.Group {
   const d = DESIGNS[body];
   const g = new THREE.Group();
   const paint = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.35 });
@@ -277,7 +280,7 @@ export function buildTrafficCar(body: BodyType, color: number): THREE.Group {
 // ---------- shared geometry caches ----------
 
 /** Cabin landmarks used to place the interior, cockpit camera and lights. */
-function cabin(body: BodyType) {
+function cabin(body: DesignBody) {
   const d = DESIGNS[body], b = bodyShape(body);
   const cowl = b.gz1;
   const eyeZ = Math.max(d.roofR + 0.25, cowl - 1.1);
@@ -287,15 +290,15 @@ function cabin(body: BodyType) {
   };
 }
 
-const shapes = new Map<BodyType, BodyShape>();
-function bodyShape(body: BodyType) {
+const shapes = new Map<DesignBody, BodyShape>();
+function bodyShape(body: DesignBody) {
   if (!shapes.has(body)) shapes.set(body, new BodyShape(DESIGNS[body]));
   return shapes.get(body)!;
 }
 
 const partCache = new Map<string, Partial<Record<PartKey, THREE.BufferGeometry>>>();
 /** Body, glasshouse and details merged per material slot (cached; shared between cars). */
-function carParts(body: BodyType, lod: 0 | 1) {
+function carParts(body: DesignBody, lod: 0 | 1) {
   const key = `${body}:${lod}`;
   if (!partCache.has(key)) {
     const b = bodyShape(body);
@@ -313,7 +316,7 @@ function carParts(body: BodyType, lod: 0 | 1) {
 }
 
 const wheelCache = new Map<string, Record<'tire' | 'rim' | 'barrel' | 'disc' | 'caliper', THREE.BufferGeometry>>();
-function wheelGeometry(body: BodyType, lod: 0 | 1) {
+function wheelGeometry(body: DesignBody, lod: 0 | 1) {
   const key = `${body}:${lod}`;
   if (!wheelCache.has(key)) {
     const d = DESIGNS[body], w = d.tireW ?? 0.24, rr = d.wr * (d.rim ?? 0.68);
@@ -337,8 +340,8 @@ const TRAFFIC_SLOT: Record<PartKey, TrafficSlot> = {
   paint: 'paint', roof: 'paint', glass: 'glass', black: 'dark', trim: 'dark', decal: 'dark', lens: 'dark', liner: 'dark',
   carbon: 'dark', cabin: 'dark', tire: 'dark', accent: 'dark', chrome: 'bright', rim: 'bright', plate: 'bright', head: 'head', tail: 'tail',
 };
-const trafficCache = new Map<BodyType, Partial<Record<TrafficSlot, THREE.BufferGeometry>>>();
-function trafficParts(body: BodyType) {
+const trafficCache = new Map<DesignBody, Partial<Record<TrafficSlot, THREE.BufferGeometry>>>();
+function trafficParts(body: DesignBody) {
   if (!trafficCache.has(body)) {
     const d = DESIGNS[body];
     const lists: Partial<Record<TrafficSlot, THREE.BufferGeometry[]>> = {};

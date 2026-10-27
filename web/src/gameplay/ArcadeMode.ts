@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import type { Materials } from '../graphics/Materials';
 import type { CarRig } from '../vehicles/CarFactory';
 import { buildTrafficCar } from '../vehicles/CarFactory';
-import type { BodyType, VehicleDef } from '../data/vehicles';
+import type { VehicleDef } from '../data/vehicles';
+import type { DesignBody } from '../vehicles/designs';
 
 export const ARCADE_ORIGIN = new THREE.Vector3(3000, 0, 0);
 const LANE = 3.7;
@@ -49,7 +50,7 @@ export class ArcadeMode {
   constructor(private mats: Materials, public rig: CarRig) {
     this.group.position.copy(ARCADE_ORIGIN);
     for (let i = 0; i < CHUNKS; i++) { const c = this.buildChunk(i); c.position.z = i * CHUNK - CHUNK; this.chunks.push(c); this.group.add(c); }
-    const bodies: BodyType[] = ['sedan', 'hatch', 'suv', 'sedan', 'gt'];
+    const bodies: DesignBody[] = ['sedan', 'hatch', 'suv', 'sedan', 'gt'];
     const colors = [0xeeeeee, 0x202226, 0x8a8f96, 0x1d3f73, 0x9b2c1a, 0xd8c7a0, 0x2e4d39];
     for (let i = 0; i < 16; i++) {
       const isTruck = i % 6 === 5;

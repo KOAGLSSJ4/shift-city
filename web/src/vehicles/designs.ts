@@ -14,7 +14,10 @@ function plate(k: Kit, y: number) {
   k.rrect('rear', -0.26, y, 0.26, y + 0.12, 0.015, 'plate');
 }
 
-export const DESIGNS: Record<BodyType, CarDesign> = {
+/** Body types drawn with the lofted builder (the Classic has its own builder in ClassicCar.ts). */
+export type DesignBody = Exclude<BodyType, 'classic'>;
+
+export const DESIGNS: Record<DesignBody, CarDesign> = {
   // Kite Pico: friendly city hatch with round eyes and a contrast roof
   hatch: {
     L: 3.9, W: 1.75, H: 1.5, wb: 2.45, wr: 0.31, rim: 0.66, tireW: 0.2,
@@ -219,5 +222,5 @@ export const DESIGNS: Record<BodyType, CarDesign> = {
 };
 
 /** Garage line-up names live in data/vehicles.ts; this is just a sanity hook for tests. */
-export const DESIGN_BODIES = Object.keys(DESIGNS) as BodyType[];
+export const DESIGN_BODIES = Object.keys(DESIGNS) as DesignBody[];
 export type { Pts };

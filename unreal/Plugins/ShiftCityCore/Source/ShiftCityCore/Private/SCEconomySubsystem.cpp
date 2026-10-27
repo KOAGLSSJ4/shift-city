@@ -55,7 +55,7 @@ void USCEconomySubsystem::LoadData()
 	if (Vehicles.Num() == 0)
 	{
 		// keep the game playable even if the data folder is missing
-		FSCVehicleDef Starter; Starter.Id = TEXT("metro"); Starter.Name = TEXT("Kite Pico");
+		FSCVehicleDef Starter; Starter.Id = TEXT("classic"); Starter.Name = TEXT("Shift Classic");
 		Vehicles.Add(Starter);
 	}
 	UE_LOG(LogShiftCity, Log, TEXT("Shift City data: %d vehicles, %d chapters, %d goals"), Vehicles.Num(), Story.Num(), Goals.Num());
@@ -67,8 +67,8 @@ void USCEconomySubsystem::LoadOrCreateSave()
 		Save = Cast<USCSaveGame>(UGameplayStatics::LoadGameFromSlot(SlotName, 0));
 	if (!Save)
 		Save = Cast<USCSaveGame>(UGameplayStatics::CreateSaveGameObject(USCSaveGame::StaticClass()));
-	if (!Save->Owned.Contains(TEXT("metro"))) Save->Owned.Insert(TEXT("metro"), 0);
-	if (!Save->Owned.Contains(Save->Selected)) Save->Selected = TEXT("metro");
+	if (!Save->Owned.Contains(TEXT("classic"))) Save->Owned.Insert(TEXT("classic"), 0);
+	if (!Save->Owned.Contains(Save->Selected)) Save->Selected = TEXT("classic");
 	Save->Wallet = FMath::Max(0.f, Save->Wallet);
 	Save->Level = FMath::Max(1, Save->Level);
 }
@@ -81,7 +81,7 @@ void USCEconomySubsystem::SaveNow()
 void USCEconomySubsystem::ResetProgress()
 {
 	Save = Cast<USCSaveGame>(UGameplayStatics::CreateSaveGameObject(USCSaveGame::StaticClass()));
-	Save->Owned.Add(TEXT("metro"));
+	Save->Owned.Add(TEXT("classic"));
 	SaveNow();
 	Changed();
 }
@@ -99,7 +99,7 @@ FSCVehicleDef USCEconomySubsystem::GetVehicle(const FString& Id) const
 
 FSCVehicleDef USCEconomySubsystem::GetSelectedVehicle() const
 {
-	return GetVehicle(Save ? Save->Selected : TEXT("metro"));
+	return GetVehicle(Save ? Save->Selected : TEXT("classic"));
 }
 
 int32 USCEconomySubsystem::AddXP(int32 Amount)

@@ -19,13 +19,13 @@
   ],
   "vehicles": [
     {
-      "id": "metro",
-      "name": "Kite Pico",
+      "id": "classic",
+      "name": "Shift Classic",
       "kind": "Starter",
       "level": 1,
       "cost": 0,
       "color": "#19a99e",
-      "body": "hatch",
+      "body": "classic",
       "fare": 1,
       "arcade": 1,
       "seats": 4,
@@ -35,6 +35,25 @@
       "topSpeed": 40,
       "brake": 9,
       "grip": 1,
+      "steer": 0.62
+    },
+    {
+      "id": "metro",
+      "name": "Kite Pico",
+      "kind": "City",
+      "level": 1,
+      "cost": 250,
+      "color": "#ff7a5c",
+      "body": "hatch",
+      "fare": 1.05,
+      "arcade": 1.02,
+      "seats": 4,
+      "comfort": 3,
+      "premium": 0,
+      "accel": 5.6,
+      "topSpeed": 42,
+      "brake": 9.5,
+      "grip": 1.03,
       "steer": 0.62
     },
     {

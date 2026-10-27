@@ -16,7 +16,7 @@ public:
 	UPROPERTY(SaveGame) int32 Xp = 0;
 	UPROPERTY(SaveGame) int32 Level = 1;
 	UPROPERTY(SaveGame) TArray<FString> Owned;
-	UPROPERTY(SaveGame) FString Selected = TEXT("metro");
+	UPROPERTY(SaveGame) FString Selected = TEXT("classic");
 	UPROPERTY(SaveGame) TMap<FString, FSCUpgrades> Upgrades;
 	UPROPERTY(SaveGame) int32 ArcadeBest = 0;
 	UPROPERTY(SaveGame) int32 ArcadePoints = 0;

@@ -26,7 +26,7 @@ ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
 
 const make = (i: number) => {
   const v = VEHICLES[i];
-  if (traffic) return buildTrafficCar(v.body, v.color);
+  if (traffic) return buildTrafficCar(v.body === 'classic' ? 'hatch' : v.body, v.color);
   const r = buildProceduralCar(v.body, v.color, { detail: true, photoreal: true });
   return Object.assign(r.root, { userData: { rig: r } });
 };
@@ -34,7 +34,7 @@ const make = (i: number) => {
 if (view === 'grid') {
   VEHICLES.forEach((_, i) => {
     const m = make(i);
-    m.position.set((i % 4) * 6 - 9, 0, Math.floor(i / 4) * -7 + 3);
+    m.position.set((i % 5) * 5.4 - 10.8, 0, Math.floor(i / 5) * -7 + 3);
     m.rotation.y = 0.6;
     scene.add(m);
   });

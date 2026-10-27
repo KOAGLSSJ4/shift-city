@@ -38,7 +38,7 @@ export function defaultSave(): SaveData {
   return {
     version: SAVE_VERSION,
     wallet: 0, xp: 0, level: 1,
-    owned: ['metro'], selected: 'metro',
+    owned: ['classic'], selected: 'classic',
     upgrades: {},
     arcade: { best: 0, points: 0, runs: 0, lastRunId: '', top: [] },
     playerName: '',
@@ -51,15 +51,18 @@ export function defaultSave(): SaveData {
 
 const num = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 
+/** v3/v4 saves stored cars by index into this original eight-car line-up. */
+const LEGACY_IDS = ['metro', 'comfort', 'exec_suv', 'lux_ev', 'apex_v12', 'rosso_f90', 'royal_gt', 'vortex'];
+
 /** Converts a v3/v4 save (index-based vehicles) into the v5 schema. */
 export function migrateLegacy(old: any, missions: any): SaveData {
   const s = defaultSave();
   s.wallet = Math.max(0, num(old.wallet));
   s.xp = Math.max(0, num(old.xp));
   s.level = Math.max(1, Math.floor(num(old.level, 1)));
-  const idOf = (i: unknown) => (Number.isInteger(i) && VEHICLES[i as number] ? VEHICLES[i as number].id : null);
+  const idOf = (i: unknown) => (Number.isInteger(i) && LEGACY_IDS[i as number] ? LEGACY_IDS[i as number] : null);
   const owned = (Array.isArray(old.owned) ? old.owned : [0]).map(idOf).filter(Boolean) as string[];
-  s.owned = Array.from(new Set(['metro', ...owned]));
+  s.owned = Array.from(new Set(['classic', 'metro', ...owned]));
   s.selected = idOf(old.selected) ?? 'metro';
   if (!s.owned.includes(s.selected)) s.selected = 'metro';
   const handling = Math.min(5, Math.max(0, Math.floor(num(old.upgrades))));
@@ -93,9 +96,10 @@ export function normalize(raw: any): SaveData {
   if (!['day', 'sunset', 'night'].includes(s.settings.time)) s.settings.time = 'day';
   if (!['dry', 'wet', 'rain'].includes(s.settings.weather)) s.settings.weather = 'dry';
   for (const k of ['master', 'engine', 'sfx', 'music'] as const) s.settings.volume[k] = Math.min(1, Math.max(0, num(s.settings.volume[k], k === 'music' ? 0.6 : 0.8)));
-  s.owned = Array.isArray(s.owned) ? s.owned.filter((id) => VEHICLES.some((v) => v.id === id)) : ['metro'];
-  if (!s.owned.includes('metro')) s.owned.unshift('metro');
-  if (!s.owned.includes(s.selected)) s.selected = 'metro';
+  s.owned = Array.isArray(s.owned) ? s.owned.filter((id) => VEHICLES.some((v) => v.id === id)) : ['classic'];
+  // everyone owns the free starter (players from before it existed get it added alongside their cars)
+  if (!s.owned.includes('classic')) s.owned.unshift('classic');
+  if (!s.owned.includes(s.selected)) s.selected = 'classic';
   if (!Array.isArray(s.paidJobs)) s.paidJobs = [];
   if (!Array.isArray(s.claimedGoals)) s.claimedGoals = [];
   if (!Array.isArray(s.arcade.top)) s.arcade.top = [];

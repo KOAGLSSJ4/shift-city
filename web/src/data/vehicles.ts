@@ -1,6 +1,6 @@
 // Vehicle catalog. Every car is an original Shift City design (see vehicles/designs.ts); ids are
 // kept stable because saves reference them.
-export type BodyType = 'hatch' | 'sedan' | 'suv' | 'gt' | 'super' | 'hybrid' | 'royal' | 'hyper';
+export type BodyType = 'classic' | 'hatch' | 'sedan' | 'suv' | 'gt' | 'super' | 'hybrid' | 'royal' | 'hyper';
 
 export interface VehicleStats {
   accel: number;   // m/s² at full throttle
@@ -30,9 +30,13 @@ export interface VehicleDef {
 }
 
 export const VEHICLES: VehicleDef[] = [
-  { id: 'metro', name: 'Kite Pico', kind: 'Starter', level: 1, cost: 0, color: 0x19a99e, body: 'hatch',
+  { id: 'classic', name: 'Shift Classic', kind: 'Starter', level: 1, cost: 0, color: 0x19a99e, body: 'classic',
     fare: 1, arcade: 1, seats: 4, comfort: 2, premium: 0,
     stats: { accel: 5.2, top: 40, brake: 9, grip: 1.0, steer: 0.62 },
+    dims: { length: 3.9, width: 1.75, height: 1.5, wheelbase: 2.45 } },
+  { id: 'metro', name: 'Kite Pico', kind: 'City', level: 1, cost: 250, color: 0xff7a5c, body: 'hatch',
+    fare: 1.05, arcade: 1.02, seats: 4, comfort: 3, premium: 0,
+    stats: { accel: 5.6, top: 42, brake: 9.5, grip: 1.03, steer: 0.62 },
     dims: { length: 3.9, width: 1.75, height: 1.5, wheelbase: 2.45 } },
   { id: 'comfort', name: 'Lumen Saloon', kind: 'Comfort', level: 2, cost: 450, color: 0x4a8ee5, body: 'sedan',
     fare: 1.15, arcade: 1.05, seats: 4, comfort: 3, premium: 0,

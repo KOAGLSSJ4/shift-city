@@ -13,8 +13,8 @@ describe('economy', () => {
   });
   it('pays a job exactly once', () => {
     const s = defaultSave();
-    const a = payJob(s, 'job1', 20, vehicleById('metro'), { food: true, stars: 5, story: false });
-    const b = payJob(s, 'job1', 20, vehicleById('metro'), { food: true, stars: 5, story: false });
+    const a = payJob(s, 'job1', 20, vehicleById('classic'), { food: true, stars: 5, story: false });
+    const b = payJob(s, 'job1', 20, vehicleById('classic'), { food: true, stars: 5, story: false });
     expect(a).not.toBeNull(); expect(b).toBeNull();
     expect(s.stats.trips).toBe(1); expect(s.stats.food).toBe(1);
     expect(s.wallet).toBeCloseTo(a!.total);
@@ -42,8 +42,8 @@ describe('economy', () => {
   });
   it('upgrades cost money and cap at 5', () => {
     const s = defaultSave(); s.wallet = 1e6;
-    for (let i = 0; i < 5; i++) expect(buyUpgrade(s, 'metro', 'engine').ok).toBe(true);
-    expect(buyUpgrade(s, 'metro', 'engine').ok).toBe(false);
+    for (let i = 0; i < 5; i++) expect(buyUpgrade(s, 'classic', 'engine').ok).toBe(true);
+    expect(buyUpgrade(s, 'classic', 'engine').ok).toBe(false);
     expect(s.wallet).toBeLessThan(1e6);
   });
   it('goals claim once', () => {
@@ -58,7 +58,7 @@ describe('save', () => {
   it('migrates a v4 save', () => {
     const s = migrateLegacy({ wallet: 500, xp: 20, level: 5, owned: [0, 2], selected: 2, upgrades: 3, arcadeBest: 1200, arcadeTokens: 340, storyChapter: 2, totalTrips: 9, tutorialSeen: true },
       { foodDone: 4, claimed: ['first'] });
-    expect(s.owned).toEqual(['metro', 'exec_suv']);
+    expect(s.owned).toEqual(['classic', 'metro', 'exec_suv']);
     expect(s.selected).toBe('exec_suv');
     expect(s.upgrades.exec_suv.handling).toBe(3);
     expect(s.arcade.points).toBe(340); expect(s.stats.food).toBe(4);
@@ -70,6 +70,8 @@ describe('save', () => {
     expect(loadSave(store).wallet).toBe(42);
     mem['shift-city-save'] = '{bad json';
     expect(loadSave(store).wallet).toBe(0);
-    expect(normalize({ owned: ['nope'], selected: 'nope', wallet: -5 }).selected).toBe('metro');
+    expect(normalize({ owned: ['nope'], selected: 'nope', wallet: -5 }).selected).toBe('classic');
+    // players from before the Classic existed keep their cars and get the Classic too
+    expect(normalize({ owned: ['metro'], selected: 'metro' }).owned).toEqual(['classic', 'metro']);
   });
 });

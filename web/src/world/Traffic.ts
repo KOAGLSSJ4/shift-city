@@ -1,7 +1,7 @@
 // Lane-following AI traffic that obeys the signals and brakes for cars (and the player) ahead.
 import * as THREE from 'three';
 import { DRIVE_RIGHT, LANE_W, ROAD_W } from '../data/world';
-import type { BodyType } from '../data/vehicles';
+import type { DesignBody } from '../vehicles/designs';
 import { buildTrafficCar } from '../vehicles/CarFactory';
 import { neighbours, nodePos, type Pt } from './RoadNetwork';
 import { signal } from './City';
@@ -16,7 +16,7 @@ interface Car {
 }
 
 const COLORS = [0xf2f2f2, 0x111316, 0x8a8f96, 0x1d3f73, 0x7a1a1a, 0xc9c9c9, 0x2e4d39, 0xd8c7a0, 0x3a3a3a, 0x9b2c1a];
-const BODIES: BodyType[] = ['hatch', 'sedan', 'sedan', 'suv', 'sedan', 'hatch', 'gt', 'suv'];
+const BODIES: DesignBody[] = ['hatch', 'sedan', 'sedan', 'suv', 'sedan', 'hatch', 'gt', 'suv'];
 const HW = ROAD_W / 2;
 
 export class Traffic {
