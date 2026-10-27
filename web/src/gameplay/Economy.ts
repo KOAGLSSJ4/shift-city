@@ -72,7 +72,7 @@ export function recordArcadeRun(s: SaveData, runId: string, score: number, nearM
   return Math.floor(score);
 }
 
-export interface JobPayment { fare: number; tip: number; total: number; xp: number }
+export interface JobPayment { fare: number; tip: number; total: number; xp: number; note?: string }
 
 export function jobFare(distance: number, vehicle: VehicleDef, premium: boolean): number {
   const base = BALANCE.baseFare + distance * BALANCE.farePerMetre;
@@ -80,7 +80,7 @@ export function jobFare(distance: number, vehicle: VehicleDef, premium: boolean)
 }
 
 /** Pays for a completed job exactly once. Returns null if this job id was already paid. */
-export function payJob(s: SaveData, jobId: string, fare: number, vehicle: VehicleDef, opts: { food: boolean; stars: number; story: boolean; bonusTip?: number }): JobPayment | null {
+export function payJob(s: SaveData, jobId: string, fare: number, vehicle: VehicleDef, opts: { food: boolean; stars: number; story: boolean; bonusTip?: number; bonusXp?: number }): JobPayment | null {
   if (s.paidJobs.includes(jobId)) return null;
   s.paidJobs.push(jobId);
   if (s.paidJobs.length > 50) s.paidJobs.splice(0, s.paidJobs.length - 50);
@@ -93,7 +93,7 @@ export function payJob(s: SaveData, jobId: string, fare: number, vehicle: Vehicl
   if (opts.food) s.stats.food++;
   s.stats.rating = (s.stats.rating * s.stats.ratings + opts.stars) / (s.stats.ratings + 1);
   s.stats.ratings = Math.min(s.stats.ratings + 1, 200);
-  let xp = BALANCE.xpPerJob;
+  let xp = BALANCE.xpPerJob + (opts.bonusXp ?? 0);
   if (opts.story && s.story.chapter < 5) { s.story.chapter++; xp += BALANCE.xpPerStoryChapter; }
   addXP(s, xp);
   return { fare: payout, tip, total, xp };

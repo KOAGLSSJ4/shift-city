@@ -3,6 +3,7 @@ import { DESTINATIONS, RESTAURANTS, destinationByName, type Destination } from '
 import { STORY } from '../data/story';
 import type { VehicleDef } from '../data/vehicles';
 import { jobFare } from './Economy';
+import { newLog, rollPersona, rollSurge, rollVariant, timeLimit, type Persona, type RideLog, type Variant } from './Missions';
 
 export type JobStage = 'offer' | 'pickup' | 'dropoff' | 'done';
 export interface Job {
@@ -19,6 +20,14 @@ export interface Job {
   startedAt: number;
   bumps: number;
   bonusTime?: number;
+  variant: Variant;
+  persona?: Persona;
+  /** Seconds allowed from pickup to drop-off for timed missions (express, hot food). */
+  limit?: number;
+  surge?: number;
+  /** Time the passenger/order came on board (CityMode clock). */
+  pickedAt?: number;
+  log: RideLog;
 }
 
 const NAMES = ['Sam', 'Priya', 'Tunde', 'Lucia', 'Ken', 'Amara', 'Jonas', 'Mei', 'Kwame', 'Sofia', 'Omar', 'Hannah', 'Diego', 'Zara', 'Leo', 'Ifeoma'];
@@ -34,6 +43,7 @@ export function storyJob(chapter: number): Job | null {
     id: newId(), food: ch.food, a: destinationByName(ch.a), b: destinationByName(ch.b),
     restaurant: ch.food ? 'Noodle Street' : undefined, customer: ch.passenger,
     fare: ch.price, premium: chapter >= 4, chapter, stage: 'offer', startedAt: 0, bumps: 0, bonusTime: ch.bonusTime,
+    variant: 'standard', log: newLog(),
   };
 }
 
@@ -42,19 +52,31 @@ export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }):
   // bias pickups toward the player so jobs don't always start across the map
   const sorted = near ? [...DESTINATIONS].sort((p, q) => Math.hypot(p.x - near.x, p.z - near.z) - Math.hypot(q.x - near.x, q.z - near.z)) : DESTINATIONS;
   const a = near ? sorted[Math.floor(Math.random() * 5)] : pick(DESTINATIONS);
-  let b = pick(DESTINATIONS);
-  while (b === a) b = pick(DESTINATIONS);
   const food = Math.random() < 0.42;
   const premium = !food && vehicle.premium > 0 && Math.random() < (vehicle.premium === 2 ? 0.55 : 0.35);
-  const d = Math.abs(a.x - b.x) + Math.abs(a.z - b.z);
+  const variant = rollVariant(food, premium);
+  let b = pick(DESTINATIONS);
+  while (b === a) b = pick(DESTINATIONS);
+  // long haul: the farthest destination from the pickup
+  if (variant === 'long') b = [...DESTINATIONS].sort((p, q) => dist(a, q) - dist(a, p))[0];
+  const d = dist(a, b);
+  const surge = variant === 'surge' ? rollSurge() : undefined;
+  let fare = jobFare(d, vehicle, premium) + Math.round(Math.random() * 500) / 100;
+  if (surge) fare *= surge;
+  if (variant === 'long') fare *= 1.25;
   return {
     id: newId(), food, a, b,
     restaurant: food ? pick(RESTAURANTS) : undefined,
     customer: premium ? pick(VIP) : pick(NAMES),
-    fare: jobFare(d, vehicle, premium) + Math.round(Math.random() * 500) / 100,
+    fare: Math.round(fare * 100) / 100,
     premium, chapter: null, stage: 'offer', startedAt: 0, bumps: 0,
+    variant, persona: food ? undefined : rollPersona(), surge,
+    limit: variant === 'express' || variant === 'hot' ? timeLimit(d) : undefined,
+    log: newLog(),
   };
 }
+
+const dist = (p: Destination, q: Destination) => Math.abs(p.x - q.x) + Math.abs(p.z - q.z);
 
 /** Star rating from driving behaviour: bumps cost stars, comfortable cars soften it. */
 export function starsFor(job: Job, vehicle: VehicleDef): number {

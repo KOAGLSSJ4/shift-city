@@ -12,6 +12,7 @@ import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
 import { randomJob, starsFor, storyJob, type Job } from './Jobs';
+import { line, logBump, logHarsh, missionResult, personaHappy, type Moment } from './Missions';
 
 export interface CityEvents {
   offer(job: Job): void;
@@ -20,6 +21,8 @@ export interface CityEvents {
   storyDone(): void;
   bump(strength: number): void;
   toast(msg: string): void;
+  /** A passenger speaks (shown as a speech bubble). */
+  say(who: string, text: string): void;
 }
 
 const SPAWN = { x: DESTINATIONS[0].x - 30, z: DESTINATIONS[0].z, heading: Math.PI / 2 };
@@ -40,6 +43,8 @@ export class CityMode {
   private routeTimer = 0;
   private bumpCooldown = 0;
   private offerTimer = 0;
+  private harshCooldown = 0;
+  private talkCooldown = 0;
   time = 0;
 
   constructor(private city: City, private traffic: Traffic, public rig: CarRig, private save: SaveData, private ev: CityEvents) {
@@ -211,6 +216,7 @@ export class CityMode {
     this.applyRig(dt, input);
 
     // jobs
+    if (this.job?.stage === 'dropoff') this.trackRide(dt);
     if (!this.job && (this.offerTimer -= dt) <= 0) this.nextOffer();
     const t = this.target;
     if (t && this.job) {
@@ -228,14 +234,53 @@ export class CityMode {
   private hit(impact: number) {
     if (impact < 2 || this.bumpCooldown > 0) return;
     this.bumpCooldown = 0.8;
-    if (this.job && this.job.stage === 'dropoff' && impact > 4) this.job.bumps++;
+    if (this.job && this.job.stage === 'dropoff' && impact > 4) {
+      this.job.bumps++;
+      logBump(this.job.log);
+      this.talk('bump', true);
+    }
     this.ev.bump(Math.min(1, impact / 15));
+  }
+
+  /** Watches how the passenger/order is being treated: harsh moves, speed and fun cornering. */
+  private trackRide(dt: number) {
+    const job = this.job!, ph = this.physics, log = job.log;
+    this.harshCooldown = Math.max(0, this.harshCooldown - dt);
+    this.talkCooldown = Math.max(0, this.talkCooldown - dt);
+    if (this.harshCooldown <= 0 && (Math.abs(ph.accelLong) > 7.5 || Math.abs(ph.accelLat) > 7.5)) {
+      this.harshCooldown = 1.5;
+      logHarsh(log);
+      this.talk('harsh');
+    }
+    if (ph.speed > 19.5) {
+      const was = log.fast;
+      log.fast += dt;
+      if (was < 3 && log.fast >= 3) this.talk('fast');
+    }
+    if (Math.abs(ph.accelLat) > 5 && ph.speed > 10) {
+      const was = log.fun;
+      log.fun += dt;
+      if (Math.floor(was / 2) !== Math.floor(log.fun / 2)) this.talk('fun');
+    }
+  }
+
+  /** Passenger dialogue, rate-limited so they don't talk over themselves. */
+  private talk(m: Moment, force = false) {
+    const job = this.job;
+    if (!job?.persona || (!force && this.talkCooldown > 0)) return;
+    const text = line(job.persona, m);
+    if (!text) return;
+    this.talkCooldown = 6;
+    this.ev.say(job.customer, text);
   }
 
   private arrive() {
     const job = this.job!;
     if (job.stage === 'pickup') {
       job.stage = 'dropoff';
+      job.pickedAt = this.time;
+      this.talkCooldown = 0;
+      this.talk('pickup');
       this.showMarker(job.b, false);
       this.ev.stage(job);
       this.computeRoute();
@@ -245,11 +290,17 @@ export class CityMode {
       this.chevrons.count = 0;
       this.route = null;
       const def = vehicleById(this.save.selected);
-      const stars = starsFor(job, def);
       const elapsed = this.time - job.startedAt;
-      const bonusTip = job.bonusTime && elapsed < job.bonusTime ? Math.round(job.fare * 0.25) : 0;
-      const pay = payJob(this.save, job.id, job.fare, def, { food: job.food, stars, story: job.chapter !== null, bonusTip });
-      if (pay) this.ev.complete(job, pay, stars);
+      const onBoard = this.time - (job.pickedAt ?? job.startedAt);
+      const mission = missionResult(job.variant, job.persona, job.fare * def.fare, onBoard, job.limit, job.log);
+      const stars = Math.max(1, Math.round((starsFor(job, def) - mission.starPenalty) * 10) / 10);
+      const bonusTip = (job.bonusTime && elapsed < job.bonusTime ? Math.round(job.fare * 0.25) : 0) + mission.tip;
+      const pay = payJob(this.save, job.id, job.fare, def, { food: job.food, stars, story: job.chapter !== null, bonusTip, bonusXp: mission.xp });
+      if (job.persona) {
+        const text = line(job.persona, personaHappy(job.persona, onBoard, job.limit, job.log) >= 0.5 ? 'good' : 'bad');
+        if (text) this.ev.say(job.customer, text);
+      }
+      if (pay) this.ev.complete(job, { ...pay, note: mission.note }, stars);
       this.job = null;
       this.offerTimer = 2.2;
       if (job.chapter !== null && job.chapter + 1 >= STORY.length) this.ev.storyDone();

@@ -17,7 +17,8 @@ import { BALANCE } from '../data/balancing';
 import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
-import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, selectVehicle, upgradeCost, upgradesOf, xpToNext } from '../gameplay/Economy';
+import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
+import { PERSONAS, VARIANTS } from '../gameplay/Missions';
 import type { Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
@@ -390,9 +391,9 @@ export class Game {
           this.toast(job.food ? `Order collected from ${job.restaurant}` : `${job.customer} is on board`, 'good');
         }
       },
-      complete: (job: Job, pay: { fare: number; tip: number; total: number; xp: number }, stars: number) => {
+      complete: (job: Job, pay: JobPayment, stars: number) => {
         const lvl = this.save.level;
-        this.earnPop(`+${money(pay.total)}`, `★ ${stars.toFixed(1)}${pay.tip ? ` · tip ${money(pay.tip)}` : ''} · +${pay.xp} XP`);
+        this.earnPop(`+${money(pay.total)}`, `★ ${stars.toFixed(1)}${pay.tip ? ` · tip ${money(pay.tip)}` : ''} · +${pay.xp} XP${pay.note ? ` · ${pay.note}` : ''}`);
         this.audio.cash(); this.audio.success();
         if (job.chapter !== null) { this.showStoryCard(job.chapter, 'outro'); }
         this.renderJob(null);
@@ -404,6 +405,7 @@ export class Game {
       storyDone: () => { this.toast('Story complete! Keep earning in Free Ride.', 'good'); },
       bump: (s: number) => { this.cam.bump(s); s > 0.3 ? this.audio.crash() : this.audio.bump(); },
       toast: (m: string) => this.toast(m),
+      say: (who: string, text: string) => this.say(who, text),
     };
   }
 
@@ -431,13 +433,15 @@ export class Game {
       $('nav').hidden = true;
       return;
     }
-    const kind = job.food ? 'FOOD DELIVERY' : job.premium ? 'PREMIUM RIDE' : 'RIDE REQUEST';
-    tag.className = job.premium ? 'tag premium' : 'tag';
+    const v = VARIANTS[job.variant];
+    const kind = (v.label ? v.label + (job.surge ? ` ×${job.surge}` : '') + ' · ' : '') + (job.food ? 'FOOD DELIVERY' : job.premium ? 'PREMIUM RIDE' : 'RIDE REQUEST');
+    tag.className = job.premium || job.variant === 'vip' ? 'tag premium' : job.variant !== 'standard' ? 'tag special' : 'tag';
     const def = vehicleById(this.save.selected);
     if (job.stage === 'offer') {
       tag.textContent = (job.chapter !== null ? STORY[job.chapter].title + ' · ' : 'NEW ') + kind;
       title.textContent = job.food ? `${job.restaurant} → ${job.b.name}` : `${job.customer}`;
-      det.innerHTML = `Pickup: <b>${job.food ? job.restaurant + ' @ ' : ''}${job.a.name}</b><br>Drop-off: <b>${job.b.name}</b><br>~${(this.estimateDistance(job) / 1000).toFixed(1)} km`;
+      const who = job.persona ? ` · ${PERSONAS[job.persona].label}` : '';
+      det.innerHTML = `Pickup: <b>${job.food ? job.restaurant + ' @ ' : ''}${job.a.name}</b><br>Drop-off: <b>${job.b.name}</b><br>~${(this.estimateDistance(job) / 1000).toFixed(1)} km${who}${v.blurb ? `<br><span class="hint">${v.blurb}${job.limit ? ` (${job.limit}s)` : ''}</span>` : ''}`;
       fare.textContent = money(Math.round(job.fare * def.fare * 100) / 100);
       btns.hidden = false;
       $<HTMLButtonElement>('decline').disabled = job.chapter !== null;
@@ -451,12 +455,44 @@ export class Game {
     }
   }
 
+  private chatTimer = 0;
+  /** Passenger speech bubble under the job card. */
+  private say(who: string, text: string) {
+    $('chat-who').textContent = who;
+    $('chat-line').textContent = text;
+    const el = $('chat');
+    el.hidden = false;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    clearTimeout(this.chatTimer);
+    this.chatTimer = window.setTimeout(() => { el.hidden = true; }, 4500);
+  }
+
+  /** Live mission line on the job card: countdown for timed jobs, comfort for VIP / fragile. */
+  private updateMissionLive(job: Job | null) {
+    const el = $('job-live');
+    if (!job || job.stage !== 'dropoff' || job.chapter !== null) { el.hidden = true; return; }
+    el.hidden = false;
+    if (job.limit !== undefined) {
+      const left = Math.ceil(job.limit - (this.cityMode.time - (job.pickedAt ?? 0)));
+      el.textContent = left > 0 ? `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} for the ${job.variant === 'hot' ? 'hot-food tip' : 'express bonus'}` : '⏱ Bonus missed, still get there!';
+      el.className = `live ${left > 10 ? '' : 'warn'}`;
+    } else if (job.variant === 'vip' || job.variant === 'fragile') {
+      const c = Math.round(job.log.comfort * 100);
+      el.textContent = `${job.variant === 'vip' ? 'Ride comfort' : 'Order intact'}: ${c}%`;
+      el.className = `live ${c >= 70 ? '' : 'warn'}`;
+    } else if (job.persona) {
+      el.textContent = `${job.customer.split(' ')[0]} is ${PERSONAS[job.persona].label}`;
+      el.className = 'live';
+    } else el.hidden = true;
+  }
+
   private estimateDistance(job: Job) { return Math.abs(job.a.x - job.b.x) + Math.abs(job.a.z - job.b.z); }
 
   private updateCityHud() {
     const ph = this.cityMode.physics;
     $('speed').textContent = String(Math.round(ph.speed * 3.6));
     const r = this.cityMode.route, t = this.cityMode.target, job = this.cityMode.job;
+    this.updateMissionLive(job);
     if (r && t && job) {
       const nt = r.nextTurn;
       const rot = { left: 180, right: 0, straight: -90, arrive: -90, uturn: 90 }[nt.dir];

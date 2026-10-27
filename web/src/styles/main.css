@@ -53,6 +53,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tag.premium { color: var(--gold); }
 .job h3 { margin: 6px 0 4px; font-size: 16px; }
 .job p { margin: 2px 0; color: #c2d1e0; font-size: 12.5px; line-height: 1.45; }
+.job .hint { color: #ffd27a; }
+.job .live { margin-top: 6px; font-weight: 700; font-size: 13px; color: var(--accent); }
+.job .live.warn { color: #ffb347; }
+.tag.special { color: #ffd27a; }
+.chat { position: fixed; left: 50%; bottom: 96px; width: 320px; margin-left: -160px; max-width: calc(100vw - 28px); background: rgba(250, 252, 255, .95); color: #10202e; border-radius: 16px 16px 16px 4px; padding: 10px 14px; z-index: 6; font-size: 14px; line-height: 1.4; box-shadow: 0 8px 30px rgba(0,0,0,.35); pointer-events: none; }
+.chat b { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #46606f; margin-bottom: 2px; }
+.chat.pop { animation: chatPop .35s ease; }
+@keyframes chatPop { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) { .chat { bottom: 170px; left: 14px; margin-left: 0; } }
 .fare { font-size: 22px; font-weight: 900; margin-top: 6px; }
 .row { display: flex; gap: 8px; margin-top: 10px; }
 .action { flex: 1; border: 0; border-radius: 11px; padding: 11px 12px; font-weight: 800; background: var(--accent); color: #04140d; transition: transform .1s, filter .1s; }
