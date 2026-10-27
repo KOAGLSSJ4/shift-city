@@ -76,3 +76,6 @@ passengers/pedestrians → port the web's original car designs.
 - Cars are original procedural designs (web `src/vehicles/designs.ts`, lofted bodies in `CarBody.ts`, preview at
   `web/dev/cars.html`). The Ferrari placeholder is gone; vehicle ids stay stable for saves.
 - Ship the web version first (Vercel site + itch.io + CrazyGames + Poki), Unreal continues in parallel.
+- Story v1.1 (after launch): FT "Uber Game"-style week (comic-panel cutscenes, evening choices, stats that
+  change the driving, several endings). Tone: upbeat with real stakes, more good endings than bad, no
+  personal/family storyline for the driver. Story lives in a data file shared with Unreal.
