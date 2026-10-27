@@ -1,5 +1,6 @@
-// Vehicle catalog. Names/prices are placeholders carried over from v4 (fictional brands).
-export type BodyType = 'hatch' | 'sedan' | 'suv' | 'gt' | 'super' | 'royal' | 'hyper';
+// Vehicle catalog. Every car is an original Shift City design (see vehicles/designs.ts); ids are
+// kept stable because saves reference them.
+export type BodyType = 'hatch' | 'sedan' | 'suv' | 'gt' | 'super' | 'hybrid' | 'royal' | 'hyper';
 
 export interface VehicleStats {
   accel: number;   // m/s² at full throttle
@@ -29,36 +30,35 @@ export interface VehicleDef {
 }
 
 export const VEHICLES: VehicleDef[] = [
-  { id: 'metro', name: 'Metro Hatchback', kind: 'Starter', level: 1, cost: 0, color: 0x19a99e, body: 'hatch',
+  { id: 'metro', name: 'Kite Pico', kind: 'Starter', level: 1, cost: 0, color: 0x19a99e, body: 'hatch',
     fare: 1, arcade: 1, seats: 4, comfort: 2, premium: 0,
     stats: { accel: 5.2, top: 40, brake: 9, grip: 1.0, steer: 0.62 },
     dims: { length: 3.9, width: 1.75, height: 1.5, wheelbase: 2.45 } },
-  { id: 'comfort', name: 'Comfort Sedan', kind: 'Comfort', level: 2, cost: 450, color: 0x4a8ee5, body: 'sedan',
+  { id: 'comfort', name: 'Lumen Saloon', kind: 'Comfort', level: 2, cost: 450, color: 0x4a8ee5, body: 'sedan',
     fare: 1.15, arcade: 1.05, seats: 4, comfort: 3, premium: 0,
     stats: { accel: 6.0, top: 46, brake: 10, grip: 1.05, steer: 0.58 },
     dims: { length: 4.7, width: 1.82, height: 1.45, wheelbase: 2.8 } },
-  { id: 'exec_suv', name: 'Executive SUV', kind: 'Executive', level: 4, cost: 1300, color: 0x303c51, body: 'suv',
+  { id: 'exec_suv', name: 'Halden Summit', kind: 'Executive', level: 4, cost: 1300, color: 0x303c51, body: 'suv',
     fare: 1.35, arcade: 1.08, seats: 6, comfort: 4, premium: 1,
     stats: { accel: 6.2, top: 48, brake: 9.5, grip: 0.95, steer: 0.55 },
     dims: { length: 4.95, width: 1.98, height: 1.8, wheelbase: 2.95 } },
-  { id: 'lux_ev', name: 'Luxury Electric GT', kind: 'Premium', level: 7, cost: 3500, color: 0xf3dca0, body: 'gt',
+  { id: 'lux_ev', name: 'Aeris Silk EV', kind: 'Premium', level: 7, cost: 3500, color: 0xf3dca0, body: 'gt',
     fare: 1.6, arcade: 1.15, seats: 4, comfort: 4, premium: 1,
     stats: { accel: 9.0, top: 62, brake: 11.5, grip: 1.15, steer: 0.56 },
     dims: { length: 4.95, width: 1.95, height: 1.38, wheelbase: 2.95 } },
-  { id: 'apex_v12', name: 'Apex V12', kind: 'Supercar', level: 10, cost: 9000, color: 0xf4c219, body: 'super',
+  { id: 'apex_v12', name: 'Furia V12', kind: 'Supercar', level: 10, cost: 9000, color: 0xf4c219, body: 'super',
     fare: 1.65, arcade: 1.4, seats: 2, comfort: 2, premium: 1,
     stats: { accel: 11, top: 78, brake: 13, grip: 1.3, steer: 0.55 },
     dims: { length: 4.6, width: 2.0, height: 1.15, wheelbase: 2.7 } },
-  { id: 'rosso_f90', name: 'Rosso F90', kind: 'Supercar', level: 13, cost: 16000, color: 0xd01020, body: 'super',
-    model: 'assets/cars/rosso.glb',
+  { id: 'rosso_f90', name: 'Ardente R9 Hybrid', kind: 'Supercar', level: 13, cost: 16000, color: 0xb3121d, body: 'hybrid',
     fare: 1.7, arcade: 1.6, seats: 2, comfort: 2, premium: 1,
     stats: { accel: 11.8, top: 82, brake: 13.5, grip: 1.35, steer: 0.55 },
     dims: { length: 4.55, width: 1.95, height: 1.2, wheelbase: 2.65 } },
-  { id: 'royal_gt', name: 'Royal Grand Tourer', kind: 'VIP Luxury', level: 17, cost: 32000, color: 0x1c1d24, body: 'royal',
+  { id: 'royal_gt', name: 'Sovereign Limousine', kind: 'VIP Luxury', level: 17, cost: 32000, color: 0x1c1d24, body: 'royal',
     fare: 2.4, arcade: 1.3, seats: 4, comfort: 5, premium: 2,
     stats: { accel: 7.8, top: 64, brake: 11, grip: 1.05, steer: 0.5 },
     dims: { length: 5.6, width: 2.0, height: 1.6, wheelbase: 3.5 } },
-  { id: 'vortex', name: 'Vortex Hyper GT', kind: 'Hypercar', level: 22, cost: 65000, color: 0x2a6fe0, body: 'hyper',
+  { id: 'vortex', name: 'Vortex Hypercar', kind: 'Hypercar', level: 22, cost: 65000, color: 0x2a6fe0, body: 'hyper',
     fare: 1.85, arcade: 2.0, seats: 2, comfort: 3, premium: 2,
     stats: { accel: 14.5, top: 98, brake: 15, grip: 1.45, steer: 0.52 },
     dims: { length: 4.55, width: 2.04, height: 1.12, wheelbase: 2.72 } },

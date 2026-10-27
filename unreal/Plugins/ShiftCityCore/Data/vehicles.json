@@ -20,7 +20,7 @@
   "vehicles": [
     {
       "id": "metro",
-      "name": "Metro Hatchback",
+      "name": "Kite Pico",
       "kind": "Starter",
       "level": 1,
       "cost": 0,
@@ -39,7 +39,7 @@
     },
     {
       "id": "comfort",
-      "name": "Comfort Sedan",
+      "name": "Lumen Saloon",
       "kind": "Comfort",
       "level": 2,
       "cost": 450,
@@ -58,7 +58,7 @@
     },
     {
       "id": "exec_suv",
-      "name": "Executive SUV",
+      "name": "Halden Summit",
       "kind": "Executive",
       "level": 4,
       "cost": 1300,
@@ -77,7 +77,7 @@
     },
     {
       "id": "lux_ev",
-      "name": "Luxury Electric GT",
+      "name": "Aeris Silk EV",
       "kind": "Premium",
       "level": 7,
       "cost": 3500,
@@ -96,7 +96,7 @@
     },
     {
       "id": "apex_v12",
-      "name": "Apex V12",
+      "name": "Furia V12",
       "kind": "Supercar",
       "level": 10,
       "cost": 9000,
@@ -115,12 +115,12 @@
     },
     {
       "id": "rosso_f90",
-      "name": "Rosso F90",
+      "name": "Ardente R9 Hybrid",
       "kind": "Supercar",
       "level": 13,
       "cost": 16000,
-      "color": "#d01020",
-      "body": "super",
+      "color": "#b3121d",
+      "body": "hybrid",
       "fare": 1.7,
       "arcade": 1.6,
       "seats": 2,
@@ -134,7 +134,7 @@
     },
     {
       "id": "royal_gt",
-      "name": "Royal Grand Tourer",
+      "name": "Sovereign Limousine",
       "kind": "VIP Luxury",
       "level": 17,
       "cost": 32000,
@@ -153,7 +153,7 @@
     },
     {
       "id": "vortex",
-      "name": "Vortex Hyper GT",
+      "name": "Vortex Hypercar",
       "kind": "Hypercar",
       "level": 22,
       "cost": 65000,

@@ -68,10 +68,12 @@ src/
 ## v0.8 additions
 
 - Free Poly Haven (CC0) street detail in Photoreal/Hyper-real: cast-iron lamp posts that glow at night, fire hydrants, bins, benches, utility boxes, rooftop air-con units and manhole covers, all GPU-instanced.
+- Original car designs: every garage car and traffic car is a lofted procedural body (`src/vehicles/CarBody.ts`,
+  `src/vehicles/designs.ts`) with its own lights, grille, wheels and aero; preview them at `/dev/cars.html`.
 - Photographic trees: real scanned trees baked to lightweight impostors (`scripts/bake-impostors.cjs`).
 - Asset pipeline: `fetch-polyhaven-models.mjs` (download) → glTF-Transform `optimize` (simplify, WebP, Draco) → `public/props/`.
 
 ## Not yet implemented / known gaps
 
 See the session report. Headline items: authored building/tree/vehicle assets for true photorealism, pedestrians,
-fuel/expenses, day/night, mobile layout polish, traffic-vs-traffic collisions, and the Rosso F90 placeholder model must be replaced (see ASSETS.md).
+fuel/expenses, mobile layout polish and traffic-vs-traffic collisions.

@@ -10,5 +10,5 @@ head = head.replace('<title>Shift City</title>', '<title>Shift City</title>\n<st
 for f in list(d.rglob('*.hdr')) + list(d.rglob('*.glb')):
     f.with_name(f.name + '.b64.txt').write_text(base64.b64encode(f.read_bytes()).decode())
 for f in sorted(d.rglob('*')):
-    if f.is_file() and f.suffix not in ('.hdr', '.glb') and f.name not in ('index.html', 'publish.html', 'ferrari_ao.png'):
+    if f.is_file() and f.suffix not in ('.hdr', '.glb') and f.name not in ('index.html', 'publish.html'):
         print(f.relative_to(d))

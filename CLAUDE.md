@@ -38,7 +38,7 @@ Next, in order: main menu (Story / Free Ride / Arcade) → garage (buy/equip/upg
 goals screen → settings (volume sliders, graphics, camera) → camera views (cockpit/chase/top-down,
 top-down heading-up) → time of day (day/golden/night, lit windows via `WindowGlow`) + weather
 (wet roads, rain, windscreen drops) → Arcade Rush → contextual tutorial pointer → audio →
-passengers/pedestrians → fictional car models (replace real brands before release).
+passengers/pedestrians → port the web's original car designs.
 
 ## Where we left off (2026-10-27)
 - Last push: HUD text via Roboto font asset, round minimap, brighter midday lighting, traffic spawn log.
@@ -53,4 +53,6 @@ passengers/pedestrians → fictional car models (replace real brands before rele
 - One monorepo (`web/` + `unreal/`), David's call. Push to `main` (he pulls with GitHub Desktop).
 - Traffic dots hidden on the minimap (clean GPS look).
 - Assets: Poly Haven CC0 first; Sketchfab CC-BY cars later (credit screen). No NonCommercial assets.
-- Real-brand cars (e.g. the Ferrari-based "Rosso F90" in web) are placeholders only.
+- Cars are original procedural designs (web `src/vehicles/designs.ts`, lofted bodies in `CarBody.ts`, preview at
+  `web/dev/cars.html`). The Ferrari placeholder is gone; vehicle ids stay stable for saves.
+- Ship the web version first (Vercel site + itch.io + CrazyGames + Poki), Unreal continues in parallel.

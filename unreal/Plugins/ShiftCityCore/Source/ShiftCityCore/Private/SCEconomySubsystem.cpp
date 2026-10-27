@@ -55,7 +55,7 @@ void USCEconomySubsystem::LoadData()
 	if (Vehicles.Num() == 0)
 	{
 		// keep the game playable even if the data folder is missing
-		FSCVehicleDef Starter; Starter.Id = TEXT("metro"); Starter.Name = TEXT("Metro Hatchback");
+		FSCVehicleDef Starter; Starter.Id = TEXT("metro"); Starter.Name = TEXT("Kite Pico");
 		Vehicles.Add(Starter);
 	}
 	UE_LOG(LogShiftCity, Log, TEXT("Shift City data: %d vehicles, %d chapters, %d goals"), Vehicles.Num(), Story.Num(), Goals.Num());

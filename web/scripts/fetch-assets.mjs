@@ -1,5 +1,5 @@
 // Downloads the third-party assets used by Shift City into public/assets.
-// All sources are CC0 (Poly Haven) or CC-BY-4.0 — see ASSETS.md for credits.
+// All sources are CC0 (Poly Haven) — see ASSETS.md for credits. Cars are original procedural designs.
 import { mkdir, writeFile, access } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -14,8 +14,6 @@ const ASSETS = [
   ['public/assets/hdri/night_2k.hdr', `${PH}/HDRIs/hdr/2k/kloppenheim_07_puresky_2k.hdr`],
   ...['asphalt_02', 'concrete_pavers_02', 'concrete_wall_008', 'brick_wall_02'].flatMap((id) =>
     ['diff', 'nor_gl', 'rough'].map((m) => tex(id, m))),
-  ['public/assets/cars/rosso.glb', 'https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/ferrari.glb'],
-  ['public/assets/cars/ferrari_ao.png', 'https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/ferrari_ao.png'],
 ];
 
 for (const [path, url] of ASSETS) {
