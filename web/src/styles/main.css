@@ -278,18 +278,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .career .xp { width: 60px; }
   .wallet { font-size: 15px; }
   #minimap { width: 74px; height: 74px; top: 52px; left: max(6px, env(safe-area-inset-left)); border-width: 1px; }
-  .toolbar { top: 6px; gap: 4px; }
+  .toolbar { top: 6px; gap: 4px; left: max(92px, calc(env(safe-area-inset-left) + 86px)); transform: none; }
   .toolbar button { padding: 4px 8px; font-size: 11px; border-radius: 9px; }
   #btn-settings { display: none; }
   .job { top: 6px; right: max(6px, env(safe-area-inset-right)); width: 205px; padding: 6px 9px; border-radius: 12px; }
   .job .tag { font-size: 8.5px; letter-spacing: 1px; }
   .job h3 { font-size: 12.5px; margin: 2px 0 1px; }
   .job p { font-size: 10.5px; line-height: 1.3; }
-  .job .fare { font-size: 16px; }
+  .job { z-index: 8; } /* above the touch pedals so Accept / Decline can always be tapped */
+  .job .fare { font-size: 15px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .job #offer-buttons:not([hidden]) { display: inline-flex; gap: 4px; vertical-align: middle; margin: 0; }
+  .job .hint, .job .kbd { display: none; }
   .job .live { font-size: 11px; margin-top: 3px; }
-  .job .action { padding: 5px 8px; font-size: 11.5px; }
+  .job .action { padding: 5px 8px; font-size: 11.5px; flex: none; }
   .nav { display: none; } /* the road arrows + minimap carry the route on tiny screens */
-  #tutorial { top: 40px; bottom: auto; left: 50%; width: 250px; margin-left: -125px; padding: 6px 10px; border-radius: 12px; box-shadow: 0 0 0 2px #4cf0af22; }
+  #tutorial { top: 42px; bottom: auto; left: max(88px, calc(env(safe-area-inset-left) + 82px)); width: min(250px, calc(100vw - 330px)); min-width: 190px; margin-left: 0; padding: 6px 10px; border-radius: 12px; box-shadow: 0 0 0 2px #4cf0af22; }
   #tutorial .t-count { font-size: 8.5px; }
   #tutorial h3 { font-size: 12.5px; margin: 1px 0 2px; }
   #tutorial p { font-size: 10.5px; line-height: 1.3; margin: 0 0 4px; }
@@ -303,7 +306,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #touch > div { gap: 6px; }
   #touch button { width: 54px; height: 54px; font-size: 19px; }
   #touch .hb { width: 40px; height: 40px; font-size: 11px; }
-  .chat { bottom: 46px; width: 250px; margin-left: -125px; padding: 6px 10px; font-size: 12px; }
+  .chat { bottom: 46px; left: 50%; width: 250px; margin-left: -125px; padding: 6px 10px; font-size: 12px; }
   #toasts { top: 40px; }
   .toast { padding: 5px 10px; font-size: 12px; }
   .earn-pop { font-size: 30px; }
@@ -332,8 +335,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .mode-card span { display: none; }
 }
 /* full-screen tip for iPhone Safari */
-.fs-tip { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 10px; background: rgba(8,14,22,.94); border: 1px solid var(--accent); border-radius: 12px; padding: 7px 8px 7px 12px; font-size: 12.5px; max-width: calc(100vw - 20px); }
+.fs-tip { position: fixed; left: 50%; top: 6px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 10px; background: rgba(8,14,22,.94); border: 1px solid var(--accent); border-radius: 12px; padding: 7px 8px 7px 12px; font-size: 12.5px; max-width: calc(100vw - 20px); }
 .fs-tip button { background: none; border: 0; color: var(--muted); font-size: 16px; padding: 2px 6px; cursor: pointer; }
+@media (max-height: 340px) { .fs-tip { font-size: 11px; padding: 3px 4px 3px 10px; white-space: nowrap; } .fs-tip .long { display: none; } }
 #rotate { display: none; }
 @media (pointer: coarse) and (orientation: portrait) {
   body.playing #rotate { display: flex; position: fixed; inset: 0; z-index: 50; background: rgba(4, 8, 14, .94); flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 30px; }
