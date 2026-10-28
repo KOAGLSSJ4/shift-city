@@ -14,6 +14,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraActor.h"
 #include "CanvasItem.h"
 #include "RenderUtils.h"
 #include "UnrealClient.h"
@@ -197,6 +198,23 @@ void ASCHUD::DrawHUD()
 	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
 	if (bRobotShots && RobotShot < 3 && GetWorld() && GetWorld()->GetTimeSeconds() > 12.f + RobotShot * 10.f)
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
+	// after the second shot, follow traffic car 0 so the last shot shows whether traffic renders
+	if (bRobotShots && RobotShot >= 2 && PC && GetWorld())
+	{
+		TActorIterator<ASCTraffic> It(GetWorld());
+		TArray<FVector> CarPos;
+		if (It) It->GetCarPositions(CarPos);
+		if (CarPos.Num() > 0)
+		{
+			const FVector Eye = CarPos[0] + FVector(-600.f, -600.f, 400.f);
+			if (!RobotCam)
+			{
+				RobotCam = GetWorld()->SpawnActor<ACameraActor>(Eye, (CarPos[0] - Eye).Rotation());
+				if (RobotCam) PC->SetViewTarget(RobotCam);
+			}
+			if (RobotCam) RobotCam->SetActorLocationAndRotation(Eye, (CarPos[0] - Eye).Rotation());
+		}
+	}
 
 	// ---- career panel (top-left)
 	if (E && E->GetSave())
