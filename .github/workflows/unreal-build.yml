@@ -36,9 +36,7 @@ jobs:
           GIT_CONFIG_COUNT: "1"
           GIT_CONFIG_KEY_0: safe.directory
           GIT_CONFIG_VALUE_0: "*"
-        run: |
-          git lfs checkout
-          git lfs ls-files | Select-Object -First 3
+        run: git lfs checkout
 
       - name: Wait until Unreal is closed (it can't compile while an editor is open)
         shell: powershell
