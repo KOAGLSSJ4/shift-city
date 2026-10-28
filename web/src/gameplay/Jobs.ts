@@ -17,6 +17,8 @@ export interface Job {
   premium: boolean;
   chapter: number | null;
   stage: JobStage;
+  /** Seconds left to accept a Free Ride offer (undefined = no time limit, e.g. story). */
+  expires?: number;
   startedAt: number;
   bumps: number;
   bonusTime?: number;
@@ -48,12 +50,12 @@ export function storyJob(chapter: number): Job | null {
 }
 
 /** Random Free Ride request. Better vehicles unlock premium/VIP passengers. */
-export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }): Job {
+export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }, premiumBoost = 0): Job {
   // bias pickups toward the player so jobs don't always start across the map
   const sorted = near ? [...DESTINATIONS].sort((p, q) => Math.hypot(p.x - near.x, p.z - near.z) - Math.hypot(q.x - near.x, q.z - near.z)) : DESTINATIONS;
   const a = near ? sorted[Math.floor(Math.random() * 5)] : pick(DESTINATIONS);
   const food = Math.random() < 0.42;
-  const premium = !food && vehicle.premium > 0 && Math.random() < (vehicle.premium === 2 ? 0.55 : 0.35);
+  const premium = !food && vehicle.premium > 0 && Math.random() < (vehicle.premium === 2 ? 0.55 : 0.35) + premiumBoost;
   const variant = rollVariant(food, premium);
   let b = pick(DESTINATIONS);
   while (b === a) b = pick(DESTINATIONS);

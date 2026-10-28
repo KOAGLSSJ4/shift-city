@@ -21,6 +21,7 @@ import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints,
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
+import { OFFER_SECONDS, acceptanceRate, driverTier, nextTier } from '../gameplay/Driver';
 import type { Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
@@ -420,8 +421,9 @@ export class Game {
   // ---------------------------------------------------------------- city events
   private cityEvents() {
     return {
-      offer: (job: Job) => {
+      offer: (job: Job | null) => {
         this.renderJob(job);
+        if (!job) return;
         this.audio.click();
         if (job.chapter !== null) this.showStoryCard(job.chapter, 'intro');
       },
@@ -468,6 +470,7 @@ export class Game {
   }
 
   private renderJob(job: Job | null) {
+    if (this.save) this.updateCareer(); // acceptance rate / tier can change with every offer
     const tag = $('job-tag'), title = $('job-title'), det = $('job-detail'), fare = $('job-fare'), btns = $('offer-buttons');
     if (!job) {
       tag.textContent = this.cityMode?.mode === 'story' ? 'STORY MODE' : 'ONLINE · FREE RIDE';
@@ -536,6 +539,16 @@ export class Game {
     $('speed').textContent = String(Math.round(ph.speed * 3.6));
     const r = this.cityMode.route, t = this.cityMode.target, job = this.cityMode.job;
     this.updateMissionLive(job);
+    // offer countdown bar, and the offline cool-down after too many declines
+    const exp = $('job-expiry');
+    exp.hidden = !(job?.stage === 'offer' && job.expires !== undefined);
+    if (!exp.hidden) (exp.firstElementChild as HTMLElement).style.width = `${Math.max(0, job!.expires! / OFFER_SECONDS) * 100}%`;
+    const off = this.cityMode.offlineLeft;
+    if (!job && off > 0) {
+      $('job-tag').textContent = 'OFFLINE'; $('job-tag').className = 'tag offline';
+      $('job-title').textContent = 'Taken offline';
+      $('job-detail').textContent = `Too many declined requests. Back online in ${Math.floor(off / 60)}:${String(off % 60).padStart(2, '0')}.`;
+    } else if (!job && $('job-tag').textContent === 'OFFLINE') this.renderJob(null);
     if (r && t && job) {
       const nt = r.nextTurn;
       const rot = { left: 180, right: 0, straight: -90, arrive: -90, uturn: 90 }[nt.dir];
@@ -585,7 +598,11 @@ export class Game {
     w.textContent = money(Math.round(s.wallet * 100) / 100);
     $('level').textContent = `LV ${s.level}`;
     $('xp-bar').style.width = `${(s.xp / xpToNext(s.level)) * 100}%`;
-    $('rating').textContent = `★ ${s.stats.rating.toFixed(2)}`;
+    $('rating').textContent = `★ ${s.stats.rating.toFixed(2)} · ${Math.round(acceptanceRate(s.driver) * 100)}% accept`;
+    const tier = driverTier(s), tierEl = $('tier');
+    tierEl.textContent = tier.label.toUpperCase();
+    tierEl.style.color = tier.colour;
+    tierEl.title = tier.fareBonus ? `${tier.label} driver: +${Math.round(tier.fareBonus * 100)}% fares` : 'Blue driver';
     $('trips').textContent = `${s.stats.trips} trips`;
     $('km').textContent = `${s.stats.km.toFixed(1)} km`;
     const n = claimableGoals(s);
@@ -908,7 +925,8 @@ export class Game {
     $('arcade-best').textContent = `Best ${s.arcade.best.toLocaleString()}`;
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.classList.toggle('on', b.dataset.gfx === s.settings.graphics));
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === s.settings.camera));
-    $('menu-stats').textContent = `Level ${s.level} · ${money(Math.round(s.wallet))} wallet · ${s.stats.trips} trips · ${money(Math.round(s.stats.earned))} lifetime · ${s.arcade.points.toLocaleString()} arcade points · driving the ${vehicleById(s.selected).name}`;
+    const nt = nextTier(s);
+    $('menu-stats').textContent = `${driverTier(s).label} driver${nt ? ` (${nt.tier.label}: ${nt.needs.join(', ') || 'almost there'})` : ''} · Level ${s.level} · ${money(Math.round(s.wallet))} wallet · ${s.stats.trips} trips · ${money(Math.round(s.stats.earned))} lifetime · ${s.arcade.points.toLocaleString()} arcade points · driving the ${vehicleById(s.selected).name}`;
     const n = claimableGoals(s);
     $('goals-badge').hidden = !n; $('goals-badge').textContent = String(n);
   }

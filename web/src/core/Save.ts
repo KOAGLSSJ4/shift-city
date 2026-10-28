@@ -1,5 +1,6 @@
 // Versioned save schema with migration from the v3/v4 single-file prototype.
 import { VEHICLES, type Upgrades } from '../data/vehicles';
+import { newDriverRecord, type DriverRecord } from '../gameplay/Driver';
 
 export const SAVE_KEY = 'shift-city-save';
 export const SAVE_VERSION = 5;
@@ -26,6 +27,8 @@ export interface SaveData {
   arcade: { best: number; points: number; runs: number; lastRunId: string; top: ArcadeScore[] };
   /** Name used on the leaderboards. */
   playerName: string;
+  /** Ride-hailing record: acceptance, decline streak, offline cool-down. */
+  driver: DriverRecord;
   story: { chapter: number };
   stats: { trips: number; earned: number; km: number; food: number; nearMisses: number; rating: number; ratings: number };
   paidJobs: string[];
@@ -42,6 +45,7 @@ export function defaultSave(): SaveData {
     upgrades: {},
     arcade: { best: 0, points: 0, runs: 0, lastRunId: '', top: [] },
     playerName: '',
+    driver: newDriverRecord(),
     story: { chapter: 0 },
     stats: { trips: 0, earned: 0, km: 0, food: 0, nearMisses: 0, rating: 4.9, ratings: 1 },
     paidJobs: [], claimedGoals: [], tutorialDone: false,
@@ -88,6 +92,7 @@ export function normalize(raw: any): SaveData {
     arcade: { ...d.arcade, ...(raw?.arcade ?? {}) },
     story: { ...d.story, ...(raw?.story ?? {}) },
     stats: { ...d.stats, ...(raw?.stats ?? {}) },
+    driver: { ...d.driver, ...(raw?.driver ?? {}) },
     settings: { ...d.settings, ...(raw?.settings ?? {}), volume: { ...d.settings.volume, ...(raw?.settings?.volume ?? {}) } },
     upgrades: { ...(raw?.upgrades ?? {}) },
   };
@@ -105,6 +110,10 @@ export function normalize(raw: any): SaveData {
   if (!Array.isArray(s.arcade.top)) s.arcade.top = [];
   s.arcade.top = s.arcade.top.filter((e) => e && Number.isFinite(e.score)).slice(0, 10);
   if (typeof s.playerName !== 'string') s.playerName = '';
+  if (!Array.isArray(s.driver.recent)) s.driver.recent = [];
+  s.driver.recent = s.driver.recent.map(Boolean).slice(-30);
+  s.driver.declineStreak = Math.max(0, Math.floor(num(s.driver.declineStreak)));
+  s.driver.offlineUntil = Math.max(0, num(s.driver.offlineUntil));
   s.wallet = Math.max(0, num(s.wallet));
   s.level = Math.max(1, Math.floor(num(s.level, 1)));
   return s;

@@ -59,6 +59,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .job .live { margin-top: 6px; font-weight: 700; font-size: 13px; color: var(--accent); }
 .job .live.warn { color: #ffb347; }
 .tag.special { color: #ffd27a; }
+.tag.offline { color: var(--danger); }
+.job .expiry { height: 4px; border-radius: 4px; background: #ffffff1a; margin: 6px 0 2px; overflow: hidden; }
+.job .expiry i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .1s linear; }
+.career .tier { font-size: 10px; font-weight: 900; letter-spacing: 1px; margin-left: 6px; }
 .chat { position: fixed; left: 50%; bottom: 96px; width: 320px; margin-left: -160px; max-width: calc(100vw - 28px); background: rgba(250, 252, 255, .95); color: #10202e; border-radius: 16px 16px 16px 4px; padding: 10px 14px; z-index: 6; font-size: 14px; line-height: 1.4; box-shadow: 0 8px 30px rgba(0,0,0,.35); pointer-events: none; }
 .chat b { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #46606f; margin-bottom: 2px; }
 .chat.pop { animation: chatPop .35s ease; }

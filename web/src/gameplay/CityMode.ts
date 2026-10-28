@@ -12,10 +12,12 @@ import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
 import { randomJob, starsFor, storyJob, type Job } from './Jobs';
+import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
 import { line, logBump, logHarsh, missionResult, personaHappy, type Moment } from './Missions';
 
 export interface CityEvents {
-  offer(job: Job): void;
+  /** A new request (null = the offer was withdrawn, e.g. it expired). */
+  offer(job: Job | null): void;
   stage(job: Job): void;
   complete(job: Job, pay: JobPayment, stars: number): void;
   storyDone(): void;
@@ -107,6 +109,7 @@ export class CityMode {
 
   accept() {
     if (!this.job || this.job.stage !== 'offer') return;
+    if (this.job.chapter === null) recordAccept(this.save.driver);
     this.job.stage = 'pickup';
     this.job.startedAt = this.time;
     this.showMarker(this.job.a, true);
@@ -118,7 +121,22 @@ export class CityMode {
     if (!this.job || this.job.stage !== 'offer' || this.job.chapter !== null) return;
     this.job = null;
     this.offerTimer = 1.5;
-    this.ev.toast('Request declined — finding another…');
+    this.ev.offer(null); // clear the card right away
+    this.afterDecline('Request declined');
+  }
+
+  /** Seconds left in an offline cool-down after too many declines (0 = online). */
+  get offlineLeft() { return offlineLeft(this.save.driver, Date.now()); }
+
+  /** Shared by declines and missed (expired) offers: lowers acceptance, may take you offline. */
+  private afterDecline(what: string) {
+    const d = this.save.driver;
+    if (recordDecline(d, Date.now())) {
+      this.ev.toast(`You declined ${DECLINE_LIMIT} requests in a row: you're offline for a minute`);
+    } else {
+      const left = DECLINE_LIMIT - d.declineStreak;
+      this.ev.toast(d.declineStreak > 0 ? `${what}: ${left} more in a row and you go offline` : `${what}: finding another…`);
+    }
   }
 
   private nextOffer() {
@@ -127,7 +145,11 @@ export class CityMode {
       const j = storyJob(this.save.story.chapter);
       if (!j) { this.mode = 'free'; this.ev.storyDone(); this.job = randomJob(def, this.physics.pos); }
       else this.job = j;
-    } else this.job = randomJob(def, this.physics.pos);
+    } else {
+      this.job = randomJob(def, this.physics.pos, driverTier(this.save).premiumBoost);
+      // like the real app: accept within 15 s or it goes to someone else (not while learning in the tutorial)
+      if (this.save.tutorialDone) this.job.expires = OFFER_SECONDS;
+    }
     this.ev.offer(this.job);
   }
 
@@ -217,7 +239,13 @@ export class CityMode {
 
     // jobs
     if (this.job?.stage === 'dropoff') this.trackRide(dt);
-    if (!this.job && (this.offerTimer -= dt) <= 0) this.nextOffer();
+    if (this.job?.stage === 'offer' && this.job.expires !== undefined && (this.job.expires -= dt) <= 0) {
+      this.job = null;
+      this.offerTimer = 1.5;
+      this.afterDecline('Request missed');
+      this.ev.offer(null);
+    }
+    if (!this.job && this.offlineLeft <= 0 && (this.offerTimer -= dt) <= 0) this.nextOffer();
     const t = this.target;
     if (t && this.job) {
       const d = Math.hypot(ph.pos.x - t.x, ph.pos.z - t.z);

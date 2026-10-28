@@ -2,6 +2,7 @@
 import type { SaveData } from '../core/Save';
 import { BALANCE } from '../data/balancing';
 import { GOALS, type GoalDef } from '../data/goals';
+import { driverTier } from './Driver';
 import { MAX_UPGRADE, vehicleById, type UpgradeTrack, type Upgrades, type VehicleDef } from '../data/vehicles';
 
 export const xpToNext = (level: number) => level * 100;
@@ -94,7 +95,8 @@ export function payJob(s: SaveData, jobId: string, fare: number, vehicle: Vehicl
   if (s.paidJobs.includes(jobId)) return null;
   s.paidJobs.push(jobId);
   if (s.paidJobs.length > 50) s.paidJobs.splice(0, s.paidJobs.length - 50);
-  const payout = Math.round(fare * vehicle.fare * 100) / 100;
+  // driver tier bonus (Gold +5%, Platinum +10%, Diamond +15%)
+  const payout = Math.round(fare * vehicle.fare * (1 + driverTier(s).fareBonus) * 100) / 100;
   const tip = Math.round(((opts.stars >= 4.5 ? payout * 0.04 * vehicle.comfort : 0) + (opts.bonusTip ?? 0)) * 100) / 100;
   const total = payout + tip;
   s.wallet += total;
