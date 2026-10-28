@@ -188,7 +188,7 @@ void ASCTraffic::SpawnCars()
 				TArray<FName> Bones;
 				Sk->GetBoneNames(Bones);
 				// the template rigs have PhysWheel_* and VisWheel_* bones at the same spot: use the visual ones if present
-				const bool bHasVis = Bones.ContainsByPredicate([](const FName& N) { return N.ToString().StartsWith(TEXT("VisWheel")); });
+				const bool bHasVis = Bones.ContainsByPredicate([](const FName& BoneName) { return BoneName.ToString().StartsWith(TEXT("VisWheel")); });
 				for (const FName& Bone : Bones)
 				{
 					const FString B = Bone.ToString().ToLower();
