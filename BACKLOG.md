@@ -40,7 +40,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
     on Hype, the quiet one wants it calm or off, the grumpy one hates loud music, the tourist likes
     local talk radio. Shows up in their speech bubbles ("Ooh, I love this song!") and in tips/stars.
     Arcade could get its own high-energy station.
- (David, 2026-10-28), candidates:
+- **More Uber-app features** (David, 2026-10-28), candidates:
   - quests ("complete 5 trips → +$20") and streak bonuses;
   - surge zones shown on the minimap;
   - earnings screen (today / this week, per-trip breakdown, cash out);
