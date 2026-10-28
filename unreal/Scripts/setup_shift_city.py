@@ -17,6 +17,8 @@ import unreal
 
 IMPORT_TREES = True       # ~100 MB download; set False for a quicker first run
 GOLDEN_HOUR = False       # True = low golden-hour sun (moodier, darker streets)
+# Set by the build robot (.github/workflows/unreal-build.yml): no dialogs, quit the editor when done.
+CI = os.environ.get("SHIFTCITY_CI") == "1"
 
 PROJECT = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
 SRC = os.path.join(PROJECT, "SourceArt")
@@ -521,26 +523,45 @@ def check_code_is_current():
                "Close Unreal, open unreal/ShiftCity.slnx in Visual Studio, choose Development Editor, "
                "Build > Build Solution, then reopen the project and run this script again." % (version, REQUIRED_GENERATOR_VERSION))
         unreal.log_error("[ShiftCity] " + msg)
-        unreal.EditorDialog.show_message("Shift City: rebuild needed", msg, unreal.AppMsgType.OK)
+        if not CI:
+            unreal.EditorDialog.show_message("Shift City: rebuild needed", msg, unreal.AppMsgType.OK)
         return False
     return True
 
 
 def main():
     if not check_code_is_current():
+        if CI:
+            raise RuntimeError("C++ plugin is out of date (the robot's build step should have rebuilt it)")
         return
     with unreal.ScopedSlowTask(5, "Setting up Shift City") as task:
         task.make_dialog(True)
+        # STEP lines make it obvious in the log (and in crash reports) how far the script got
+        log("STEP 1/4: textures and materials")
         task.enter_progress_frame(1, "Importing textures and building materials")
         mats = build_materials()
+        log("STEP 2/4: street lamps")
         task.enter_progress_frame(1, "Downloading street lamps (Poly Haven)")
         lamp = polyhaven_mesh("street_lamp_01")
+        log("STEP 3/4: street trees")
         task.enter_progress_frame(1, "Downloading street trees (Poly Haven)")
         tree = polyhaven_mesh("tree_small_02") if IMPORT_TREES else []
+        log("STEP 4/4: building the city level")
         task.enter_progress_frame(1, "Building the city")
         setup_level(mats, lamp, tree)
         task.enter_progress_frame(1, "Done")
     log("Shift City is ready. Press Play.")
 
 
-main()
+try:
+    main()
+except Exception:
+    import traceback
+    unreal.log_error("[ShiftCity] SCRIPT FAILED:\n" + traceback.format_exc())
+    if CI:
+        unreal.SystemLibrary.quit_editor()
+    raise
+else:
+    if CI:
+        log("SCRIPT FINISHED (build robot run): closing the editor")
+        unreal.SystemLibrary.quit_editor()
