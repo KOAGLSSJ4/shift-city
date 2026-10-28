@@ -6,6 +6,6 @@ public class ShiftCityCore : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "ProceduralMeshComponent" });
-		PrivateDependencyModuleNames.AddRange(new string[] { "Json", "JsonUtilities", "Projects", "SlateCore", "Slate" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Json", "JsonUtilities", "Projects", "RenderCore", "SlateCore", "Slate" });
 	}
 }

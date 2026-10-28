@@ -485,7 +485,8 @@ def setup_level(mats, lamp, tree):
         setp(traffic, "car_meshes", find_car_meshes())
         setp(traffic, "lamp_material", sig_lamp)
         setp(traffic, "pole_material", sig_pole)
-        traffic.rerun_construction_scripts()
+        if hasattr(traffic, "rerun_construction_scripts"):  # not exposed to Python in UE 5.8; traffic spawns on Play anyway
+            traffic.rerun_construction_scripts()
     except Exception as e:
         unreal.log_warning("[ShiftCity] traffic not added: %s" % e)
 

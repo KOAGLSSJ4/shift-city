@@ -15,6 +15,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "CanvasItem.h"
+#include "RenderUtils.h"
 #include "Fonts/FontMeasure.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Framework/Application/SlateApplication.h"
@@ -135,7 +136,8 @@ void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool
 			T.V0_Color = T.V1_Color = T.V2_Color = Bg;
 			Tris.Add(T);
 		}
-		FCanvasTriangleItem Fan(Tris, nullptr);
+		// UE 5.8 asserts on a null texture here, so tint the engine's plain white one
+		FCanvasTriangleItem Fan(Tris, GWhiteTexture);
 		Fan.BlendMode = SE_BLEND_Translucent;
 		Canvas->DrawItem(Fan);
 	}
