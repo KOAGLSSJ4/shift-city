@@ -7,6 +7,10 @@ hyper-real paid PC version). Goal now: **ship the web version** (own site on Ver
 David is not building levels by hand: everything should be generated in code or by the one-click
 setup script. Keep instructions to him step-by-step and non-technical.
 
+## Backlog
+`BACKLOG.md` (repo root) is the running list of bugs, tweaks and future features. When David mentions
+something "for later", add it there instead of building it. When fixing an item, move it to Done with the date.
+
 ## David's machine / workflow
 - MSI laptop, RTX 3050 Ti **4 GB VRAM**, 16 GB RAM, project on `D:\Projects\Shift City\shift-city`.
 - Unreal Engine **5.8** at `D:\Epic Games\UE_5.8`; **Visual Studio 2026** (VS 2022 can't build 5.8's .NET 10 tools).
