@@ -27,6 +27,17 @@ jobs:
         with:
           clean: false # keep Binaries/Intermediate/downloads between runs so builds stay quick
 
+      - name: Wait until Unreal is closed (it can't compile while an editor is open)
+        shell: powershell
+        timeout-minutes: 120
+        run: |
+          $warned = $false
+          while (Get-Process -Name UnrealEditor, UnrealEditor-Cmd, LiveCodingConsole -ErrorAction SilentlyContinue) {
+            if (-not $warned) { "Unreal Editor is open on this laptop: waiting for it to close before building..."; $warned = $true }
+            Start-Sleep -Seconds 20
+          }
+          "No Unreal Editor running: building now"
+
       - name: Build the C++ (ShiftCityEditor, Development)
         id: build
         shell: cmd
