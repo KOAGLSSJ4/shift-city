@@ -74,12 +74,14 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 ## Unreal
 
 - Test the last push: Play screenshot + the Output Log line `[ShiftCity] traffic: spawned N cars using M car model(s)`.
-- **Bug:** the setup script crashes the editor (David, 2026-10-28). Waiting for the first build-robot run's log.
-- Build robot: set up on David's laptop (guide: `unreal/BUILD-ROBOT.md`).
+- **Check:** in the robot's 40 s play window, cars looked see-through and tree leaves were missing (David, 2026-10-28).
+  Probably shaders still compiling in that window; confirm in David's own Play.
 - Next batch: main menu + garage + goals + settings.
 
 ## Done
 
+- 2026-10-28: Unreal crash on Play fixed (round minimap drew with no texture; found by the build robot).
+  Build robot running on David's laptop with the real Unreal files.
 - 2026-10-28: phones: tutorial opens big in the middle, then tucks to the right; compact job card;
   road kept clear; full screen / Add to Home Screen.
 - 2026-10-28: Arcade pause (button, P/Esc, auto-pause), garage car pictures + 3D preview, near misses
