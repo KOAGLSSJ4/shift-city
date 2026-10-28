@@ -324,7 +324,7 @@ export class Game {
     if (this.state === 'city') {
       if (i.hit('KeyG')) this.toggleGarage();
       if (i.hit('Enter', 'NumpadEnter')) this.acceptJob();
-      if (i.hit('KeyN')) this.cityMode.decline();
+      if (i.hit('KeyN')) this.declineJob();
       if (i.hit('KeyR')) this.cityMode.resetCar();
     }
     if (this.state === 'over' && i.hit('Enter', 'NumpadEnter', 'Space') && !(document.activeElement instanceof HTMLInputElement)) this.arcadeAgain();
@@ -527,6 +527,12 @@ export class Game {
       el.textContent = `${job.customer.split(' ')[0]} is ${PERSONAS[job.persona].label}`;
       el.className = 'live';
     } else el.hidden = true;
+  }
+
+  /** Decline the current offer and clear the card straight away (the next request follows shortly). */
+  private declineJob() {
+    this.cityMode.decline();
+    if (!this.cityMode.job) this.renderJob(null);
   }
 
   private estimateDistance(job: Job) { return Math.abs(job.a.x - job.b.x) + Math.abs(job.a.z - job.b.z); }
@@ -946,7 +952,7 @@ export class Game {
     $('fps').hidden = !this.save.settings.showFps;
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.addEventListener('click', () => this.setView(b.dataset.cam as CameraView)));
     on('accept', () => this.acceptJob());
-    on('decline', () => this.cityMode.decline());
+    on('decline', () => this.declineJob());
     on('btn-menu', () => this.showMenu());
     on('btn-garage', () => this.toggleGarage());
     on('btn-goals', () => ($('goals').hidden ? this.openGoals() : this.closeModals()));
