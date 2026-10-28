@@ -176,6 +176,7 @@ export class Game {
     this.ensureCityRig();
     this.refreshMenu();
     this.tutorial.event('menuOpened');
+    this.maybeShowFullscreenTip();
     this.audio.music('menu');
   }
 
@@ -187,6 +188,7 @@ export class Game {
 
   startCity(mode: 'story' | 'free') {
     this.audio.unlock();
+    goFullscreen();
     if (mode === 'story' && this.save.story.chapter >= STORY.length) this.toast('Story complete — replaying as Free Ride with bonus jobs', 'good');
     this.ensureCityRig();
     this.arcade.stop();
@@ -205,6 +207,7 @@ export class Game {
 
   startArcade() {
     this.audio.unlock();
+    goFullscreen();
     this.closeModals();
     this.tutorial.active && this.tutorial.finish();
     $('menu').hidden = true; $('hud').hidden = true; $('arcade-over').hidden = true; $('arcade-hud').hidden = false;
@@ -663,6 +666,15 @@ export class Game {
     } else $('name-row').hidden = true;
   }
 
+  /** iPhone Safari can't go full screen from a web page; suggest Add to Home Screen once. */
+  private maybeShowFullscreenTip() {
+    let seen = false;
+    try { seen = localStorage.getItem('shiftcity.fsTip') === '1'; } catch { /* private mode */ }
+    if (seen || !isTouch() || !isIOS() || isStandalone() || window.self !== window.top) return;
+    $('fs-tip').hidden = false;
+    $('fs-tip-x').onclick = () => { $('fs-tip').hidden = true; try { localStorage.setItem('shiftcity.fsTip', '1'); } catch { /* ignore */ } };
+  }
+
   /** Pause menu for Arcade runs (button, P / Esc, or automatically when the tab is hidden). */
   private arcadePaused = false;
   private toggleArcadePause(on = !this.arcadePaused) {
@@ -1019,5 +1031,12 @@ export class Game {
 
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
 const isTouch = () => matchMedia('(pointer: coarse)').matches;
+const isStandalone = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || (navigator as { standalone?: boolean }).standalone === true;
+const isIOS = () => /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/** Phones: go full screen and lock landscape when a mode starts (Android; iPhone Safari can't, see the tip). */
+function goFullscreen() {
+  if (!isTouch() || isStandalone() || document.fullscreenElement || !document.fullscreenEnabled) return;
+  document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => (screen.orientation as { lock?: (o: string) => Promise<void> }).lock?.('landscape')).catch(() => {});
+}
 const lowEndDevice = () => isTouch() || ((navigator as { deviceMemory?: number }).deviceMemory ?? 8) <= 4 || (navigator.hardwareConcurrency ?? 8) <= 4;
 export { ARCADE_ORIGIN };

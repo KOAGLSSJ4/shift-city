@@ -2,11 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Shift City</title>
+<meta name="theme-color" content="#0a121c" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Shift City" />
 </head>
 <body>
 <canvas id="c"></canvas>
+<div class="fs-tip" id="fs-tip" hidden><span>📱 Full screen: tap <b>Share</b> → <b>Add to Home Screen</b>, then open Shift City from your home screen.</span><button id="fs-tip-x" aria-label="Dismiss">✕</button></div>
 <div id="rotate"><div class="phone"></div><b>Turn your phone sideways</b><span class="muted">Shift City plays in landscape.</span></div>
 
 <div id="loading" class="screen">
