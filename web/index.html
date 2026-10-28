@@ -75,12 +75,23 @@
 </div>
 
 <div id="arcade-hud" hidden>
+  <button class="a-pause" id="a-pause" title="Pause (P / Esc)" aria-label="Pause">❚❚</button>
   <div class="a-score"><b id="a-score">0</b><small>SCORE</small></div>
   <div class="a-mult" id="a-mult">x1</div>
   <div class="a-streak"><i id="a-streak"></i></div>
   <div class="a-left"><div id="a-hearts">♥♥♥</div><div id="a-coins">◎ 0</div><div id="a-power"></div></div>
   <div class="a-count" id="a-count"></div>
-  <div class="a-hint">◀ A / D ▶ change lanes</div>
+  <div class="a-hint">◀ A / D ▶ change lanes · P pause</div>
+</div>
+
+<div id="arcade-paused" class="screen dim" hidden>
+  <div class="over-card">
+    <div class="tag">PAUSED</div>
+    <div class="big" id="p-score">0</div>
+    <p class="muted" id="p-info"></p>
+    <div class="row"><button class="action" id="p-resume">Resume (Esc)</button></div>
+    <div class="row"><button class="ghost" id="p-restart">Restart run</button><button class="ghost" id="p-quit">Quit to menu</button></div>
+  </div>
 </div>
 
 <div id="arcade-over" class="screen dim" hidden>

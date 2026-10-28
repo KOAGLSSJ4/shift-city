@@ -110,7 +110,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .a-mult.pulse { transform: scale(1.35); }
 .a-streak { position: absolute; top: 76px; right: 22px; width: 120px; height: 6px; border-radius: 6px; background: #ffffff22; overflow: hidden; }
 .a-streak i { display: block; height: 100%; background: var(--gold); width: 0; transition: width .2s; }
-.a-left { position: absolute; top: 18px; left: 20px; font-size: 22px; font-weight: 800; text-shadow: 0 3px 14px rgba(0,0,0,.7); line-height: 1.5; }
+.a-pause { position: absolute; top: 16px; left: 20px; width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--line); background: rgba(10,18,28,.6); font-size: 16px; font-weight: 900; letter-spacing: -2px; pointer-events: auto; cursor: pointer; backdrop-filter: blur(8px); }
+.a-pause:hover { border-color: var(--accent); }
+.a-left { position: absolute; top: 72px; left: 20px; font-size: 22px; font-weight: 800; text-shadow: 0 3px 14px rgba(0,0,0,.7); line-height: 1.5; }
 #a-hearts { color: var(--danger); letter-spacing: 3px; }
 #a-coins { color: var(--gold); }
 #a-power { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }

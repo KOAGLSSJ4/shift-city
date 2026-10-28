@@ -77,7 +77,11 @@ export class Game {
     const firstGesture = () => { this.audio.unlock(); removeEventListener('pointerdown', firstGesture); removeEventListener('keydown', firstGesture); };
     addEventListener('pointerdown', firstGesture);
     addEventListener('keydown', firstGesture);
-    document.addEventListener('visibilitychange', () => this.audio.setSuspended(document.hidden));
+    document.addEventListener('visibilitychange', () => {
+      this.audio.setSuspended(document.hidden);
+      if (document.hidden) this.toggleArcadePause(true); // switching tab/app mid-run pauses it
+    });
+    addEventListener('blur', () => this.toggleArcadePause(true));
     this.tutorial = new Tutorial(() => { this.save.tutorialDone = true; this.persist(); });
     (window as any).__game = this;
   }
@@ -161,6 +165,7 @@ export class Game {
   // ---------------------------------------------------------------- modes
   private showMenu() {
     if (this.state === 'arcade') this.arcade.stop();
+    this.arcadePaused = false; $('arcade-paused').hidden = true;
     this.state = 'menu';
     this.paused = false;
     document.body.classList.remove('playing');
@@ -207,6 +212,7 @@ export class Game {
     $('edge-arrow').hidden = true;
     this.city.group.visible = this.traffic.group.visible = this.cityMode.markers.visible = false;
     this.rig.root.parent?.remove(this.rig.root);
+    this.arcadePaused = false; $('arcade-paused').hidden = true; $('a-pause').hidden = false;
     this.arcade.start(this.rig, vehicleById(this.save.selected));
     this.state = 'arcade';
     document.body.classList.add('playing');
@@ -301,6 +307,7 @@ export class Game {
     const i = this.input;
     if (this.state === 'loading') return;
     if (document.activeElement instanceof HTMLInputElement && document.activeElement.type === 'text') return; // typing a name
+    if (this.state === 'arcade' && i.hit('Escape', 'KeyP')) { this.toggleArcadePause(); return; }
     if (i.hit('Escape')) {
       if (!$('garage').hidden || !$('goals').hidden || !$('settings').hidden || !$('credits').hidden) this.closeModals();
       else if (this.state === 'menu') { if (this.sessionMode) this.startCity(this.sessionMode); }
@@ -656,6 +663,24 @@ export class Game {
     } else $('name-row').hidden = true;
   }
 
+  /** Pause menu for Arcade runs (button, P / Esc, or automatically when the tab is hidden). */
+  private arcadePaused = false;
+  private toggleArcadePause(on = !this.arcadePaused) {
+    if (this.state !== 'arcade' || on === this.arcadePaused) return;
+    if (!on && !this.arcade.running && this.arcade.countdown <= 0) return;
+    this.arcadePaused = on;
+    this.paused = on;
+    $('arcade-paused').hidden = !on;
+    $('a-pause').hidden = on;
+    if (on) {
+      $('p-score').textContent = Math.floor(this.arcade.score).toLocaleString();
+      $('p-info').textContent = `${this.arcade.coins} coins · ${this.arcade.nearMisses} near misses · ${'♥'.repeat(Math.max(0, this.arcade.hearts))}`;
+      this.audio.click();
+    } else if (this.arcade.running) {
+      this.arcade.countdown = 3; // 3-2-1 before the road moves again
+    }
+  }
+
   /** Between runs is the natural ad break on portals (rate-limited inside the platform adapter). */
   private async arcadeAgain() {
     if (this.adBusy) return;
@@ -920,6 +945,10 @@ export class Game {
     on('goals-close', () => this.closeModals());
     on('g-convert', () => this.convert());
     on('o-convert', () => this.convert());
+    on('a-pause', () => this.toggleArcadePause(true));
+    on('p-resume', () => this.toggleArcadePause(false));
+    on('p-restart', () => { this.toggleArcadePause(false); this.startArcade(); });
+    on('p-quit', () => { this.toggleArcadePause(false); this.showMenu(); });
     on('o-double', () => this.doublePoints());
     document.querySelectorAll<HTMLElement>('[data-board]').forEach((b) => b.addEventListener('click', () => this.showBoard(b.dataset.board as 'local' | 'world')));
     $('name-row').addEventListener('submit', (e) => {
