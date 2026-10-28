@@ -74,8 +74,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 ## Unreal
 
 - Test the last push: Play screenshot + the Output Log line `[ShiftCity] traffic: spawned N cars using M car model(s)`.
-- **Check:** in the robot's 40 s play window, cars looked see-through and tree leaves were missing (David, 2026-10-28).
-  Probably shaders still compiling in that window; confirm in David's own Play.
+- **Bug:** traffic cars are invisible in David's own Play too (David, 2026-10-28; crash fix confirmed working, HUD +
+  minimap fine). The robot now saves in-game screenshots and logs the first traffic car's mesh/position to chase it.
 - Next batch: main menu + garage + goals + settings.
 
 ## Done

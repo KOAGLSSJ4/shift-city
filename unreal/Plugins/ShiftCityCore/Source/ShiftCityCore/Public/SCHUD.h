@@ -47,4 +47,5 @@ private:
 	float RouteTimer = 0.f;
 	TWeakObjectPtr<ASCDestination> RouteTarget;
 	float S = 1.f; // UI scale
+	int32 RobotShot = 0; // screenshots taken so far for the build robot (-SCShots)
 };

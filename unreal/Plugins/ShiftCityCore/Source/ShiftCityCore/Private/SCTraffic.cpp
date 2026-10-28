@@ -128,6 +128,16 @@ void ASCTraffic::BeginPlay()
 	Rng.Initialize(Seed);
 	SpawnCars();
 	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] traffic: spawned %d cars using %d car model(s)"), Cars.Num(), CarMeshes.Num());
+	// diagnostics for "traffic is invisible": where the first car is and how big its mesh says it is
+	if (Cars.Num() > 0 && Cars[0].Body)
+	{
+		TArray<USceneComponent*> Kids;
+		Cars[0].Body->GetChildrenComponents(false, Kids);
+		for (USceneComponent* Kid : Kids)
+			if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(Kid))
+				UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] traffic car 0: %s at %s, bounds radius %.0f, visible %d, registered %d"),
+					*GetNameSafe(Prim->GetClass()), *Prim->GetComponentLocation().ToString(), Prim->Bounds.SphereRadius, Prim->IsVisible() ? 1 : 0, Prim->IsRegistered() ? 1 : 0);
+	}
 }
 
 void ASCTraffic::SpawnCars()

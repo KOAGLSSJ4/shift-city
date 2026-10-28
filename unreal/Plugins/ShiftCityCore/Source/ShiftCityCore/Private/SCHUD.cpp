@@ -16,6 +16,9 @@
 #include "Camera/PlayerCameraManager.h"
 #include "CanvasItem.h"
 #include "RenderUtils.h"
+#include "UnrealClient.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Paths.h"
 #include "Fonts/FontMeasure.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Framework/Application/SlateApplication.h"
@@ -190,6 +193,10 @@ void ASCHUD::DrawHUD()
 	ASCJobDirector* D = Director.Get();
 	APlayerController* PC = GetOwningPlayerController();
 	APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+	// build robot: with -SCShots on the command line, save a few screenshots so visuals can be checked remotely
+	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
+	if (bRobotShots && RobotShot < 3 && GetWorld() && GetWorld()->GetTimeSeconds() > 12.f + RobotShot * 10.f)
+		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
 
 	// ---- career panel (top-left)
 	if (E && E->GetSave())

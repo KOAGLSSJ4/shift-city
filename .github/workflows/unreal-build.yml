@@ -85,8 +85,9 @@ jobs:
           $proj = "$env:GITHUB_WORKSPACE\unreal\ShiftCity.uproject"
           $logFile = "$env:GITHUB_WORKSPACE\unreal\Saved\Logs\PlayTest.log"
           Remove-Item $logFile -ErrorAction SilentlyContinue
+          Remove-Item "$env:GITHUB_WORKSPACE\unreal\Saved\RobotShots" -Recurse -ErrorAction SilentlyContinue
           $game = Start-Process -FilePath "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor.exe" `
-            -ArgumentList @("`"$proj`"", "/Game/ShiftCity/Maps/L_ShiftCity", "-game", "-windowed", "-ResX=1280", "-ResY=720", "-nosplash", "-unattended", "-log=PlayTest.log") -PassThru
+            -ArgumentList @("`"$proj`"", "/Game/ShiftCity/Maps/L_ShiftCity", "-game", "-windowed", "-ResX=1280", "-ResY=720", "-nosplash", "-unattended", "-SCShots", "-log=PlayTest.log") -PassThru
           $crashed = $false
           for ($i = 0; $i -lt 120; $i++) {   # up to ~2 min to load + 40 s of play
             Start-Sleep -Seconds 2
@@ -111,6 +112,7 @@ jobs:
           path: |
             unreal/Saved/Logs/*.log
             unreal/Saved/Crashes/**
+            unreal/Saved/RobotShots/**
           if-no-files-found: ignore
 
       - name: Mark the run failed if the setup script failed
