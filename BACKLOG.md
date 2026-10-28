@@ -27,7 +27,20 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - decline 3 in a row and you're taken offline for a short cool-down;
   - driver tiers (like Uber Pro: Blue, Gold, Platinum, Diamond) from trips, acceptance rate and rating,
     giving fare bonuses and access to premium and VIP passengers.
-- **More Uber-app features** (David, 2026-10-28), candidates:
+- **Car radio** (David, 2026-10-28):
+  - switch songs and stations while driving (e.g. Chill, Hype, Lo-fi, Talk/News, Off), with a small
+    radio control on the HUD (keyboard shortcut + touch button) and the station name popping up when
+    you change it;
+  - **creator songs:** David can add his own tracks. Simplest version: drop MP3s into
+    `web/public/music/<station>/` and list them in one data file (title, artist, station, licence),
+    and they ship with the next build. Later, maybe a private upload page on the Vercel site (needs file
+    storage, e.g. Vercel Blob). Only use music David has the rights to; credits screen updates
+    automatically;
+  - **music affects the ride:** each passenger personality has taste. The party passenger tips more
+    on Hype, the quiet one wants it calm or off, the grumpy one hates loud music, the tourist likes
+    local talk radio. Shows up in their speech bubbles ("Ooh, I love this song!") and in tips/stars.
+    Arcade could get its own high-energy station.
+ (David, 2026-10-28), candidates:
   - quests ("complete 5 trips → +$20") and streak bonuses;
   - surge zones shown on the minimap;
   - earnings screen (today / this week, per-trip breakdown, cash out);
