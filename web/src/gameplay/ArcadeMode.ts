@@ -20,7 +20,9 @@ const ESCAPE_BAND = 20;
 
 interface Obstacle { mesh: THREE.Object3D; lane: number; x: number; z: number; speed: number; len: number; active: boolean; passed: boolean; minLat: number; hit: boolean; fly: number; laneChange: number; canChange: boolean;
   /** Indicated lane-change direction (blinkers on) before the car actually moves. */
-  pending: number; blinkT: number; blinkers: THREE.Object3D[] }
+  pending: number; blinkT: number; blinkers: THREE.Object3D[];
+  /** Lane the player was in when this car was dead ahead in their lane (null = never a threat). */
+  threatLane: number | null }
 export type ItemKind = 'coin' | PowerKind | 'mystery';
 export type PowerKind = 'magnet' | 'x2' | 'nitro' | 'shield' | 'jet';
 interface Coin { mesh: THREE.Object3D; active: boolean; z: number; x: number; y: number; kind: ItemKind; pop: number }
@@ -82,7 +84,7 @@ export class ArcadeMode {
         mesh.add(g);
         return g;
       });
-      this.obstacles.push({ mesh, lane: 0, x: 0, z: 0, speed: 0, len, active: false, passed: false, minLat: 9, hit: false, fly: 0, laneChange: 0, canChange: false, pending: 0, blinkT: 0, blinkers });
+      this.obstacles.push({ mesh, lane: 0, x: 0, z: 0, speed: 0, len, active: false, passed: false, minLat: 9, hit: false, fly: 0, laneChange: 0, canChange: false, pending: 0, blinkT: 0, blinkers, threatLane: null });
     }
     const coinGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.12, 24); coinGeo.rotateZ(Math.PI / 2);
     const coinMat = new THREE.MeshStandardMaterial({ color: 0xffcf49, metalness: 1, roughness: 0.18, emissive: 0x7a4a00, emissiveIntensity: 0.5 });
@@ -280,6 +282,8 @@ export class ArcadeMode {
       const airborne = this.y > 1.4 || this.jet > 0; // safe from take-off to touch-down
       const overlapZ = !airborne && dz < (o.len + pLen) / 2 - 0.3;
       if (overlapZ) o.minLat = Math.min(o.minLat, lat);
+      // a car only becomes a near-miss candidate once it's coming at you in your own lane
+      if (!airborne && o.z > this.z && o.z - this.z < 35 && lat < 1.6) o.threatLane = Math.round(this.x / LANE); // where the car physically is
       if (overlapZ && lat < 2.05 && !o.hit) {
         if (this.invuln > 0 || this.nitro > 0) {
           if (this.nitro > 0) { o.hit = true; o.fly = 0.01; this.events?.popup('SMASH +100', 'gold'); this.score += 100 * this.multiplier; }
@@ -295,7 +299,8 @@ export class ArcadeMode {
       }
       if (!o.passed && o.z < this.z - (o.len + pLen) / 2) {
         o.passed = true;
-        if (!o.hit && o.minLat < 4.4) {
+        // near miss = you were heading for it and changed lanes to slip past
+        if (!o.hit && o.minLat < 4.4 && o.threatLane !== null && o.threatLane !== Math.round(this.x / LANE)) {
           this.streak++; this.nearMisses++;
           const pts = 50 * this.multiplier;
           this.score += pts;
@@ -404,7 +409,7 @@ export class ArcadeMode {
       const o = this.obstacles.find((x) => !x.active);
       if (!o) break;
       // every car flows at the same speed, so rows keep their spacing and can never bunch up into a wall
-      Object.assign(o, { active: true, passed: false, hit: false, fly: 0, minLat: 9, lane: lanes[i], x: lanes[i] * LANE, z, speed: FLOW_SPEED, laneChange: 0, pending: 0, blinkT: 0 });
+      Object.assign(o, { active: true, passed: false, hit: false, fly: 0, minLat: 9, lane: lanes[i], x: lanes[i] * LANE, z, speed: FLOW_SPEED, laneChange: 0, pending: 0, blinkT: 0, threatLane: null });
       o.blinkers.forEach((b) => (b.visible = false));
       o.canChange = this.time > 25 && blocked === 1 && Math.random() < 0.25;
       o.mesh.visible = true; o.mesh.rotation.set(0, 0, 0); o.mesh.position.set(o.x, 0, z);

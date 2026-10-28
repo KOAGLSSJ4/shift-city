@@ -24,6 +24,7 @@ import { platform } from './Platform';
 import type { Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
+import { carThumbs } from '../ui/CarThumbs';
 
 type State = 'loading' | 'menu' | 'city' | 'arcade' | 'over';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -242,8 +243,13 @@ export class Game {
       this.cam.camera.up.set(0, 1, 0);
       this.cam.camera.lookAt(focus.x, focus.y + 0.7, focus.z);
       this.cam.camera.fov = 45;
+      const panel = $('garage');
+      const shift = !panel.hidden && innerWidth > 700 ? panel.offsetWidth / 2 : 0;
+      if (shift) this.cam.camera.setViewOffset(innerWidth, innerHeight, shift, 0, innerWidth, innerHeight);
+      else if (this.cam.camera.view?.enabled) this.cam.camera.clearViewOffset();
       this.cam.cut();
     } else {
+      if (this.cam.camera.view?.enabled) this.cam.camera.clearViewOffset();
       const heading = this.state === 'arcade' || this.state === 'over' ? this.rig.root.rotation.y * 0 : this.cityMode.physics.heading;
       const speed = this.state === 'city' ? this.cityMode.physics.speed : this.arcade.speed;
       this.cam.update(dt, this.rig.root, heading, this.rig.eye, speed, this.state === 'city' ? inp.steer : 0);
@@ -739,6 +745,8 @@ export class Game {
     this.previewId = this.save.selected;
     this.garageSel = this.save.selected;
     this.renderGarage();
+    // car pictures are rendered after the panel is on screen, so opening the garage stays instant
+    if (!Object.keys(this.thumbs).length) setTimeout(() => carThumbs(this.gfx.scene.environment).then((t) => { this.thumbs = t; if (!$('garage').hidden) this.renderGarage(); }), 400);
     this.tutorial.event('garageOpened');
     this.audio.click();
   }
@@ -750,6 +758,8 @@ export class Game {
     this.paused = false;
     this.cam.cut();
   }
+
+  private thumbs: Record<string, string> = {};
 
   private async preview(id: string) {
     this.garageSel = id;
@@ -765,7 +775,7 @@ export class Game {
       const owned = s.owned.includes(v.id), locked = s.level < v.level;
       const status = s.selected === v.id ? '<span style="color:var(--accent)">EQUIPPED</span>' : owned ? 'Owned' : locked ? `🔒 LV ${v.level}` : money(v.cost);
       return `<div class="car-row ${this.garageSel === v.id ? 'sel' : ''} ${locked && !owned ? 'locked' : ''}" data-car="${v.id}">
-        <div class="swatch" style="background:#${v.color.toString(16).padStart(6, '0')}"></div>
+        ${this.thumbs[v.id] ? `<img class="thumb" src="${this.thumbs[v.id]}" alt="">` : `<div class="swatch" style="background:#${v.color.toString(16).padStart(6, '0')}"></div>`}
         <div class="nm"><b>${v.name}</b><small>${v.kind} · ${v.seats} seats${v.model ? ' · authored 3D model' : ''}</small></div>
         <div class="pr">${status}</div></div>`;
     }).join('');

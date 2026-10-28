@@ -74,3 +74,35 @@ describe('arcade power-ups', () => {
     expect(a.hearts).toBe(3);
   });
 });
+
+describe('arcade near misses', () => {
+  const obsOf = (a: ArcadeMode) => (a as unknown as { obstacles: { active: boolean; lane: number; x: number; z: number; speed: number; fly: number; mesh: { visible: boolean } }[] }).obstacles;
+  const setup = () => {
+    const a = new ArcadeMode(mats, rig);
+    a.start(rig, def);
+    a.countdown = 0; a.running = true;
+    (a as unknown as { nextRow: number }).nextRow = 1e9; // no random traffic: we place the car ourselves
+    (a as unknown as { nextPower: number }).nextPower = 1e9;
+    const o = obsOf(a)[0];
+    Object.assign(o, { active: true, passed: false, hit: false, fly: 0, minLat: 9, laneChange: 0, pending: 0, canChange: false, speed: 12, threatLane: null });
+    return { a, o };
+  };
+  it('does not count a car that was always in the next lane', () => {
+    const { a, o } = setup();
+    Object.assign(o, { lane: 1, x: 3.7, z: a.z + 30 });
+    for (let f = 0; f < 60 * 4; f++) a.update(1 / 60, 0, 0);
+    expect(a.nearMisses).toBe(0);
+  });
+  it('counts a car you dodged out of your lane', () => {
+    const { a, o } = setup();
+    Object.assign(o, { lane: 0, x: 0, z: a.z + 30 });
+    let dodged = false;
+    for (let f = 0; f < 60 * 4; f++) {
+      const close = !dodged && o.z - a.z < 9;
+      if (close) dodged = true;
+      a.update(1 / 60, close ? 1 : 0, 0);
+    }
+    expect(a.hearts).toBe(3);
+    expect(a.nearMisses).toBe(1);
+  });
+});
