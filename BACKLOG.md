@@ -73,6 +73,14 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Unreal
 
+- **HUD looks janky / amateur** (David, 2026-10-28). Fixing overlaps wasn't enough; it needs a real design pass:
+  - flat dark boxes with square corners: use rounded, softly blurred panels with a thin accent edge, like the web game;
+  - inconsistent text sizes and cramped spacing: one type scale (title / body / small) and a fixed spacing grid;
+  - job card is a wall of text: icons for pickup/drop-off, fare as the hero, accept/decline as key-cap buttons;
+  - speed/gear readout comes from the Vehicle template and doesn't match: replace with our own;
+  - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
+  - animations: cards slide/fade in, money counts up when paid.
+  Plan: do it with the menu batch so menus and HUD share one style (move from Canvas drawing to UMG widgets).
 - Test the last push: Play screenshot + the Output Log line `[ShiftCity] traffic: spawned N cars using M car model(s)`.
 - Traffic car wheels don't spin yet (they're bolted on, not animated).
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
