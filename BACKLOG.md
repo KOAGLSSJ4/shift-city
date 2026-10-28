@@ -74,7 +74,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 ## Unreal
 
 - Test the last push: Play screenshot + the Output Log line `[ShiftCity] traffic: spawned N cars using M car model(s)`.
-- Decide on the "build robot" (GitHub runner on David's laptop that compiles the C++ on every push).
+- **Bug:** the setup script crashes the editor (David, 2026-10-28). Waiting for the first build-robot run's log.
+- Build robot: set up on David's laptop (guide: `unreal/BUILD-ROBOT.md`).
 - Next batch: main menu + garage + goals + settings.
 
 ## Done
