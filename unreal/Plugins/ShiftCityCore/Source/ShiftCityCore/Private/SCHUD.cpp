@@ -224,7 +224,7 @@ void ASCHUD::DrawHUD()
 		const FString Money = FString::Printf(TEXT("$%.2f"), Sv->Wallet), Lv = FString::Printf(TEXT("LV %d"), Sv->Level);
 		const FString Stats = FString::Printf(TEXT("Rating %.2f  -  %d trips  -  %.1f km"), Sv->Rating, Sv->Trips, Sv->Km);
 		const FVector2D MoneyS = TextSize(Money, 1.4f), LvS = TextSize(Lv, 0.7f), StatsS = TextSize(Stats, 0.6f);
-		const float Pw = FMath::Max3(300 * S, StatsS.X + 32 * S, MoneyS.X + 32 * S);
+		const float Pw = FMath::Max3(300.f * S, float(StatsS.X) + 32.f * S, float(MoneyS.X) + 32.f * S);
 		Panel(Pad, Pad, Pw, 8 * S + MoneyS.Y + LvS.Y + StatsS.Y + 18 * S);
 		float Ly = Pad + 6 * S;
 		Label(Money, Pad + 16 * S, Ly, Accent, 1.4f);
