@@ -74,12 +74,14 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 ## Unreal
 
 - Test the last push: Play screenshot + the Output Log line `[ShiftCity] traffic: spawned N cars using M car model(s)`.
-- **Bug:** traffic cars are invisible in David's own Play too (David, 2026-10-28; crash fix confirmed working, HUD +
-  minimap fine). The robot now saves in-game screenshots and logs the first traffic car's mesh/position to chase it.
+- Traffic car wheels don't spin yet (they're bolted on, not animated).
+- Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Next batch: main menu + garage + goals + settings.
 
 ## Done
 
+- 2026-10-28: Unreal traffic cars visible (body, glass, wheels added), HUD panels fit their text, yellow VSM
+  shadow warning gone. The build robot now takes in-game screenshots.
 - 2026-10-28: Unreal crash on Play fixed (round minimap drew with no texture; found by the build robot).
   Build robot running on David's laptop with the real Unreal files.
 - 2026-10-28: phones: tutorial opens big in the middle, then tucks to the right; compact job card;
