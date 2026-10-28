@@ -15,7 +15,7 @@ on:
         default: true
 concurrency:
   group: unreal-build
-  cancel-in-progress: true
+  cancel-in-progress: false # let a running build finish; newer pushes wait their turn
 jobs:
   build:
     runs-on: [self-hosted, Windows]
@@ -28,11 +28,14 @@ jobs:
           clean: false # keep Binaries/Intermediate/downloads between runs so builds stay quick
 
       - name: Build the C++ (ShiftCityEditor, Development)
+        id: build
         shell: cmd
         run: call "%UE_ROOT%\Engine\Build\BatchFiles\Build.bat" ShiftCityEditor Win64 Development -Project="%GITHUB_WORKSPACE%\unreal\ShiftCity.uproject" -WaitMutex
 
       - name: Run the setup script in the editor
         if: github.event_name == 'push' || inputs.run_script
+        id: script
+        continue-on-error: true # still try Play afterwards so we learn about both
         shell: powershell
         timeout-minutes: 60
         env:
@@ -52,6 +55,32 @@ jobs:
           if (Select-String -Path $logFile -Pattern 'SCRIPT FAILED|Fatal error|Unhandled Exception|Assertion failed' -Quiet) { exit 1 }
           if (-not (Select-String -Path $logFile -Pattern 'SCRIPT FINISHED' -Quiet)) { "The script never finished: the editor probably crashed (see the uploaded logs)"; exit 1 }
 
+      - name: Play the level for 40 seconds (like pressing Play)
+        if: always() && steps.build.outcome == 'success'
+        shell: powershell
+        timeout-minutes: 15
+        run: |
+          $proj = "$env:GITHUB_WORKSPACE\unreal\ShiftCity.uproject"
+          $logFile = "$env:GITHUB_WORKSPACE\unreal\Saved\Logs\PlayTest.log"
+          Remove-Item $logFile -ErrorAction SilentlyContinue
+          $game = Start-Process -FilePath "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor.exe" `
+            -ArgumentList @("`"$proj`"", "/Game/ShiftCity/Maps/L_ShiftCity", "-game", "-windowed", "-ResX=1280", "-ResY=720", "-nosplash", "-unattended", "-log=PlayTest.log") -PassThru
+          $crashed = $false
+          for ($i = 0; $i -lt 120; $i++) {   # up to ~2 min to load + 40 s of play
+            Start-Sleep -Seconds 2
+            if ($game.HasExited) { $crashed = $true; break }
+            if ((Test-Path $logFile) -and (Select-String -Path $logFile -Pattern 'BeginPlay|Bringing up level for play|LogLoad: Took' -Quiet)) { break }
+          }
+          if (-not $crashed) {
+            Start-Sleep -Seconds 40
+            if ($game.HasExited) { $crashed = $true } else { Stop-Process -Id $game.Id -Force; "Played 40 s without crashing" }
+          }
+          if (Test-Path $logFile) {
+            Get-Content $logFile | Select-String '\[ShiftCity\]|Error|Fatal|Assertion failed|Unhandled Exception|Crash' |
+              Select-Object -Last 200 | ForEach-Object { $_.Line }
+          }
+          if ($crashed) { "THE GAME CRASHED OR QUIT DURING PLAY (exit code $($game.ExitCode))"; exit 1 }
+
       - name: Upload logs and crash reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,3 +90,10 @@ jobs:
             unreal/Saved/Logs/*.log
             unreal/Saved/Crashes/**
           if-no-files-found: ignore
+
+      - name: Mark the run failed if the setup script failed
+        if: steps.script.outcome == 'failure'
+        shell: powershell
+        run: |
+          "The setup script failed or crashed (see the 'Run the setup script' step and the unreal-logs artifact)"
+          exit 1
