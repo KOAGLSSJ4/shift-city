@@ -33,10 +33,22 @@ export class Tutorial {
   private highlighted: HTMLElement | null = null;
 
   constructor(private onFinish: () => void) {
-    document.getElementById('t-skip')!.addEventListener('click', () => this.finish());
+    document.getElementById('t-skip')!.addEventListener('click', (e) => { e.stopPropagation(); this.finish(); });
+    this.card.addEventListener('click', () => this.tuck()); // tap the big card to move it aside
   }
 
-  start() { this.active = true; this.step = 0; this.timer = 0; this.render(); }
+  start() {
+    this.active = true; this.step = 0; this.timer = 0; this.render();
+    // phones: the first step opens big in the middle so it can be read, then tucks away to the side
+    if (matchMedia('(pointer: coarse)').matches) {
+      this.card.classList.add('intro');
+      clearTimeout(this.introTimer);
+      this.introTimer = window.setTimeout(() => this.tuck(), 5000);
+    }
+  }
+
+  private introTimer = 0;
+  private tuck() { if (this.card.classList.contains('intro')) { this.card.classList.remove('intro'); this.card.classList.add('tucked'); } }
 
   show() { if (this.active) this.render(); }
 
@@ -51,6 +63,7 @@ export class Tutorial {
     if (!this.active) return;
     const s = STEPS[this.step];
     if (s.advanceOn !== e) return;
+    this.tuck();
     this.step++;
     this.timer = 0;
     if (this.step >= STEPS.length) this.finish();

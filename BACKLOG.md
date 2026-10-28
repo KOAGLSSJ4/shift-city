@@ -20,6 +20,26 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Features (next up)
 
+- **Declines that matter, like the real Uber app** (David, 2026-10-28). Being built on branch
+  `feature/driver-app`, not on `main` until David says. Ideas:
+  - acceptance rate shown on the driver card; declining (or letting a request time out) lowers it;
+  - offers expire after ~15 s like the real app;
+  - decline 3 in a row and you're taken offline for a short cool-down;
+  - driver tiers (like Uber Pro: Blue, Gold, Platinum, Diamond) from trips, acceptance rate and rating,
+    giving fare bonuses and access to premium and VIP passengers.
+- **More Uber-app features** (David, 2026-10-28), candidates:
+  - quests ("complete 5 trips → +$20") and streak bonuses;
+  - surge zones shown on the minimap;
+  - earnings screen (today / this week, per-trip breakdown, cash out);
+  - rider cancellations with a cancellation fee;
+  - waiting-time fee at pickup;
+  - airport queue;
+  - stacked / batched food orders;
+  - rider compliments and badges;
+  - destination filter ("only trips towards home").
+- **More complicated roads** (David, 2026-10-28): curves, roundabouts, a highway or ring road, one-way
+  streets, bridges, junctions that aren't all right angles. Needs the road network, GPS routing, traffic
+  AI and the city generator (web and Unreal) to support non-grid roads.
 - **Story v1.1, "The Week":** FT Uber Game-style story. Comic-panel cutscenes, evening choices, stats
   (money, rating, energy) that change the driving, about 4 endings (more good than bad), city characters,
   no personal/family storyline. Start after launch feedback. (Agreed 2026-10-27)
@@ -45,6 +65,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-28: phones: tutorial opens big in the middle, then tucks to the right; compact job card;
+  road kept clear; full screen / Add to Home Screen.
 - 2026-10-28: Arcade pause (button, P/Esc, auto-pause), garage car pictures + 3D preview, near misses
   need a dodge, live Arcade HUD, Subway Surfers-style power-ups, more Arcade money/XP.
 - 2026-10-27: Arcade lane-block fix, original car designs, Shift Classic + Stellato 12, music + sounds,

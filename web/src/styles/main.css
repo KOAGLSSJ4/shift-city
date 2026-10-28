@@ -272,13 +272,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .speedo .muted { display: none; }
   #touch { bottom: 12px; }
   #toasts { top: 92px; }
-  /* tutorial = a thin strip between the wallet and the job card, never over the road */
-  #tutorial { top: 46px; bottom: auto; left: calc(env(safe-area-inset-left) + 122px); right: calc(env(safe-area-inset-right) + 250px); width: auto; margin: 0;
-    display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center; padding: 5px 6px 5px 10px; border-radius: 12px; box-shadow: none; background: rgba(10,22,34,.88); }
+  /* tutorial: big in the middle for the first read, then a small card on the right above the pedals */
+  #tutorial { top: auto; bottom: calc(env(safe-area-inset-bottom) + 100px); left: auto; right: max(8px, env(safe-area-inset-right)); width: 236px; margin: 0;
+    display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center; padding: 6px 6px 6px 10px; border-radius: 12px; box-shadow: none; background: rgba(10,22,34,.9); }
   #tutorial .t-count { grid-column: 1; font-size: 9px; }
   #tutorial h3 { display: none; }
   #tutorial p { grid-column: 1; margin: 0; font-size: 12px; line-height: 1.3; color: #fff; }
   #tutorial #t-skip { grid-column: 2; grid-row: 1 / span 2; padding: 4px 8px; font-size: 11px; }
+  #tutorial.tucked { animation: tuckIn .35s ease; }
+  #tutorial.intro { top: 50%; bottom: auto; left: 50%; right: auto; width: min(380px, 76vw); transform: translate(-50%, -50%); display: block; padding: 14px 16px; box-shadow: 0 0 0 4px #4cf0af22, 0 10px 40px rgba(0,0,0,.5); cursor: pointer; }
+  #tutorial.intro h3 { display: block; font-size: 17px; margin: 4px 0 6px; }
+  #tutorial.intro p { font-size: 14px; margin: 0 0 10px; }
+  #tutorial.intro .t-count { font-size: 10px; }
   #pointer .p-arrow { font-size: 30px; }
   .chat { top: calc(66px + 96px + 10px); bottom: auto; left: max(8px, env(safe-area-inset-left)); margin-left: 0; width: 240px; padding: 7px 11px; font-size: 12.5px; } /* beside the road, under the minimap */
   .side-modal { width: min(420px, 100vw); }
@@ -291,7 +296,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .wallet { font-size: 15px; }
   #minimap { width: 74px; height: 74px; top: 52px; left: max(6px, env(safe-area-inset-left)); border-width: 1px; }
   .toolbar { top: 6px; gap: 4px; left: max(92px, calc(env(safe-area-inset-left) + 86px)); transform: none; }
-  #tutorial { top: 40px; left: calc(env(safe-area-inset-left) + 90px); right: calc(env(safe-area-inset-right) + 218px); }
+  #tutorial:not(.intro) { top: 40px; bottom: auto; left: calc(env(safe-area-inset-left) + 90px); right: calc(env(safe-area-inset-right) + 218px); width: auto; } /* no room on the right: strip at the top */
+  #tutorial.intro { width: min(330px, 70vw); padding: 10px 12px; }
+  #tutorial.intro p { font-size: 12.5px; }
   #tutorial p { font-size: 11px; }
   .toolbar button { padding: 4px 8px; font-size: 11px; border-radius: 9px; }
   .job { top: 6px; right: max(6px, env(safe-area-inset-right)); width: 205px; padding: 6px 9px; border-radius: 12px; }
@@ -348,6 +355,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #rotate b { font-size: 22px; }
   #rotate .phone { width: 46px; height: 80px; border: 3px solid var(--accent); border-radius: 10px; animation: turn 1.8s ease-in-out infinite; }
 }
+@keyframes tuckIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
 @keyframes turn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
 
 /* Settings */
