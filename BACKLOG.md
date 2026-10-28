@@ -12,8 +12,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Arcade near misses:** only reward *close* dodges, not every dodge. Right now any lane change past a
   car that was coming at you counts. Idea: only count it if you changed lanes late (car within ~10 m)
   or passed very close. (David, 2026-10-28)
-- **Arcade balance:** check money/XP after real play. Arcade now pays $8 per 100 points and 1 XP per
-  1,000 points (no cap); make sure it doesn't out-earn the city modes too much.
+- **Arcade balance:** David thinks money/XP feel right but hasn't tested it hard. Revisit if launch
+  feedback says Arcade out-earns the city modes ($8 per 100 points, 1 XP per 1,000 points, no cap).
 - **Garage:** the HUD (tutorial card, minimap, buttons) still shows over the 3D car preview; hide it while
   the garage is open.
 - **Cockpit view** of the new lofted cars is functional but plain (dash, pillars); could use more detail.
