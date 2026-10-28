@@ -30,7 +30,15 @@ jobs:
 
       - name: Swap LFS placeholders for the real asset files
         # checkout only rewrites files that changed, so placeholders left by earlier runs stay unless we do this
-        run: git lfs checkout
+        # the runner folder can be owned by another Windows user (e.g. made from an admin window), which makes
+        # git refuse it ("Not in a Git repository"); trust it for this step only, without touching global config
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: safe.directory
+          GIT_CONFIG_VALUE_0: "*"
+        run: |
+          git lfs checkout
+          git lfs ls-files | Select-Object -First 3
 
       - name: Wait until Unreal is closed (it can't compile while an editor is open)
         shell: powershell
