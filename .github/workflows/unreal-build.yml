@@ -28,6 +28,10 @@ jobs:
           clean: false # keep Binaries/Intermediate/downloads between runs so builds stay quick
           lfs: true # the Unreal assets (.uasset/.umap) live in Git LFS; without this they are placeholder files
 
+      - name: Swap LFS placeholders for the real asset files
+        # checkout only rewrites files that changed, so placeholders left by earlier runs stay unless we do this
+        run: git lfs checkout
+
       - name: Wait until Unreal is closed (it can't compile while an editor is open)
         shell: powershell
         timeout-minutes: 120
