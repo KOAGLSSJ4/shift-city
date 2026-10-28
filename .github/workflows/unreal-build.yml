@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           clean: false # keep Binaries/Intermediate/downloads between runs so builds stay quick
+          lfs: true # the Unreal assets (.uasset/.umap) live in Git LFS; without this they are placeholder files
 
       - name: Wait until Unreal is closed (it can't compile while an editor is open)
         shell: powershell
