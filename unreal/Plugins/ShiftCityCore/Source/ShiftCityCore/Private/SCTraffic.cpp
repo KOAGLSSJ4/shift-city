@@ -132,11 +132,11 @@ void ASCTraffic::BeginPlay()
 	if (Cars.Num() > 0 && Cars[0].Body)
 	{
 		TArray<USceneComponent*> Kids;
-		Cars[0].Body->GetChildrenComponents(false, Kids);
+		Cars[0].Body->GetChildrenComponents(true, Kids);
 		for (USceneComponent* Kid : Kids)
 			if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(Kid))
-				UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] traffic car 0: %s at %s, bounds radius %.0f, visible %d, registered %d"),
-					*GetNameSafe(Prim->GetClass()), *Prim->GetComponentLocation().ToString(), Prim->Bounds.SphereRadius, Prim->IsVisible() ? 1 : 0, Prim->IsRegistered() ? 1 : 0);
+				UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] traffic car 0: %s (%s) at %s, bounds radius %.0f, visible %d, registered %d"),
+					*GetNameSafe(Prim->GetClass()), *Prim->GetAttachSocketName().ToString(), *Prim->GetComponentLocation().ToString(), Prim->Bounds.SphereRadius, Prim->IsVisible() ? 1 : 0, Prim->IsRegistered() ? 1 : 0);
 	}
 }
 
@@ -169,6 +169,31 @@ void ASCTraffic::SpawnCars()
 			Sk->SetupAttachment(Box);
 			Sk->SetRelativeLocation(FVector(0, 0, -70.f));
 			Sk->RegisterComponent();
+			// body, glass and a wheel on every wheel bone, the way the template's car blueprints assemble them
+			const int32 Model = k % CarMeshes.Num();
+			auto Part = [&](UStaticMesh* Mesh, FName Bone, bool bMirror)
+			{
+				if (!Mesh) return;
+				UStaticMeshComponent* M = NewObject<UStaticMeshComponent>(this);
+				M->SetStaticMesh(Mesh);
+				M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				M->SetupAttachment(Sk, Bone);
+				if (bMirror) M->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
+				M->RegisterComponent();
+			};
+			Part(CarBodies.IsValidIndex(Model) ? CarBodies[Model].Get() : nullptr, NAME_None, false);
+			Part(CarGlass.IsValidIndex(Model) ? CarGlass[Model].Get() : nullptr, NAME_None, false);
+			if (UStaticMesh* Wheel = CarWheels.IsValidIndex(Model) ? CarWheels[Model].Get() : nullptr)
+			{
+				TArray<FName> Bones;
+				Sk->GetBoneNames(Bones);
+				for (const FName& Bone : Bones)
+				{
+					const FString B = Bone.ToString().ToLower();
+					if (!B.Contains(TEXT("wheel")) && !B.Contains(TEXT("tire"))) continue;
+					Part(Wheel, Bone, B.Contains(TEXT("right")) || B.EndsWith(TEXT("_r")) || B.Contains(TEXT("_r_")));
+				}
+			}
 		}
 		else
 		{
