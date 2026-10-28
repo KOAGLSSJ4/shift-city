@@ -254,21 +254,33 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .career .sub { display: none; }
   .wallet { font-size: 18px; }
   #minimap { width: 96px; height: 96px; top: 66px; left: 8px; bottom: auto; }
-  .job { top: 8px; right: 8px; bottom: auto; width: 270px; padding: 8px 10px; }
-  .job h3 { font-size: 14px; margin: 3px 0 2px; }
-  .job p { font-size: 11.5px; line-height: 1.35; }
+  .job { top: 8px; right: max(8px, env(safe-area-inset-right)); bottom: auto; width: 230px; padding: 7px 10px; border-radius: 12px; z-index: 8; } /* above the pedals */
+  .job .tag { font-size: 9px; letter-spacing: 1px; }
+  .job h3 { font-size: 13px; margin: 2px 0 1px; }
+  .job p { font-size: 11px; line-height: 1.3; }
+  .job .fare { font-size: 16px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .job .action { padding: 6px 10px; font-size: 12px; flex: none; }
+  .job #offer-buttons:not([hidden]) { display: inline-flex; gap: 4px; vertical-align: middle; margin: 0; }
+  .job .hint, .job .kbd { display: none; }
+  .job .live { font-size: 11.5px; margin-top: 3px; }
   .toolbar { top: 8px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); max-width: none; flex-wrap: nowrap; }
   .toolbar button { padding: 6px 9px; font-size: 12px; }
-  #btn-garage, #btn-goals, #btn-gfx { display: none; }
-  .nav { top: 50px; bottom: auto; padding: 6px 12px; min-width: 0; }
-  .nav-arrow { width: 32px; height: 32px; font-size: 18px; }
+  #btn-goals, #btn-gfx, #btn-settings { display: none; }
+  .nav { display: none; } /* the road arrows + minimap carry the route on phones */
   .speedo { display: block; left: 50%; right: auto; bottom: 8px; transform: translateX(-50%); min-width: 0; padding: 4px 12px; text-align: center; }
   .speedo b { font-size: 24px; }
   .speedo .muted { display: none; }
   #touch { bottom: 12px; }
-  #tutorial { top: auto; bottom: 96px; left: 50%; width: 320px; margin-left: -160px; padding: 10px 12px; }
-  #tutorial p { font-size: 12px; margin-bottom: 6px; }
-  .chat { bottom: 96px; }
+  #toasts { top: 92px; }
+  /* tutorial = a thin strip between the wallet and the job card, never over the road */
+  #tutorial { top: 46px; bottom: auto; left: calc(env(safe-area-inset-left) + 122px); right: calc(env(safe-area-inset-right) + 250px); width: auto; margin: 0;
+    display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center; padding: 5px 6px 5px 10px; border-radius: 12px; box-shadow: none; background: rgba(10,22,34,.88); }
+  #tutorial .t-count { grid-column: 1; font-size: 9px; }
+  #tutorial h3 { display: none; }
+  #tutorial p { grid-column: 1; margin: 0; font-size: 12px; line-height: 1.3; color: #fff; }
+  #tutorial #t-skip { grid-column: 2; grid-row: 1 / span 2; padding: 4px 8px; font-size: 11px; }
+  #pointer .p-arrow { font-size: 30px; }
+  .chat { top: calc(66px + 96px + 10px); bottom: auto; left: max(8px, env(safe-area-inset-left)); margin-left: 0; width: 240px; padding: 7px 11px; font-size: 12.5px; } /* beside the road, under the minimap */
   .side-modal { width: min(420px, 100vw); }
 }
 /* Phones in a browser with toolbars (e.g. iPhone Safari leaves ~220 px of height): ultra-compact HUD */
@@ -279,25 +291,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .wallet { font-size: 15px; }
   #minimap { width: 74px; height: 74px; top: 52px; left: max(6px, env(safe-area-inset-left)); border-width: 1px; }
   .toolbar { top: 6px; gap: 4px; left: max(92px, calc(env(safe-area-inset-left) + 86px)); transform: none; }
+  #tutorial { top: 40px; left: calc(env(safe-area-inset-left) + 90px); right: calc(env(safe-area-inset-right) + 218px); }
+  #tutorial p { font-size: 11px; }
   .toolbar button { padding: 4px 8px; font-size: 11px; border-radius: 9px; }
-  #btn-settings { display: none; }
   .job { top: 6px; right: max(6px, env(safe-area-inset-right)); width: 205px; padding: 6px 9px; border-radius: 12px; }
   .job .tag { font-size: 8.5px; letter-spacing: 1px; }
   .job h3 { font-size: 12.5px; margin: 2px 0 1px; }
   .job p { font-size: 10.5px; line-height: 1.3; }
-  .job { z-index: 8; } /* above the touch pedals so Accept / Decline can always be tapped */
-  .job .fare { font-size: 15px; display: inline-block; vertical-align: middle; margin-right: 6px; }
   .job #offer-buttons:not([hidden]) { display: inline-flex; gap: 4px; vertical-align: middle; margin: 0; }
   .job .hint, .job .kbd { display: none; }
   .job .live { font-size: 11px; margin-top: 3px; }
   .job .action { padding: 5px 8px; font-size: 11.5px; flex: none; }
-  .nav { display: none; } /* the road arrows + minimap carry the route on tiny screens */
-  #tutorial { top: 42px; bottom: auto; left: max(88px, calc(env(safe-area-inset-left) + 82px)); width: min(250px, calc(100vw - 330px)); min-width: 190px; margin-left: 0; padding: 6px 10px; border-radius: 12px; box-shadow: 0 0 0 2px #4cf0af22; }
-  #tutorial .t-count { font-size: 8.5px; }
-  #tutorial h3 { font-size: 12.5px; margin: 1px 0 2px; }
-  #tutorial p { font-size: 10.5px; line-height: 1.3; margin: 0 0 4px; }
-  #tutorial button { padding: 3px 8px; font-size: 10.5px; }
-  #pointer .p-arrow { font-size: 28px; }
   #pointer .p-label { font-size: 10px; padding: 3px 6px; }
   .speedo { bottom: 6px; padding: 2px 10px; border-radius: 10px; }
   .speedo b { font-size: 17px; }
@@ -306,8 +310,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #touch > div { gap: 6px; }
   #touch button { width: 54px; height: 54px; font-size: 19px; }
   #touch .hb { width: 40px; height: 40px; font-size: 11px; }
-  .chat { bottom: 46px; left: 50%; width: 250px; margin-left: -125px; padding: 6px 10px; font-size: 12px; }
-  #toasts { top: 40px; }
+  .chat { top: auto; bottom: 46px; left: 50%; width: 250px; margin-left: -125px; padding: 6px 10px; font-size: 12px; }
+  #toasts { top: 86px; }
   .toast { padding: 5px 10px; font-size: 12px; }
   .earn-pop { font-size: 30px; }
   .story-card { top: 40px; padding: 8px 12px; }

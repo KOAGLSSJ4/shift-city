@@ -9,16 +9,18 @@ interface Step {
   target: string;
   label: string;
   advanceOn: TutorialEvent;
+  /** Short version for phones (no keyboard keys, fits one line). */
+  touch: string;
   delay?: number; // for 'timer' steps
 }
 
 export const STEPS: Step[] = [
-  { title: 'Your first fare', text: 'A ride request just came in. Check the pickup, destination and fare, then accept it.', target: '#accept', label: 'ACCEPT THE JOB', advanceOn: 'accepted' },
-  { title: 'Drive to the pickup', text: 'Follow the glowing arrows on the road and the GPS at the top. W/↑ to drive, A/D to steer, S to brake. Stop inside the ring.', target: 'world', label: 'PICKUP', advanceOn: 'pickedUp' },
-  { title: 'Take them to the destination', text: 'Passenger on board! Drive smoothly — bumps cost you stars and tips. Stop inside the orange ring.', target: 'world', label: 'DROP-OFF', advanceOn: 'delivered' },
-  { title: 'You got paid!', text: 'Fares go into your wallet. Earn XP to level up and unlock better cars.', target: '#wallet', label: 'YOUR EARNINGS', advanceOn: 'timer', delay: 4.5 },
-  { title: 'Visit the garage', text: 'Spend your earnings on new vehicles and upgrades. Better cars unlock premium passengers.', target: '#btn-garage', label: 'OPEN GARAGE', advanceOn: 'garageOpened' },
-  { title: 'Three ways to play', text: 'Story, Free Ride and Arcade Rush all share one wallet and garage. Open the menu to switch any time.', target: '#btn-menu', label: 'OPEN MENU', advanceOn: 'menuOpened' },
+  { title: 'Your first fare', text: 'A ride request just came in. Check the pickup, destination and fare, then accept it.', target: '#accept', label: 'ACCEPT THE JOB', touch: 'Tap Accept to take the ride.', advanceOn: 'accepted' },
+  { title: 'Drive to the pickup', text: 'Follow the glowing arrows on the road and the GPS at the top. W/↑ to drive, A/D to steer, S to brake. Stop inside the ring.', target: 'world', label: 'PICKUP', touch: 'Follow the arrows on the road and stop in the green ring.', advanceOn: 'pickedUp' },
+  { title: 'Take them to the destination', text: 'Passenger on board! Drive smoothly — bumps cost you stars and tips. Stop inside the orange ring.', target: 'world', label: 'DROP-OFF', touch: 'Drive smoothly (bumps cost tips) and stop in the orange ring.', advanceOn: 'delivered' },
+  { title: 'You got paid!', text: 'Fares go into your wallet. Earn XP to level up and unlock better cars.', target: '#wallet', label: 'YOUR EARNINGS', touch: 'Fares go into your wallet. Level up to unlock cars.', advanceOn: 'timer', delay: 4.5 },
+  { title: 'Visit the garage', text: 'Spend your earnings on new vehicles and upgrades. Better cars unlock premium passengers.', target: '#btn-garage', label: 'OPEN GARAGE', touch: 'Tap Garage to see the cars you can unlock.', advanceOn: 'garageOpened' },
+  { title: 'Three ways to play', text: 'Story, Free Ride and Arcade Rush all share one wallet and garage. Open the menu to switch any time.', target: '#btn-menu', label: 'OPEN MENU', touch: 'Tap Menu to switch between Story, Free Ride and Arcade.', advanceOn: 'menuOpened' },
 ];
 
 export class Tutorial {
@@ -58,9 +60,9 @@ export class Tutorial {
   private render() {
     const s = STEPS[this.step];
     this.card.hidden = false;
-    document.getElementById('t-count')!.textContent = `GUIDED FIRST SHIFT · ${this.step + 1} / ${STEPS.length}`;
+    document.getElementById('t-count')!.textContent = `FIRST SHIFT · ${this.step + 1}/${STEPS.length}`;
     document.getElementById('t-title')!.textContent = s.title;
-    document.getElementById('t-text')!.textContent = s.text;
+    document.getElementById('t-text')!.textContent = matchMedia('(pointer: coarse)').matches ? s.touch : s.text;
     this.label.textContent = s.label;
     this.highlight(s.target === 'world' ? null : document.querySelector<HTMLElement>(s.target));
   }
