@@ -201,6 +201,8 @@ body.garage-open #hud, body.garage-open #touch, body.garage-open #tutorial { vis
 .earn-row { display: flex; gap: 10px; margin: 8px 0 4px; }
 .earn-row span { flex: 1; font-size: 11.5px; color: #c2d1e0; }
 .earn-row big { display: block; font-size: 18px; font-weight: 700; color: var(--accent); }
+.badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.badges span { font-size: 11px; padding: 3px 8px; border-radius: 99px; background: #ffd27a22; color: #ffd27a; border: 1px solid #ffd27a55; }
 .goal.daily { border-color: var(--accent); background: #4cf0af12; }
 .goal .gbar { height: 6px; background: #ffffff18; border-radius: 6px; margin: 8px 0; overflow: hidden; }
 .goal .gbar i { display: block; height: 100%; background: var(--accent); }

@@ -157,3 +157,17 @@ export function personaHappy(p: Persona, elapsed: number, limit: number | undefi
 
 /** Surge multiplier for a surge job (1.4x–2.0x in 0.1 steps). */
 export const rollSurge = (rnd = Math.random) => Math.round((1.4 + rnd() * 0.6) * 10) / 10;
+
+/** Rider compliments, like the real app's badges. */
+export const COMPLIMENTS: Record<string, string> = {
+  smooth: 'Smooth driving', music: 'Great music', speedy: 'Speedy service', chat: 'Great conversation', expert: 'Expert navigation',
+};
+/** A happy rider (4.8+ stars) may leave a compliment that fits the ride. */
+export function complimentFor(p: Persona, stars: number, elapsed: number, limit: number | undefined, log: RideLog): string | null {
+  if (stars < 4.8) return null;
+  if (log.music > 10) return 'music';
+  if (log.bumps === 0 && log.harsh === 0 && (p === 'quiet' || p === 'grumpy')) return 'smooth';
+  if (p === 'hurry' || (limit !== undefined && elapsed < limit * 0.8)) return 'speedy';
+  if (p === 'chatty' || p === 'tourist') return 'chat';
+  return log.bumps === 0 ? 'expert' : null;
+}

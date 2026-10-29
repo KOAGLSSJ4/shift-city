@@ -29,7 +29,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - waiting-time fee at pickup;
   - airport queue;
   - stacked / batched food orders;
-  - rider compliments and badges;
   - destination filter ("only trips towards home").
 - **More complicated roads** (David, 2026-10-28): curves, roundabouts, a highway or ring road, one-way
   streets, bridges, junctions that aren't all right angles. Needs the road network, GPS routing, traffic
@@ -64,6 +63,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: rider compliments (Smooth driving, Great music, Speedy service, Great conversation, Expert
+  navigation) on 4.8+ star rides, collected as badges on the earnings card.
 - 2026-10-29: riders cancel if you take far too long to reach them (warning at 20 s left, $3 cancellation fee).
 - 2026-10-29: surge zones: an orange patch on the minimap moves every 3 min; rides picked up there pay ×1.4–2.0.
 - 2026-10-29: merged to live: driver app, daily reward/challenge, power-up upgrades, car radio, trip streak +

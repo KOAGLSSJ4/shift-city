@@ -20,7 +20,7 @@ import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, typ
 import { nextStation, stationName } from '../data/radio';
 import { CHALLENGE_REWARD, claimChallenge, claimDailyReward, dailyChallenge } from '../gameplay/Daily';
 import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost, buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
-import { PERSONAS, VARIANTS } from '../gameplay/Missions';
+import { COMPLIMENTS, PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
 import { OFFER_SECONDS, acceptanceRate, driverTier, earnings, nextTier } from '../gameplay/Driver';
@@ -929,7 +929,8 @@ export class Game {
         ${ch.done ? '<span>Claimed ✓</span>' : `<button class="action small" id="daily-claim" ${ch.ready ? '' : 'disabled'}>Claim</button>`}</div></div>`;
     const ea = earnings(s.driver);
     const earnHtml = `<div class="goal earn"><b>Earnings</b><div class="earn-row"><span><big>${money(ea.today)}</big>today · ${ea.todayTrips} trips</span><span><big>${money(ea.week)}</big>last 7 days · ${ea.weekTrips} trips</span><span><big>${money(ea.best)}</big>best trip</span></div>
-        <div class="grow"><span>Trip streak: ${s.driver.tripStreak} in a row · every 3rd trip without declining pays a bonus</span></div></div>`;
+        <div class="grow"><span>Trip streak: ${s.driver.tripStreak} in a row · every 3rd trip without declining pays a bonus</span></div>
+        ${Object.keys(s.driver.badges).length ? `<div class="badges">${Object.entries(s.driver.badges).map(([k, n]) => `<span>${COMPLIMENTS[k] ?? k} ×${n}</span>`).join('')}</div>` : ''}</div>`;
     $('goals-list').innerHTML = earnHtml + dailyHtml + GOALS.map((g) => {
       const p = Math.min(g.goal, goalProgress(s, g)), done = s.claimedGoals.includes(g.id), ready = !done && p >= g.goal;
       return `<div class="goal ${done ? 'done' : ''}"><b>${g.name}</b><div class="gbar"><i style="width:${(p / g.goal) * 100}%"></i></div>

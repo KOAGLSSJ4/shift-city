@@ -14,7 +14,7 @@ import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
 import { CANCEL_FEE, applySurgeZone, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
-import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, type Moment } from './Missions';
+import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, complimentFor, COMPLIMENTS, type Moment } from './Missions';
 
 export interface CityEvents {
   /** A new request (null = the offer was withdrawn, e.g. it expired). */
@@ -366,7 +366,9 @@ export class CityMode {
         const text = line(job.persona, personaHappy(job.persona, onBoard, job.limit, job.log) >= 0.5 ? 'good' : 'bad');
         if (text) this.ev.say(job.customer, text);
       }
-      if (pay) this.ev.complete(job, { ...pay, note: [mission.note, pay.note].filter(Boolean).join(' · ') }, stars);
+      const badge = pay && job.persona ? complimentFor(job.persona, stars, onBoard, job.limit, job.log) : null;
+      if (badge) this.save.driver.badges[badge] = (this.save.driver.badges[badge] ?? 0) + 1;
+      if (pay) this.ev.complete(job, { ...pay, note: [mission.note, pay.note, badge ? `compliment: ${COMPLIMENTS[badge]}` : ''].filter(Boolean).join(' · ') }, stars);
       this.job = null;
       this.offerTimer = 2.2;
       if (job.chapter !== null && job.chapter + 1 >= STORY.length) this.ev.storyDone();

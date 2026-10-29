@@ -33,9 +33,11 @@ export interface DriverRecord {
   tripStreak: number;
   /** Earnings log for the earnings screen: [Date.now(), amount], newest last. */
   log: [number, number][];
+  /** Rider compliments received, by kind. */
+  badges: Record<string, number>;
 }
 
-export const newDriverRecord = (): DriverRecord => ({ recent: [], declineStreak: 0, offlineUntil: 0, tripStreak: 0, log: [] });
+export const newDriverRecord = (): DriverRecord => ({ recent: [], declineStreak: 0, offlineUntil: 0, tripStreak: 0, log: [], badges: {} });
 
 /** Streak bonus paid on every 3rd trip in a row: $5, $10, $15... up to $25. */
 export const streakBonus = (streak: number) => (streak > 0 && streak % 3 === 0 ? Math.min(25, 5 * (streak / 3)) : 0);

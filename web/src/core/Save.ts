@@ -126,6 +126,7 @@ export function normalize(raw: any): SaveData {
   s.driver.offlineUntil = Math.max(0, num(s.driver.offlineUntil));
   s.driver.tripStreak = Math.max(0, Math.floor(num(s.driver.tripStreak)));
   if (!Array.isArray(s.driver.log)) s.driver.log = [];
+  if (!s.driver.badges || typeof s.driver.badges !== 'object') s.driver.badges = {};
   s.driver.log = s.driver.log.filter((e) => Array.isArray(e) && Number.isFinite(e[0]) && Number.isFinite(e[1])).slice(-300);
   s.wallet = Math.max(0, num(s.wallet));
   s.level = Math.max(1, Math.floor(num(s.level, 1)));
