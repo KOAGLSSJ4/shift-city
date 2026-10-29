@@ -29,7 +29,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - waiting-time fee at pickup;
   - airport queue;
   - stacked / batched food orders;
-  - destination filter ("only trips towards home").
 - **More complicated roads** (David, 2026-10-28): curves, roundabouts, a highway or ring road, one-way
   streets, bridges, junctions that aren't all right angles. Needs the road network, GPS routing, traffic
   AI and the city generator (web and Unreal) to support non-grid roads.
@@ -63,6 +62,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: destination filter in Goals ("only trips heading towards …").
 - 2026-10-29: rider compliments (Smooth driving, Great music, Speedy service, Great conversation, Expert
   navigation) on 4.8+ star rides, collected as badges on the earnings card.
 - 2026-10-29: riders cancel if you take far too long to reach them (warning at 20 s left, $3 cancellation fee).

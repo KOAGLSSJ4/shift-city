@@ -81,6 +81,12 @@ export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }, 
   };
 }
 
+/** Destination filter: does this trip take you closer to where you want to go? */
+export function headsTowards(job: Job, place: { x: number; z: number }): boolean {
+  const d = (p: { x: number; z: number }) => Math.abs(p.x - place.x) + Math.abs(p.z - place.z);
+  return d(job.b) < d(job.a);
+}
+
 /** Rider cancellation fee paid to the driver when a rider gives up waiting. */
 export const CANCEL_FEE = 3;
 /** How long a rider waits: about the drive at a relaxed 8 m/s, plus 45 s. */

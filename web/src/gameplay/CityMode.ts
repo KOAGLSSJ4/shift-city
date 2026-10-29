@@ -12,7 +12,7 @@ import { VehiclePhysics, type DriveInput } from '../vehicles/VehiclePhysics';
 import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
-import { CANCEL_FEE, applySurgeZone, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
+import { CANCEL_FEE, applySurgeZone, headsTowards, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
 import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, complimentFor, COMPLIMENTS, type Moment } from './Missions';
 
@@ -156,6 +156,9 @@ export class CityMode {
       // some requests come from the surge zone, so it's worth driving there
       const z = this.surgeZone, fromZone = z && Math.random() < 0.3;
       this.job = randomJob(def, fromZone ? z : this.physics.pos, driverTier(this.save).premiumBoost);
+      // destination filter: re-roll a few times for a trip that heads where you want to go
+      const want = this.save.driver.filter ? DESTINATIONS.find((d) => d.name === this.save.driver.filter) : undefined;
+      for (let i = 0; want && i < 6 && !headsTowards(this.job, want); i++) this.job = randomJob(def, this.physics.pos, driverTier(this.save).premiumBoost);
       if (z) applySurgeZone(this.job, z);
       // like the real app: accept within 15 s or it goes to someone else (not while learning in the tutorial)
       if (this.save.tutorialDone) this.job.expires = OFFER_SECONDS;

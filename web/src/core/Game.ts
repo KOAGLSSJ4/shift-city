@@ -18,6 +18,7 @@ import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
 import { nextStation, stationName } from '../data/radio';
+import { DESTINATIONS } from '../data/world';
 import { CHALLENGE_REWARD, claimChallenge, claimDailyReward, dailyChallenge } from '../gameplay/Daily';
 import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost, buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
 import { COMPLIMENTS, PERSONAS, VARIANTS } from '../gameplay/Missions';
@@ -930,6 +931,7 @@ export class Game {
     const ea = earnings(s.driver);
     const earnHtml = `<div class="goal earn"><b>Earnings</b><div class="earn-row"><span><big>${money(ea.today)}</big>today · ${ea.todayTrips} trips</span><span><big>${money(ea.week)}</big>last 7 days · ${ea.weekTrips} trips</span><span><big>${money(ea.best)}</big>best trip</span></div>
         <div class="grow"><span>Trip streak: ${s.driver.tripStreak} in a row · every 3rd trip without declining pays a bonus</span></div>
+        <label class="filter">Only trips heading towards <select id="dest-filter"><option value="">Anywhere (filter off)</option>${DESTINATIONS.map((d) => `<option ${d.name === s.driver.filter ? 'selected' : ''}>${d.name}</option>`).join('')}</select></label>
         ${Object.keys(s.driver.badges).length ? `<div class="badges">${Object.entries(s.driver.badges).map(([k, n]) => `<span>${COMPLIMENTS[k] ?? k} ×${n}</span>`).join('')}</div>` : ''}</div>`;
     $('goals-list').innerHTML = earnHtml + dailyHtml + GOALS.map((g) => {
       const p = Math.min(g.goal, goalProgress(s, g)), done = s.claimedGoals.includes(g.id), ready = !done && p >= g.goal;
@@ -937,6 +939,11 @@ export class Game {
         <div class="grow"><span>${g.kind === 'distance' ? p.toFixed(1) : Math.floor(p)} / ${g.goal} · ${money(g.reward)} + ${g.xp} XP</span>
         ${done ? '<span>Claimed ✓</span>' : `<button class="action small" data-goal="${g.id}" ${ready ? '' : 'disabled'}>Claim</button>`}</div></div>`;
     }).join('');
+    document.getElementById('dest-filter')?.addEventListener('change', (e) => {
+      s.driver.filter = (e.target as HTMLSelectElement).value;
+      this.persist();
+      this.toast(s.driver.filter ? `Destination filter on: trips towards ${s.driver.filter}` : 'Destination filter off');
+    });
     document.getElementById('daily-claim')?.addEventListener('click', () => {
       const lvl = s.level;
       if (claimChallenge(s)) { this.toast(`Daily challenge done: +${money(CHALLENGE_REWARD.cash)}`, 'good'); this.audio.success(); this.persist(); if (s.level > lvl) this.toast(`LEVEL UP! Level ${s.level}`, 'good'); }

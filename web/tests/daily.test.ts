@@ -87,17 +87,27 @@ describe('trip streak + earnings', () => {
 });
 
 import { applySurgeZone, randomJob, rollSurgeZone } from '../src/gameplay/Jobs';
+import { DESTINATIONS } from '../src/data/world';
 describe('surge zones', () => {
   it('multiplies rides picked up inside the zone only', () => {
     const z = rollSurgeZone(0, () => 0.5);
     const car = vehicleById('classic');
-    let inside = 0;
-    for (let i = 0; i < 40; i++) {
-      const j = randomJob(car, z); if (j.food || j.surge) continue;
-      const fare = j.fare, applied = applySurgeZone(j, z);
-      if (applied) { inside++; expect(j.fare).toBeCloseTo(fare * z.mult, 1); expect(j.variant).toBe('surge'); }
-      else expect(Math.hypot(j.a.x - z.x, j.a.z - z.z)).toBeGreaterThan(z.r);
-    }
-    expect(inside).toBeGreaterThan(0);
+    const make = () => { const j = randomJob(car); j.food = false; j.surge = undefined; j.variant = 'standard'; return j; };
+    const inside = make(); inside.a = DESTINATIONS.find((d) => d.name === z.name)!;
+    const fare = inside.fare;
+    expect(applySurgeZone(inside, z)).toBe(true);
+    expect(inside.fare).toBeCloseTo(fare * z.mult, 1);
+    expect(inside.variant).toBe('surge');
+    const outside = make(); outside.a = DESTINATIONS.reduce((f, d) => (Math.hypot(d.x - z.x, d.z - z.z) > Math.hypot(f.x - z.x, f.z - z.z) ? d : f));
+    expect(applySurgeZone(outside, z)).toBe(false);
+  });
+});
+
+import { headsTowards } from '../src/gameplay/Jobs';
+describe('destination filter', () => {
+  it('knows whether a trip heads towards a place', () => {
+    const j = randomJob(vehicleById('classic'));
+    expect(headsTowards(j, j.b)).toBe(true);
+    expect(headsTowards(j, j.a)).toBe(false);
   });
 });
