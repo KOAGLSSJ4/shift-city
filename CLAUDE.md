@@ -78,7 +78,11 @@ passengers/pedestrians → port the web's original car designs.
 - Done + robot-tested: Slate main menu `Private/SCMenu.*` (Story / Free Ride / Arcade "coming soon" / Quit),
   shown at start and on M, robot auto-picks Free Ride after shot 1. New .cpp files: touch Build.cs or UBT
   may not compile them (link error).
-- Next: HUD design pass in the same Slate style (see BACKLOG Unreal), then garage + goals + settings screens.
+- HUD part 1 done in Slate (`MakeHud` + `FSCHudModel` filled by ASCHUD each frame, `SDPIScaler` 1.3): career,
+  job card, GPS banner (rotating arrow), boarding bar, story card, toasts. Robot accepts the first job so
+  shot 2 shows the GPS. Next: minimap polish + own speedometer + animations, then garage/goals/settings screens.
+- Web 2026-10-29 later: world leaderboard live (env names KV_REST_API_*), corner-forest trees off roads, traffic
+  spawn spacing + lane change round a stopped player, GPS "turn now" at junctions (web + Unreal).
 - David must re-run the setup script after pulling (traffic needs the body meshes), and rebuild in VS.
 
 ## Decisions
