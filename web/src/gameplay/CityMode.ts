@@ -12,7 +12,7 @@ import { VehiclePhysics, type DriveInput } from '../vehicles/VehiclePhysics';
 import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
-import { applySurgeZone, randomJob, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
+import { CANCEL_FEE, applySurgeZone, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
 import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, type Moment } from './Missions';
 
@@ -121,6 +121,7 @@ export class CityMode {
     this.showMarker(this.job.a, true);
     this.ev.stage(this.job);
     this.computeRoute();
+    if (this.job.chapter === null && !this.job.food && this.save.tutorialDone) this.job.patience = riderPatience(this.route?.length ?? 400);
   }
 
   decline() {
@@ -257,6 +258,22 @@ export class CityMode {
       this.offerTimer = 1.5;
       this.afterDecline('Request missed');
       this.ev.offer(null);
+    }
+    // riders cancel if you take far too long to reach them (you still get a small cancellation fee)
+    const pj = this.job;
+    if (pj?.stage === 'pickup' && pj.patience !== undefined) {
+      const left = pj.patience - (this.time - pj.startedAt);
+      if (left < 20 && !pj.warned) { pj.warned = true; this.ev.toast(`${pj.customer} is getting impatient: 20 s to pick them up`); }
+      if (left <= 0) {
+        this.save.wallet += CANCEL_FEE;
+        this.save.driver.log.push([Date.now(), CANCEL_FEE]);
+        this.marker.visible = false;
+        this.route = null; this.chevrons.count = 0;
+        this.job = null;
+        this.offerTimer = 2;
+        this.ev.offer(null);
+        this.ev.toast(`${pj.customer} cancelled the ride. Cancellation fee +$${CANCEL_FEE}`);
+      }
     }
     if (!this.job && this.offlineLeft <= 0 && (this.offerTimer -= dt) <= 0) this.nextOffer();
     const t = this.target;

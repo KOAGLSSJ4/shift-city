@@ -27,6 +27,9 @@ export interface Job {
   /** Seconds allowed from pickup to drop-off for timed missions (express, hot food). */
   limit?: number;
   surge?: number;
+  /** Seconds the rider waits for pickup before cancelling (free ride, after the tutorial). */
+  patience?: number;
+  warned?: boolean;
   /** Time the passenger/order came on board (CityMode clock). */
   pickedAt?: number;
   log: RideLog;
@@ -77,6 +80,11 @@ export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }, 
     log: newLog(),
   };
 }
+
+/** Rider cancellation fee paid to the driver when a rider gives up waiting. */
+export const CANCEL_FEE = 3;
+/** How long a rider waits: about the drive at a relaxed 8 m/s, plus 45 s. */
+export const riderPatience = (routeMetres: number) => Math.round(routeMetres / 8 + 45);
 
 /** A surge zone like the real app's heat map: rides picked up inside it pay a multiplier. */
 export interface SurgeZone { name: string; x: number; z: number; r: number; mult: number; until: number }
