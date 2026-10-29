@@ -35,3 +35,17 @@ describe('daily challenge', () => {
     expect(claimChallenge(s, day(5))).toBe(false);
   });
 });
+
+import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost } from '../src/gameplay/Economy';
+describe('power-up upgrades', () => {
+  it('costs banked arcade points and stops at the max level', () => {
+    const s = defaultSave();
+    s.arcade.points = 1000;
+    expect(buyPowerUpgrade(s, 'magnet').ok).toBe(false);
+    s.arcade.points = 1e6;
+    for (let i = 0; i < MAX_POWER_LEVEL; i++) expect(buyPowerUpgrade(s, 'magnet').ok).toBe(true);
+    expect(s.arcade.powers.magnet).toBe(MAX_POWER_LEVEL);
+    expect(buyPowerUpgrade(s, 'magnet').ok).toBe(false);
+    expect(s.arcade.points).toBe(1e6 - [0, 1, 2, 3, 4].reduce((a, l) => a + powerUpgradeCost(l), 0));
+  });
+});

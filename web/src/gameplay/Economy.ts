@@ -138,3 +138,16 @@ export function claimGoal(s: SaveData, id: string): Result {
 export const localRank = (s: SaveData, score: number, date: number) => s.arcade.top.findIndex((e) => e.score === Math.floor(score) && e.date === date) + 1;
 
 export const claimableGoals = (s: SaveData) => GOALS.filter((g) => !s.claimedGoals.includes(g.id) && goalProgress(s, g) >= g.goal).length;
+
+/** Arcade power-up upgrades, bought with banked arcade points (like Subway Surfers). */
+export const MAX_POWER_LEVEL = 5;
+export const powerUpgradeCost = (level: number) => 2500 * (level + 1);
+export function buyPowerUpgrade(s: SaveData, kind: string): Result {
+  const lvl = s.arcade.powers[kind] ?? 0;
+  if (lvl >= MAX_POWER_LEVEL) return { ok: false, msg: 'Already maxed out' };
+  const cost = powerUpgradeCost(lvl);
+  if (s.arcade.points < cost) return { ok: false, msg: `Need ${cost.toLocaleString()} arcade points` };
+  s.arcade.points -= cost;
+  s.arcade.powers[kind] = lvl + 1;
+  return { ok: true, msg: `Upgraded to level ${lvl + 1}` };
+}

@@ -25,7 +25,7 @@ export interface SaveData {
   owned: string[];
   selected: string;
   upgrades: Record<string, Upgrades>;
-  arcade: { best: number; points: number; runs: number; lastRunId: string; top: ArcadeScore[] };
+  arcade: { best: number; points: number; runs: number; lastRunId: string; top: ArcadeScore[]; powers: Record<string, number> };
   /** Name used on the leaderboards. */
   playerName: string;
   /** Ride-hailing record: acceptance, decline streak, offline cool-down. */
@@ -46,7 +46,7 @@ export function defaultSave(): SaveData {
     wallet: 0, xp: 0, level: 1,
     owned: ['classic'], selected: 'classic',
     upgrades: {},
-    arcade: { best: 0, points: 0, runs: 0, lastRunId: '', top: [] },
+    arcade: { best: 0, points: 0, runs: 0, lastRunId: '', top: [], powers: {} },
     playerName: '',
     driver: newDriverRecord(),
     daily: newDailyRecord(),
@@ -113,6 +113,8 @@ export function normalize(raw: any): SaveData {
   if (!Array.isArray(s.paidJobs)) s.paidJobs = [];
   if (!Array.isArray(s.claimedGoals)) s.claimedGoals = [];
   if (!Array.isArray(s.arcade.top)) s.arcade.top = [];
+  if (!s.arcade.powers || typeof s.arcade.powers !== 'object') s.arcade.powers = {};
+  for (const k of Object.keys(s.arcade.powers)) s.arcade.powers[k] = Math.max(0, Math.min(5, Math.floor(num(s.arcade.powers[k]))));
   s.arcade.top = s.arcade.top.filter((e) => e && Number.isFinite(e.score)).slice(0, 10);
   if (typeof s.playerName !== 'string') s.playerName = '';
   if (!Array.isArray(s.driver.recent)) s.driver.recent = [];

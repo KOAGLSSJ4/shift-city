@@ -18,7 +18,7 @@ import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
 import { CHALLENGE_REWARD, claimChallenge, claimDailyReward, dailyChallenge } from '../gameplay/Daily';
-import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
+import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost, buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
@@ -32,6 +32,7 @@ type State = 'loading' | 'menu' | 'city' | 'arcade' | 'over';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const POWER_ICON: Record<PowerKind, string> = { magnet: '🧲', x2: '2×', nitro: '⚡', shield: '🛡️', jet: '🚀' };
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const POWER_SHOP: [string, string][] = [['magnet', 'Magnet'], ['x2', 'Double score'], ['nitro', 'Nitro'], ['shield', 'Shield'], ['jet', 'Sky Boost']];
 const money = (n: number) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 const GFX_LABEL: Record<GraphicsMode, string> = { rendered: 'Rendered', photoreal: 'Photoreal', hyper: 'Hyper-real' };
 const VIEW_LABEL: Record<CameraView, string> = { cockpit: 'Cockpit cam', chase: 'Chase cam', top: 'Top-down' };
@@ -223,6 +224,7 @@ export class Game {
     this.city.group.visible = this.traffic.group.visible = this.cityMode.markers.visible = false;
     this.rig.root.parent?.remove(this.rig.root);
     this.arcadePaused = false; $('arcade-paused').hidden = true; $('a-pause').hidden = false;
+    this.arcade.powerLevels = { ...this.save.arcade.powers };
     this.arcade.start(this.rig, vehicleById(this.save.selected));
     this.state = 'arcade';
     document.body.classList.add('playing');
@@ -789,6 +791,22 @@ export class Game {
     $<HTMLButtonElement>('o-convert').textContent = cash > 0 ? `Convert → ${money(cash)}` : 'Convert points';
     $<HTMLButtonElement>('g-convert').disabled = cash <= 0;
     $('g-points').textContent = `${p.toLocaleString()} arcade points (${BALANCE.arcadePointsPerUnit} = $${BALANCE.cashPerUnit})`;
+    this.renderPowerShop();
+  }
+
+  private renderPowerShop() {
+    const box = $('o-powers'), lv = this.save.arcade.powers;
+    box.innerHTML = '<b>Power-up upgrades</b> <span class="muted">(each level: +20% longer)</span><div class="pw-row">' + POWER_SHOP.map(([k, name]) => {
+      const l = lv[k] ?? 0, max = l >= MAX_POWER_LEVEL;
+      return `<button class="ghost pw" data-pw="${k}" ${max || this.save.arcade.points < powerUpgradeCost(l) ? 'disabled' : ''}>${name} <small>Lv ${l}${max ? ' MAX' : ` · ${powerUpgradeCost(l).toLocaleString()} pts`}</small></button>`;
+    }).join('') + '</div>';
+    box.querySelectorAll<HTMLElement>('[data-pw]').forEach((b) => b.addEventListener('click', () => {
+      const r = buyPowerUpgrade(this.save, b.dataset.pw!);
+      this.toast(r.msg, r.ok ? 'good' : 'bad');
+      if (r.ok) { this.audio.success(); this.persist(); }
+      this.refreshPoints();
+      $('o-points').textContent = `${this.save.arcade.points.toLocaleString()} points banked · Wallet ${money(this.save.wallet)}`;
+    }));
   }
 
   private convert() {

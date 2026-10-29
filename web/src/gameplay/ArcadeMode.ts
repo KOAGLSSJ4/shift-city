@@ -31,6 +31,8 @@ interface Coin { mesh: THREE.Object3D; active: boolean; z: number; x: number; y:
 
 /** How long each power-up lasts (the shield lasts until it saves you, or this long). */
 export const POWER_TIME: Record<PowerKind, number> = { magnet: 12, x2: 12, nitro: 4, shield: 25, jet: 7 };
+/** Each power-up upgrade level makes that power last 20% longer. */
+export const POWER_LEVEL_BONUS = 0.2;
 const POWER_WEIGHT: [PowerKind, number][] = [['magnet', 26], ['x2', 20], ['shield', 20], ['jet', 16], ['nitro', 18]];
 const FLY_HEIGHT = 5.2;
 
@@ -194,11 +196,15 @@ export class ArcadeMode {
     this.group.visible = false;
   }
 
+  /** Bought power-up upgrade levels (set by the game from the save before each run). */
+  powerLevels: Partial<Record<PowerKind, number>> = {};
+  private dur(kind: PowerKind) { return POWER_TIME[kind] * (1 + POWER_LEVEL_BONUS * (this.powerLevels[kind] ?? 0)); }
+
   get multiplier() { return Math.min(8, 1 + Math.floor(this.streak / 4)) * (this.double > 0 ? 2 : 1); }
   /** Active timed power-ups for the HUD: remaining seconds and full duration. */
   get powers(): { kind: PowerKind; left: number; total: number }[] {
     const out: { kind: PowerKind; left: number; total: number }[] = [];
-    const add = (kind: PowerKind, left: number) => { if (left > 0) out.push({ kind, left, total: POWER_TIME[kind] }); };
+    const add = (kind: PowerKind, left: number) => { if (left > 0) out.push({ kind, left, total: this.dur(kind) }); };
     add('jet', this.jet); add('nitro', this.nitro); add('magnet', this.magnet); add('x2', this.double); add('shield', this.shield);
     return out;
   }
@@ -351,7 +357,7 @@ export class ArcadeMode {
   }
 
   private activate(kind: PowerKind) {
-    const t = POWER_TIME[kind];
+    const t = this.dur(kind);
     if (kind === 'magnet') this.magnet = t;
     else if (kind === 'x2') this.double = t;
     else if (kind === 'nitro') this.nitro = t;
@@ -372,7 +378,7 @@ export class ArcadeMode {
 
   /** A weaving trail of coins up in the sky for the length of a Sky Boost. */
   private skyCoins() {
-    const len = this.speed * POWER_TIME.jet * 0.9;
+    const len = this.speed * this.dur('jet') * 0.9;
     for (let d = 30; d < len; d += 4.5) {
       const lane = Math.round(Math.sin(d / 40) * 1.2);
       this.spawnItem(THREE.MathUtils.clamp(lane, -1, 1) * LANE, this.z + d, 'coin', FLY_HEIGHT + 1);

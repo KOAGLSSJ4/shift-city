@@ -52,7 +52,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Story v1.1, "The Week":** FT Uber Game-style story. Comic-panel cutscenes, evening choices, stats
   (money, rating, energy) that change the driving, about 4 endings (more good than bad), city characters,
   no personal/family storyline. Start after launch feedback. (Agreed 2026-10-27)
-- Power-up upgrades (longer magnet/shield etc. bought with coins), like Subway Surfers. (Claude's suggestion; David likes it)
 
 ## Launch / business
 
@@ -81,6 +80,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: power-up upgrades on the Arcade results screen: 5 levels each, +20% duration per level, paid with banked arcade points.
 - 2026-10-29: daily login reward ($50, +$25 per day in a row, max $200) + a daily challenge in Goals ($100 + 15 XP).
 - 2026-10-28: web version live on Vercel (David).
 - 2026-10-29: near misses only for late dodges (car within 12 m), garage hides the HUD, phone top buttons
