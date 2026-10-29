@@ -49,3 +49,21 @@ describe('power-up upgrades', () => {
     expect(s.arcade.points).toBe(1e6 - [0, 1, 2, 3, 4].reduce((a, l) => a + powerUpgradeCost(l), 0));
   });
 });
+
+import { missionResult, musicTaste, newLog } from '../src/gameplay/Missions';
+import { nextStation, tracksFor } from '../src/data/radio';
+describe('car radio', () => {
+  it('cycles stations and every station except off has music', () => {
+    expect(nextStation('drive')).toBe('chill');
+    expect(nextStation('off')).toBe('drive');
+    for (const s of ['drive', 'chill', 'hype'] as const) expect(tracksFor(s).length).toBeGreaterThan(0);
+  });
+  it('the right music earns a tip, the wrong music costs stars', () => {
+    expect(musicTaste('party', 'hype')).toBe(1);
+    expect(musicTaste('grumpy', 'hype')).toBe(-1);
+    const liked = { ...newLog(), music: 30 }, hated = { ...newLog(), music: -30 }, none = newLog();
+    const base = missionResult('standard', 'party', 20, 60, undefined, none);
+    expect(missionResult('standard', 'party', 20, 60, undefined, liked).tip).toBeGreaterThan(base.tip);
+    expect(missionResult('standard', 'party', 20, 60, undefined, hated).starPenalty).toBeGreaterThan(base.starPenalty);
+  });
+});

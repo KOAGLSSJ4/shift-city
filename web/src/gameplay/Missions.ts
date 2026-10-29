@@ -1,7 +1,8 @@
 // Free Ride mission types and passenger personalities. Pure rules (no DOM / Three.js) so they're unit-tested.
 export type Variant = 'standard' | 'express' | 'vip' | 'surge' | 'long' | 'fragile' | 'hot';
 export type Persona = 'chatty' | 'quiet' | 'hurry' | 'tourist' | 'grumpy' | 'party';
-export type Moment = 'pickup' | 'bump' | 'harsh' | 'fast' | 'fun' | 'good' | 'bad';
+export type Moment = 'pickup' | 'bump' | 'harsh' | 'fast' | 'fun' | 'good' | 'bad' | 'musicLove' | 'musicHate';
+import type { StationId } from '../data/radio';
 
 export const VARIANTS: Record<Variant, { label: string; blurb: string }> = {
   standard: { label: '', blurb: '' },
@@ -15,6 +16,7 @@ export const VARIANTS: Record<Variant, { label: string; blurb: string }> = {
 
 export const PERSONAS: Record<Persona, { label: string; lines: Partial<Record<Moment, string[]>> }> = {
   chatty: { label: 'chatty', lines: {
+    musicLove: ['"Oh, I know this one! *hums along*"'], musicHate: ['"Hmm, not really my kind of music…"'],
     pickup: ['"Hi! Lovely day for a drive, isn\'t it?"', '"Oh good, a driver who looks friendly!"'],
     bump: ['"Whoa! Anyway, as I was saying…"'],
     harsh: ['"Easy there, I nearly spilled my coffee!"'],
@@ -22,6 +24,7 @@ export const PERSONAS: Record<Persona, { label: string; lines: Partial<Record<Mo
     bad: ['"Well… it was certainly a ride."'],
   } },
   quiet: { label: 'quiet', lines: {
+    musicLove: ['"…This is nice. Calm."'], musicHate: ['"Could you… turn that down?"'],
     pickup: ['"…Hi."', '"Just the drop-off, thanks."'],
     bump: ['"…"', '"Ow."'],
     harsh: ['"Please. Gently."'],
@@ -30,18 +33,21 @@ export const PERSONAS: Record<Persona, { label: string; lines: Partial<Record<Mo
     bad: ['"I\'ll walk next time."'],
   } },
   hurry: { label: 'in a hurry', lines: {
+    musicLove: ['"Yes! Music to drive fast to!"'], musicHate: ['"This is putting me to sleep. Faster music, faster driving!"'],
     pickup: ['"Go go go! I\'m so late!"', '"Fastest route, please. I mean it."'],
     fast: ['"Yes! Keep it up!"', '"Now we\'re moving!"'],
     good: ['"Made it! You\'re a lifesaver, keep the change."'],
     bad: ['"I could have run faster than that."'],
   } },
   tourist: { label: 'tourist', lines: {
+    musicLove: ['"Is this a local station? I love it!"'], musicHate: ['"Is this what people here listen to?"'],
     pickup: ['"First time in Shift City! Is that the river?"', '"Wow, look at all the towers!"'],
     bump: ['"Ha! Like a theme park!"'],
     good: ['"What a city! Here, you\'ve earned this."'],
     bad: ['"Interesting driving style… is that local?"'],
   } },
   grumpy: { label: 'grumpy', lines: {
+    musicLove: ['"Finally, some peace."'], musicHate: ['"Turn. That. Off."'],
     pickup: ['"You\'re late. Drive."', '"Don\'t talk to me."'],
     bump: ['"Unbelievable."', '"Do they give licences out in cereal boxes now?"'],
     harsh: ['"Are you TRYING to make me sick?"'],
@@ -49,6 +55,7 @@ export const PERSONAS: Record<Persona, { label: string; lines: Partial<Record<Mo
     bad: ['"One star. Maybe less."'],
   } },
   party: { label: 'party mood', lines: {
+    musicLove: ['"THIS IS MY SONG! Turn it UP!"'], musicHate: ['"Boooring! Find something with a beat!"'],
     pickup: ['"Let\'s GOOO! Turn it up!"', '"Night out! Make it fun!"'],
     fun: ['"WHEEE! Again!"', '"Now THAT\'s a turn!"'],
     good: ['"Best ride ever! Big tip for you!"'],
@@ -62,6 +69,17 @@ export const line = (p: Persona, m: Moment, rnd = Math.random) => {
 };
 
 /** How a ride went, tracked while the passenger/order is on board. */
+/** What each personality thinks of each radio station: 1 likes, -1 dislikes. */
+export const MUSIC_TASTE: Record<Persona, Partial<Record<StationId, 1 | -1>>> = {
+  chatty: { drive: 1 },
+  quiet: { chill: 1, off: 1, hype: -1 },
+  hurry: { hype: 1, drive: 1, chill: -1 },
+  tourist: { drive: 1, chill: 1 },
+  grumpy: { off: 1, hype: -1 },
+  party: { hype: 1, off: -1, chill: -1 },
+};
+export const musicTaste = (p: Persona, s: StationId) => MUSIC_TASTE[p][s] ?? 0;
+
 export interface RideLog {
   /** 1 = perfectly smooth; bumps and harsh moves take it down. */
   comfort: number;
@@ -71,8 +89,10 @@ export interface RideLog {
   fast: number;
   /** Seconds of spirited cornering at speed. */
   fun: number;
+  /** Seconds of liked radio minus seconds of disliked radio. */
+  music: number;
 }
-export const newLog = (): RideLog => ({ comfort: 1, bumps: 0, harsh: 0, fast: 0, fun: 0 });
+export const newLog = (): RideLog => ({ comfort: 1, bumps: 0, harsh: 0, fast: 0, fun: 0, music: 0 });
 
 export function logBump(l: RideLog) { l.bumps++; l.comfort = Math.max(0, l.comfort - 0.25); }
 export function logHarsh(l: RideLog) { l.harsh++; l.comfort = Math.max(0, l.comfort - 0.12); }
@@ -115,6 +135,9 @@ export function missionResult(v: Variant, persona: Persona | undefined, base: nu
     const happy = personaHappy(persona, elapsed, limit, log);
     if (happy > 0) tip += base * 0.12 * happy;
     if (persona === 'grumpy' && log.bumps > 0) starPenalty += 0.5;
+    // the radio: right music earns a tip, the wrong music costs stars
+    if (log.music > 10) { tip += base * 0.1; notes.push('loved the music'); }
+    else if (log.music < -10) starPenalty += 0.4;
   }
   return { tip: Math.round(tip * 100) / 100, note: notes.join(' · '), xp, starPenalty };
 }

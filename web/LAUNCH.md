@@ -61,7 +61,7 @@ Vercel redeploys by itself every time we push to `main`.
 
 1. **developer.crazygames.com** → sign up → **Submit a game**.
 2. Upload `shift-city-crazygames.zip`, fill in the title, description, controls (*W/A/S/D or arrows, P or Esc = pause in Arcade,
-   Space = handbrake, V = camera*) and add a cover image.
+   Space = handbrake, V = camera, B = radio*) and add a cover image.
 3. Submit. CrazyGames reviews it (usually a few days) and may send feedback.
    The CrazyGames SDK is already built in: loading, gameplay start/stop, ad breaks between Arcade runs,
    and a "watch an ad: double your points" button.

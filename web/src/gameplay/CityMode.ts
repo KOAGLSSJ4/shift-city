@@ -1,3 +1,4 @@
+import type { StationId } from '../data/radio';
 // Story / Free Ride: the player drives the city, takes jobs, follows GPS and earns money.
 import * as THREE from 'three';
 import { BALANCE } from '../data/balancing';
@@ -13,7 +14,7 @@ import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
 import { randomJob, starsFor, storyJob, type Job } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
-import { line, logBump, logHarsh, missionResult, personaHappy, type Moment } from './Missions';
+import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, type Moment } from './Missions';
 
 export interface CityEvents {
   /** A new request (null = the offer was withdrawn, e.g. it expired). */
@@ -25,6 +26,8 @@ export interface CityEvents {
   toast(msg: string): void;
   /** A passenger speaks (shown as a speech bubble). */
   say(who: string, text: string): void;
+  /** The car radio station right now. */
+  station(): StationId;
 }
 
 const SPAWN = { x: DESTINATIONS[0].x - 30, z: DESTINATIONS[0].z, heading: Math.PI / 2 };
@@ -36,6 +39,7 @@ export class CityMode {
   route: Route | null = null;
   mode: 'story' | 'free' = 'free';
   holdTime = 0;
+  private lastStation: StationId | null = null;
   private marker: THREE.Group;
   private beamMat: THREE.MeshBasicMaterial;
   private ringMat: THREE.MeshBasicMaterial;
@@ -284,6 +288,14 @@ export class CityMode {
       const was = log.fast;
       log.fast += dt;
       if (was < 3 && log.fast >= 3) this.talk('fast');
+    }
+    if (job.persona) {
+      const st = this.ev.station(), taste = musicTaste(job.persona, st);
+      log.music += dt * taste;
+      if (st !== this.lastStation) {
+        if (this.lastStation !== null && taste !== 0) this.talk(taste > 0 ? 'musicLove' : 'musicHate', true);
+        this.lastStation = st;
+      }
     }
     if (Math.abs(ph.accelLat) > 5 && ph.speed > 10) {
       const was = log.fun;

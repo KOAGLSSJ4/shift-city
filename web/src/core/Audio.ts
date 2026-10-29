@@ -1,9 +1,11 @@
 // Procedural engine drone + one-shot effects, plus streamed CC0 music (public/music, see ASSETS.md).
+import { tracksFor, type RadioTrack, type StationId } from '../data/radio';
+
 export type MusicScene = 'menu' | 'city' | 'arcade' | 'arcade-climax' | null;
 
 const PLAYLISTS: Record<Exclude<MusicScene, null>, string[]> = {
   menu: ['music/menu_families.mp3'],
-  city: ['music/city_rearview.mp3', 'music/city_autumn.mp3', 'music/city_dreampop.mp3'],
+  city: [], // the car radio picks city music (data/radio.ts)
   arcade: ['music/arcade_cool_highway.mp3'],
   'arcade-climax': ['music/arcade_cool_highway_climax.mp3'],
 };
@@ -23,6 +25,10 @@ export class Audio {
   private vol = { master: 0.8, engine: 0.7, sfx: 0.8, music: 0.6 };
   private track: Track | null = null;
   private scene: MusicScene = null;
+  /** Car radio station used for the 'city' scene. */
+  private station: StationId = 'drive';
+  /** The radio track playing now (city scene only). */
+  nowPlaying: RadioTrack | null = null;
   private cityIndex = Math.floor(Math.random() * PLAYLISTS.city.length);
   /** Platform pauses (ad breaks, hidden tab) silence everything without touching the settings. */
   private suspended = false;
@@ -74,9 +80,15 @@ export class Audio {
     const old = this.track;
     this.track = null;
     if (old) this.fadeOut(old, scene === 'arcade-climax' ? 0.6 : 1.2);
+    this.nowPlaying = null;
     if (!scene) return;
-    const list = PLAYLISTS[scene];
-    const src = scene === 'city' ? list[this.cityIndex++ % list.length] : list[0];
+    let src: string;
+    if (scene === 'city') {
+      const list = tracksFor(this.station);
+      if (!list.length) return; // radio off
+      this.nowPlaying = list[this.cityIndex++ % list.length];
+      src = this.nowPlaying.file;
+    } else src = PLAYLISTS[scene][0];
     const el = new window.Audio(src);
     el.crossOrigin = 'anonymous';
     el.loop = scene !== 'city';
@@ -91,6 +103,15 @@ export class Audio {
     if (!this.suspended) el.play().catch(() => {});
     gain.gain.setTargetAtTime(1, this.ctx.currentTime, scene === 'arcade-climax' ? 0.15 : 0.5);
   }
+
+  /** Tunes the car radio; restarts the music if we're driving in the city. */
+  setStation(s: StationId) {
+    if (s === this.station) return;
+    this.station = s;
+    this.cityIndex = 0;
+    if (this.scene === 'city') { this.scene = null; this.music('city'); }
+  }
+  get currentStation() { return this.station; }
 
   private fadeOut(t: Track, secs: number) {
     t.gain.gain.setTargetAtTime(0, this.ctx!.currentTime, secs / 4);

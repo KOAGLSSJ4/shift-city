@@ -17,6 +17,7 @@ import { BALANCE } from '../data/balancing';
 import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
+import { nextStation, stationName } from '../data/radio';
 import { CHALLENGE_REWARD, claimChallenge, claimDailyReward, dailyChallenge } from '../gameplay/Daily';
 import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost, buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
@@ -74,6 +75,7 @@ export class Game {
     this.garageSel = this.save.selected;
     this.audio.setEnabled(this.save.settings.audio);
     this.audio.setVolume(this.save.settings.volume);
+    this.audio.setStation(this.save.settings.station);
     // first launch on a phone, tablet or low-memory device starts on the light graphics tier
     if (this.firstRun && lowEndDevice()) this.save.settings.graphics = 'rendered';
     // browsers only allow sound after a gesture: the first tap or key press starts the menu music
@@ -330,6 +332,7 @@ export class Game {
     if (i.hit('Digit2')) this.setView('chase');
     if (i.hit('Digit3')) this.setView('top');
     if (i.hit('KeyV')) this.setView(this.cam.cycle());
+    if (i.hit('KeyB')) this.nextRadio();
     if (this.state === 'city') {
       if (i.hit('KeyG')) this.toggleGarage();
       if (i.hit('Enter', 'NumpadEnter')) this.acceptJob();
@@ -459,7 +462,18 @@ export class Game {
       bump: (s: number) => { this.cam.bump(s); s > 0.3 ? this.audio.crash() : this.audio.bump(); },
       toast: (m: string) => this.toast(m),
       say: (who: string, text: string) => this.say(who, text),
+      station: () => this.audio.currentStation,
     };
+  }
+
+  /** Car radio: next station, remembered in the save. */
+  private nextRadio() {
+    const s = nextStation(this.audio.currentStation);
+    this.save.settings.station = s;
+    this.audio.setStation(s);
+    this.persist();
+    const now = this.audio.nowPlaying;
+    this.toast(`📻 ${stationName(s)}${now ? ` · ${now.title} – ${now.artist}` : ''}`);
   }
 
   private acceptJob() {
@@ -1012,6 +1026,7 @@ export class Game {
     on('btn-camera', () => this.setView(this.cam.cycle()));
     on('btn-gfx', () => this.applyGraphics(({ rendered: 'photoreal', photoreal: 'hyper', hyper: 'rendered' } as const)[this.save.settings.graphics]));
     on('btn-reset', () => this.cityMode.resetCar());
+    on('btn-radio', () => this.nextRadio());
     on('g-close', () => this.closeModals());
     on('goals-close', () => this.closeModals());
     on('g-convert', () => this.convert());
