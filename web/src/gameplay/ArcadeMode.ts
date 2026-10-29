@@ -9,6 +9,8 @@ import type { DesignBody } from '../vehicles/designs';
 
 export const ARCADE_ORIGIN = new THREE.Vector3(3000, 0, 0);
 const LANE = 3.7;
+/** You must still be in a car's lane when it's this close (m) for the dodge to count as a near miss. */
+const NEAR_MISS_GAP = 12;
 const CHUNK = 120;
 const CHUNKS = 5;
 const blinkGeo = new THREE.BoxGeometry(0.12, 0.1, 0.22);
@@ -282,8 +284,8 @@ export class ArcadeMode {
       const airborne = this.y > 1.4 || this.jet > 0; // safe from take-off to touch-down
       const overlapZ = !airborne && dz < (o.len + pLen) / 2 - 0.3;
       if (overlapZ) o.minLat = Math.min(o.minLat, lat);
-      // a car only becomes a near-miss candidate once it's coming at you in your own lane
-      if (!airborne && o.z > this.z && o.z - this.z < 35 && lat < 1.6) o.threatLane = Math.round(this.x / LANE); // where the car physically is
+      // a car only becomes a near-miss candidate if it's still in your lane when it's close: a late, risky dodge
+      if (!airborne && o.z > this.z && o.z - this.z < NEAR_MISS_GAP && lat < 1.6) o.threatLane = Math.round(this.x / LANE); // where the car physically is
       if (overlapZ && lat < 2.05 && !o.hit) {
         if (this.invuln > 0 || this.nitro > 0) {
           if (this.nitro > 0) { o.hit = true; o.fly = 0.01; this.events?.popup('SMASH +100', 'gold'); this.score += 100 * this.multiplier; }

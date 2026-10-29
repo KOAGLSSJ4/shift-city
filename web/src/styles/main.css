@@ -83,6 +83,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .toolbar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 6px; z-index: 5; }
 .toolbar button { background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 9px 12px; font-weight: 600; font-size: 13px; backdrop-filter: blur(10px); position: relative; }
 .toolbar button:hover { border-color: var(--accent); }
+body.garage-open #hud, body.garage-open #touch, body.garage-open #tutorial { visibility: hidden; }
 .hold { position: fixed; left: 50%; top: 58%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 10px; background: var(--panel); border-radius: 30px; padding: 6px 16px 6px 6px; z-index: 6; font-weight: 800; }
 .hold svg { width: 36px; height: 36px; transform: rotate(-90deg); }
 .hold circle { fill: none; stroke: #ffffff22; stroke-width: 4; }
@@ -263,7 +264,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .job #offer-buttons:not([hidden]) { display: inline-flex; gap: 4px; vertical-align: middle; margin: 0; }
   .job .hint, .job .kbd { display: none; }
   .job .live { font-size: 11.5px; margin-top: 3px; }
-  .toolbar { top: 8px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); max-width: none; flex-wrap: nowrap; }
+  /* between the money panel and the job card (it used to centre itself and run under the card) */
+  .toolbar { top: 8px; bottom: auto; left: calc(max(8px, env(safe-area-inset-left)) + 120px); right: calc(max(8px, env(safe-area-inset-right)) + 240px); transform: none; max-width: none; flex-wrap: wrap; justify-content: center; }
   .toolbar button { padding: 6px 9px; font-size: 12px; }
   #btn-goals, #btn-gfx, #btn-settings { display: none; }
   .nav { display: none; } /* the road arrows + minimap carry the route on phones */
@@ -295,7 +297,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .career .xp { width: 60px; }
   .wallet { font-size: 15px; }
   #minimap { width: 74px; height: 74px; top: 52px; left: max(6px, env(safe-area-inset-left)); border-width: 1px; }
-  .toolbar { top: 6px; gap: 4px; left: max(92px, calc(env(safe-area-inset-left) + 86px)); transform: none; }
+  .toolbar { top: 6px; gap: 4px; left: max(92px, calc(env(safe-area-inset-left) + 86px)); right: calc(max(6px, env(safe-area-inset-right)) + 214px); transform: none; flex-wrap: wrap; } /* stop before the job card */
   #tutorial:not(.intro) { top: 40px; bottom: auto; left: calc(env(safe-area-inset-left) + 90px); right: calc(env(safe-area-inset-right) + 218px); width: auto; } /* no room on the right: strip at the top */
   #tutorial.intro { width: min(330px, 70vw); padding: 10px 12px; }
   #tutorial.intro p { font-size: 12.5px; }

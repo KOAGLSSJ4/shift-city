@@ -10,13 +10,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Tweaks
 
-- **Arcade near misses:** only reward *close* dodges, not every dodge. Right now any lane change past a
-  car that was coming at you counts. Idea: only count it if you changed lanes late (car within ~10 m)
-  or passed very close. (David, 2026-10-28)
 - **Arcade balance:** David thinks money/XP feel right but hasn't tested it hard. Revisit if launch
   feedback says Arcade out-earns the city modes ($8 per 100 points, 1 XP per 1,000 points, no cap).
-- **Garage:** the HUD (tutorial card, minimap, buttons) still shows over the 3D car preview; hide it while
-  the garage is open.
 - **Cockpit view** of the new lofted cars is functional but plain (dash, pillars); could use more detail.
 
 ## Features (next up)
@@ -88,6 +83,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: near misses only for late dodges (car within 12 m), garage hides the HUD, phone top buttons
+  no longer run under the job card, name box says "Your name".
 - 2026-10-28: Unreal traffic cars visible (body, glass, wheels added), HUD panels fit their text, yellow VSM
   shadow warning gone. The build robot now takes in-game screenshots.
 - 2026-10-28: Unreal crash on Play fixed (round minimap drew with no texture; found by the build robot).
