@@ -1,5 +1,6 @@
 #include "SCHUD.h"
 #include "SCMenu.h"
+#include "ShiftCityCore.h"
 #include "Engine/GameViewportClient.h"
 #include "SCDestination.h"
 #include "SCEconomySubsystem.h"
@@ -78,6 +79,7 @@ void ASCHUD::ShowMenu()
 		PC->SetShowMouseCursor(true);
 	}
 	if (ASCJobDirector* D = Director.Get()) D->SetMenuOpen(true);
+	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] menu: shown (director %s)"), *GetNameSafe(Director.Get()));
 }
 
 void ASCHUD::HideMenu()
@@ -103,6 +105,8 @@ void ASCHUD::OnMenuChoice(uint8 Choice)
 		break; // not ported yet (button is disabled)
 	default:
 		HideMenu();
+		if (!Director.IsValid()) for (TActorIterator<ASCJobDirector> It(GetWorld()); It; ++It) { Director = *It; break; }
+		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] menu: chose %s (director %s)"), SCMenu::EChoice(Choice) == SCMenu::EChoice::Story ? TEXT("Story") : TEXT("Free Ride"), *GetNameSafe(Director.Get()));
 		if (ASCJobDirector* D = Director.Get()) D->StartMode(SCMenu::EChoice(Choice) == SCMenu::EChoice::Story);
 		break;
 	}

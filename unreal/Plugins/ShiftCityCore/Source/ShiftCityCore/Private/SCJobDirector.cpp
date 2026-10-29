@@ -118,6 +118,7 @@ void ASCJobDirector::NextOffer()
 
 	const TArray<FSCStoryChapter> Story = E->GetStory();
 	const int32 Ch = E->GetSave()->StoryChapter;
+	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] %s: new %s offer (menu open %d)"), *GetName(), bStoryMode ? TEXT("story") : TEXT("free ride"), bMenuOpen ? 1 : 0);
 	if (bStoryMode && Story.IsValidIndex(Ch))
 	{
 		const FSCStoryChapter& C = Story[Ch];
