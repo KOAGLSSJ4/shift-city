@@ -801,6 +801,7 @@ export class Game {
   private openGarage() {
     $('goals').hidden = true;
     $('garage').hidden = false;
+    document.body.classList.add('garage-open'); // the 3D car preview gets the whole screen
     this.paused = true;
     this.previewId = this.save.selected;
     this.garageSel = this.save.selected;
@@ -813,6 +814,7 @@ export class Game {
 
   private closeModals() {
     $('garage').hidden = true; $('goals').hidden = true; $('settings').hidden = true; $('credits').hidden = true;
+    document.body.classList.remove('garage-open');
     if (this.previewId && this.previewId !== this.save.selected) this.swapRig(vehicleById(this.save.selected));
     this.previewId = null;
     this.paused = false;

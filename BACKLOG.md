@@ -1,6 +1,7 @@
 # Shift City backlog
 
 Ideas, bugs and tweaks to do later. Add anything here (David or Claude) and we pick from it when there's time.
+Items Claude suggested (rather than David) are marked as such.
 Newest at the top of each section. When something is fixed, move it to **Done** with the date.
 
 ## Bugs
@@ -9,13 +10,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Tweaks
 
-- **Arcade near misses:** only reward *close* dodges, not every dodge. Right now any lane change past a
-  car that was coming at you counts. Idea: only count it if you changed lanes late (car within ~10 m)
-  or passed very close. (David, 2026-10-28)
 - **Arcade balance:** David thinks money/XP feel right but hasn't tested it hard. Revisit if launch
   feedback says Arcade out-earns the city modes ($8 per 100 points, 1 XP per 1,000 points, no cap).
-- **Garage:** the HUD (tutorial card, minimap, buttons) still shows over the 3D car preview; hide it while
-  the garage is open.
 - **Cockpit view** of the new lofted cars is functional but plain (dash, pillars); could use more detail.
 
 ## Features (next up)
@@ -27,6 +23,19 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - decline 3 in a row and you're taken offline for a short cool-down;
   - driver tiers (like Uber Pro: Blue, Gold, Platinum, Diamond) from trips, acceptance rate and rating,
     giving fare bonuses and access to premium and VIP passengers.
+- **Car radio** (David, 2026-10-28):
+  - switch songs and stations while driving (e.g. Chill, Hype, Lo-fi, Talk/News, Off), with a small
+    radio control on the HUD (keyboard shortcut + touch button) and the station name popping up when
+    you change it;
+  - **creator songs:** David can add his own tracks. Simplest version: drop MP3s into
+    `web/public/music/<station>/` and list them in one data file (title, artist, station, licence),
+    and they ship with the next build. Later, maybe a private upload page on the Vercel site (needs file
+    storage, e.g. Vercel Blob). Only use music David has the rights to; credits screen updates
+    automatically;
+  - **music affects the ride:** each passenger personality has taste. The party passenger tips more
+    on Hype, the quiet one wants it calm or off, the grumpy one hates loud music, the tourist likes
+    local talk radio. Shows up in their speech bubbles ("Ooh, I love this song!") and in tips/stars.
+    Arcade could get its own high-energy station.
 - **More Uber-app features** (David, 2026-10-28), candidates:
   - quests ("complete 5 trips → +$20") and streak bonuses;
   - surge zones shown on the minimap;
@@ -43,12 +52,12 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Story v1.1, "The Week":** FT Uber Game-style story. Comic-panel cutscenes, evening choices, stats
   (money, rating, energy) that change the driving, about 4 endings (more good than bad), city characters,
   no personal/family storyline. Start after launch feedback. (Agreed 2026-10-27)
-- Power-up upgrades (longer magnet/shield etc. bought with coins), like Subway Surfers.
-- Daily challenge / daily reward to bring players back.
+- Power-up upgrades (longer magnet/shield etc. bought with coins), like Subway Surfers. (Claude's suggestion; David likes it)
+- Daily challenge / daily reward to bring players back. (Claude's suggestion; David likes it)
 
 ## Launch / business
 
-- Launch on your site (Vercel), itch.io and CrazyGames: steps in `web/LAUNCH.md`.
+- itch.io and CrazyGames uploads: steps in `web/LAUNCH.md`. (Vercel site is live: shift-city-theta.vercel.app)
 - Optional: connect Upstash in Vercel for the World leaderboard.
 - Poki: undecided (exclusive vs non-exclusive, maybe after Steam).
 
@@ -59,12 +68,27 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Unreal
 
-- Test the last push: Play screenshot + the Output Log line `[ShiftCity] traffic: spawned N cars using M car model(s)`.
-- Decide on the "build robot" (GitHub runner on David's laptop that compiles the C++ on every push).
+- **HUD looks janky / amateur** (David, 2026-10-28). Fixing overlaps wasn't enough; it needs a real design pass:
+  - flat dark boxes with square corners: use rounded, softly blurred panels with a thin accent edge, like the web game;
+  - inconsistent text sizes and cramped spacing: one type scale (title / body / small) and a fixed spacing grid;
+  - job card is a wall of text: icons for pickup/drop-off, fare as the hero, accept/decline as key-cap buttons;
+  - speed/gear readout comes from the Vehicle template and doesn't match: replace with our own;
+  - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
+  - animations: cards slide/fade in, money counts up when paid.
+  Plan: do it with the menu batch so menus and HUD share one style (move from Canvas drawing to UMG widgets).
+- Traffic car wheels don't spin yet (they're bolted on, not animated).
+- Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Next batch: main menu + garage + goals + settings.
 
 ## Done
 
+- 2026-10-28: web version live on Vercel (David).
+- 2026-10-29: near misses only for late dodges (car within 12 m), garage hides the HUD, phone top buttons
+  no longer run under the job card, name box says "Your name".
+- 2026-10-28: Unreal traffic cars visible (body, glass, wheels added), HUD panels fit their text, yellow VSM
+  shadow warning gone. The build robot now takes in-game screenshots.
+- 2026-10-28: Unreal crash on Play fixed (round minimap drew with no texture; found by the build robot).
+  Build robot running on David's laptop with the real Unreal files.
 - 2026-10-28: phones: tutorial opens big in the middle, then tucks to the right; compact job card;
   road kept clear; full screen / Add to Home Screen.
 - 2026-10-28: Arcade pause (button, P/Esc, auto-pause), garage car pictures + 3D preview, near misses

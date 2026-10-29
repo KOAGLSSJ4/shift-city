@@ -72,8 +72,11 @@ passengers/pedestrians → port the web's original car designs.
 - Last push: HUD text via Roboto font asset, round minimap, brighter midday lighting, traffic spawn log.
   David has NOT yet tested it. First thing next session: ask for a Play screenshot + the Output Log line
   `[ShiftCity] traffic: spawned N cars using M car model(s)` (traffic lights showed, cars didn't).
-- Proposed and pending David's yes: a self-hosted GitHub Actions runner on his laptop that builds the
-  Unreal C++ on every push, so Claude can read compile errors without David in the loop.
+- Build robot (2026-10-28): `.github/workflows/unreal-build.yml` runs on a self-hosted runner on David's
+  laptop (setup: `unreal/BUILD-ROBOT.md`): builds ShiftCityEditor, runs the setup script in the editor with
+  SHIFTCITY_CI=1 (no dialogs, quits when done), uploads Saved/Logs + Saved/Crashes. Trigger it with
+  workflow_dispatch and read results via the GitHub Actions job logs. David reported the script crashing
+  the editor (2026-10-28): first robot run should show where.
 - Then ship bigger batches: main menu + garage + goals + settings together.
 - Estimates given to David: ~2-3 weeks part-time to match the web game, ~1-2 months to a demo.
 

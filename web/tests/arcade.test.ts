@@ -93,6 +93,18 @@ describe('arcade near misses', () => {
     for (let f = 0; f < 60 * 4; f++) a.update(1 / 60, 0, 0);
     expect(a.nearMisses).toBe(0);
   });
+  it('does not count an early, easy lane change', () => {
+    const { a, o } = setup();
+    Object.assign(o, { lane: 0, x: 0, z: a.z + 30 });
+    let dodged = false;
+    for (let f = 0; f < 60 * 4; f++) {
+      const early = !dodged && o.z - a.z < 25;
+      if (early) dodged = true;
+      a.update(1 / 60, early ? 1 : 0, 0);
+    }
+    expect(a.hearts).toBe(3);
+    expect(a.nearMisses).toBe(0);
+  });
   it('counts a car you dodged out of your lane', () => {
     const { a, o } = setup();
     Object.assign(o, { lane: 0, x: 0, z: a.z + 30 });

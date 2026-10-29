@@ -14,7 +14,12 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraActor.h"
 #include "CanvasItem.h"
+#include "RenderUtils.h"
+#include "UnrealClient.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Paths.h"
 #include "Fonts/FontMeasure.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Framework/Application/SlateApplication.h"
@@ -135,7 +140,8 @@ void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool
 			T.V0_Color = T.V1_Color = T.V2_Color = Bg;
 			Tris.Add(T);
 		}
-		FCanvasTriangleItem Fan(Tris, nullptr);
+		// UE 5.8 asserts on a null texture here, so tint the engine's plain white one
+		FCanvasTriangleItem Fan(Tris, GWhiteTexture);
 		Fan.BlendMode = SE_BLEND_Translucent;
 		Canvas->DrawItem(Fan);
 	}
@@ -188,18 +194,47 @@ void ASCHUD::DrawHUD()
 	ASCJobDirector* D = Director.Get();
 	APlayerController* PC = GetOwningPlayerController();
 	APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+	// build robot: with -SCShots on the command line, save a few screenshots so visuals can be checked remotely
+	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
+	if (bRobotShots && RobotShot < 3 && GetWorld() && GetWorld()->GetTimeSeconds() > 12.f + RobotShot * 10.f)
+		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
+	// after the second shot, follow traffic car 0 so the last shot shows whether traffic renders
+	if (bRobotShots && RobotShot >= 2 && PC && GetWorld())
+	{
+		TActorIterator<ASCTraffic> It(GetWorld());
+		TArray<FVector> CarPos;
+		if (It) It->GetCarPositions(CarPos);
+		if (CarPos.Num() > 0)
+		{
+			const FVector Eye = CarPos[0] + FVector(-600.f, -600.f, 400.f);
+			if (!RobotCam)
+			{
+				RobotCam = GetWorld()->SpawnActor<ACameraActor>(Eye, (CarPos[0] - Eye).Rotation());
+				if (RobotCam) PC->SetViewTarget(RobotCam);
+			}
+			if (RobotCam) RobotCam->SetActorLocationAndRotation(Eye, (CarPos[0] - Eye).Rotation());
+		}
+	}
 
 	// ---- career panel (top-left)
 	if (E && E->GetSave())
 	{
 		const USCSaveGame* Sv = E->GetSave();
-		Panel(Pad, Pad, 300 * S, 118 * S);
-		Label(FString::Printf(TEXT("$%.2f"), Sv->Wallet), Pad + 16 * S, Pad + 10 * S, Accent, 1.6f);
-		Label(FString::Printf(TEXT("LV %d"), Sv->Level), Pad + 16 * S, Pad + 58 * S, FLinearColor::White, 0.8f);
-		const float Bx = Pad + 80 * S, Bw = 200 * S, By = Pad + 66 * S;
+		// stacked from measured text sizes so lines never overlap and the panel always fits its text
+		const FString Money = FString::Printf(TEXT("$%.2f"), Sv->Wallet), Lv = FString::Printf(TEXT("LV %d"), Sv->Level);
+		const FString Stats = FString::Printf(TEXT("Rating %.2f  -  %d trips  -  %.1f km"), Sv->Rating, Sv->Trips, Sv->Km);
+		const FVector2D MoneyS = TextSize(Money, 1.4f), LvS = TextSize(Lv, 0.7f), StatsS = TextSize(Stats, 0.6f);
+		const float Pw = FMath::Max3(300.f * S, float(StatsS.X) + 32.f * S, float(MoneyS.X) + 32.f * S);
+		Panel(Pad, Pad, Pw, 8 * S + MoneyS.Y + LvS.Y + StatsS.Y + 18 * S);
+		float Ly = Pad + 6 * S;
+		Label(Money, Pad + 16 * S, Ly, Accent, 1.4f);
+		Ly += MoneyS.Y + 2 * S;
+		Label(Lv, Pad + 16 * S, Ly, FLinearColor::White, 0.7f);
+		const float Bx = Pad + 30 * S + LvS.X, Bw = Pad + Pw - 16 * S - Bx, By = Ly + LvS.Y * 0.5f - 3.5f * S;
 		DrawRect(FLinearColor(1, 1, 1, 0.12f), Bx, By, Bw, 7 * S);
 		DrawRect(Accent, Bx, By, Bw * FMath::Clamp(float(Sv->Xp) / E->XpToNext(Sv->Level), 0.f, 1.f), 7 * S);
-		Label(FString::Printf(TEXT("Rating %.2f  -  %d trips  -  %.1f km"), Sv->Rating, Sv->Trips, Sv->Km), Pad + 16 * S, Pad + 86 * S, Muted, 0.65f);
+		Ly += LvS.Y + 4 * S;
+		Label(Stats, Pad + 16 * S, Ly, Muted, 0.6f);
 	}
 
 	// ---- job card (top-right)
@@ -219,14 +254,19 @@ void ASCHUD::DrawHUD()
 			const FString Kind = J.Food ? TEXT("FOOD DELIVERY") : J.Premium ? TEXT("PREMIUM RIDE") : TEXT("RIDE REQUEST");
 			if (J.Stage == ESCJobStage::Offer)
 			{
-				Panel(Cx, Pad, Cw, 200 * S);
-				Label(FString(J.Chapter >= 0 ? TEXT("STORY - ") : TEXT("NEW ")) + Kind, Cx + 16 * S, Pad + 10 * S, TagC, 0.6f);
-				Label(J.Food ? FString::Printf(TEXT("%s -> %s"), *J.Restaurant, *J.B->DisplayName) : J.Customer, Cx + 16 * S, Pad + 34 * S, FLinearColor::White, 0.95f);
-				Label(FString::Printf(TEXT("Pickup: %s"), *J.A->DisplayName), Cx + 16 * S, Pad + 72 * S, Muted, 0.7f);
-				Label(FString::Printf(TEXT("Drop-off: %s"), *J.B->DisplayName), Cx + 16 * S, Pad + 96 * S, Muted, 0.7f);
+				// widen the card for long names (up to 45% of the screen), then shrink the title if it still doesn't fit
+				const FString Title = J.Food ? FString::Printf(TEXT("%s -> %s"), *J.Restaurant, *J.B->DisplayName) : J.Customer;
+				const float TitleW = TextSize(Title, 0.95f).X;
+				const float OCw = FMath::Clamp(TitleW + 32 * S, Cw, FMath::Max(Cw, W * 0.45f)), OCx = W - OCw - Pad;
+				const float TitleScale = 0.95f * FMath::Min(1.f, (OCw - 32 * S) / FMath::Max(1.f, TitleW));
+				Panel(OCx, Pad, OCw, 208 * S);
+				Label(FString(J.Chapter >= 0 ? TEXT("STORY - ") : TEXT("NEW ")) + Kind, OCx + 16 * S, Pad + 10 * S, TagC, 0.6f);
+				Label(Title, OCx + 16 * S, Pad + 34 * S, FLinearColor::White, TitleScale);
+				Label(FString::Printf(TEXT("Pickup: %s"), *J.A->DisplayName), OCx + 16 * S, Pad + 72 * S, Muted, 0.7f);
+				Label(FString::Printf(TEXT("Drop-off: %s"), *J.B->DisplayName), OCx + 16 * S, Pad + 98 * S, Muted, 0.7f);
 				const float Fare = E ? J.Fare * E->GetSelectedVehicle().Fare : J.Fare;
-				Label(FString::Printf(TEXT("$%.2f"), Fare), Cx + 16 * S, Pad + 122 * S, FLinearColor::White, 1.3f);
-				Label(J.Chapter >= 0 ? TEXT("ENTER  accept") : TEXT("ENTER  accept      N  decline"), Cx + 16 * S, Pad + 168 * S, Accent, 0.7f);
+				Label(FString::Printf(TEXT("$%.2f"), Fare), OCx + 16 * S, Pad + 126 * S, FLinearColor::White, 1.3f);
+				Label(J.Chapter >= 0 ? TEXT("ENTER  accept") : TEXT("ENTER  accept      N  decline"), OCx + 16 * S, Pad + 172 * S, Accent, 0.7f);
 			}
 			else if (ASCDestination* T = D->GetTarget())
 			{

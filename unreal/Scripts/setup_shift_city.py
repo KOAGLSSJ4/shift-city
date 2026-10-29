@@ -17,6 +17,8 @@ import unreal
 
 IMPORT_TREES = True       # ~100 MB download; set False for a quicker first run
 GOLDEN_HOUR = False       # True = low golden-hour sun (moodier, darker streets)
+# Set by the build robot (.github/workflows/unreal-build.yml): no dialogs, quit the editor when done.
+CI = os.environ.get("SHIFTCITY_CI") == "1"
 
 PROJECT = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
 SRC = os.path.join(PROJECT, "SourceArt")
@@ -408,18 +410,35 @@ def make_signal_materials():
 
 
 def find_car_meshes():
-    """Skeletal car bodies from the Vehicle template, reused as traffic."""
-    cars = []
+    """Vehicle template cars for traffic: the skeletal rig plus the static body/glass/wheel meshes next to it.
+
+    Returns (rigs, bodies, glass, wheels) as parallel lists (None where a part is missing)."""
+    rigs, bodies, glass, wheels = [], [], [], []
     for path in EAL.list_assets("/Game", recursive=True):
         if "/Vehicles/" not in path and "Vehicle" not in path:
             continue
         data = EAL.find_asset_data(path)
-        if str(data.asset_class_path.asset_name) == "SkeletalMesh":
-            mesh = unreal.load_asset(path)
-            if mesh:
-                cars.append(mesh)
-    log("traffic will use %d car model(s)" % len(cars))
-    return cars
+        if str(data.asset_class_path.asset_name) != "SkeletalMesh":
+            continue
+        rig = unreal.load_asset(path)
+        if not rig:
+            continue
+        folder = path.rsplit("/", 1)[0]
+        body = gl = wheel = None
+        for other in EAL.list_assets(folder, recursive=False):
+            if str(EAL.find_asset_data(other).asset_class_path.asset_name) != "StaticMesh":
+                continue
+            name = other.split("/")[-1].split(".")[0].lower()
+            if "glass" in name:
+                gl = unreal.load_asset(other)
+            elif "wheel" in name or "tire" in name or "tyre" in name:
+                wheel = unreal.load_asset(other)
+            elif body is None or "body" in name:
+                body = unreal.load_asset(other)
+        rigs.append(rig); bodies.append(body); glass.append(gl); wheels.append(wheel)
+        log("traffic car %s: body %s, glass %s, wheel %s" % (rig.get_name(), body and body.get_name(), gl and gl.get_name(), wheel and wheel.get_name()))
+    log("traffic will use %d car model(s)" % len(rigs))
+    return rigs, bodies, glass, wheels
 
 
 def setup_level(mats, lamp, tree):
@@ -480,10 +499,15 @@ def setup_level(mats, lamp, tree):
     try:
         sig_lamp, sig_pole = make_signal_materials()
         traffic = eas.spawn_actor_from_class(unreal.load_class(None, "/Script/ShiftCityCore.SCTraffic"), unreal.Vector(0, 0, 0))
-        setp(traffic, "car_meshes", find_car_meshes())
+        rigs, bodies, glass, wheels = find_car_meshes()
+        setp(traffic, "car_meshes", rigs)
+        setp(traffic, "car_bodies", bodies)
+        setp(traffic, "car_glass", glass)
+        setp(traffic, "car_wheels", wheels)
         setp(traffic, "lamp_material", sig_lamp)
         setp(traffic, "pole_material", sig_pole)
-        traffic.rerun_construction_scripts()
+        if hasattr(traffic, "rerun_construction_scripts"):  # not exposed to Python in UE 5.8; traffic spawns on Play anyway
+            traffic.rerun_construction_scripts()
     except Exception as e:
         unreal.log_warning("[ShiftCity] traffic not added: %s" % e)
 
@@ -521,26 +545,45 @@ def check_code_is_current():
                "Close Unreal, open unreal/ShiftCity.slnx in Visual Studio, choose Development Editor, "
                "Build > Build Solution, then reopen the project and run this script again." % (version, REQUIRED_GENERATOR_VERSION))
         unreal.log_error("[ShiftCity] " + msg)
-        unreal.EditorDialog.show_message("Shift City: rebuild needed", msg, unreal.AppMsgType.OK)
+        if not CI:
+            unreal.EditorDialog.show_message("Shift City: rebuild needed", msg, unreal.AppMsgType.OK)
         return False
     return True
 
 
 def main():
     if not check_code_is_current():
+        if CI:
+            raise RuntimeError("C++ plugin is out of date (the robot's build step should have rebuilt it)")
         return
     with unreal.ScopedSlowTask(5, "Setting up Shift City") as task:
         task.make_dialog(True)
+        # STEP lines make it obvious in the log (and in crash reports) how far the script got
+        log("STEP 1/4: textures and materials")
         task.enter_progress_frame(1, "Importing textures and building materials")
         mats = build_materials()
+        log("STEP 2/4: street lamps")
         task.enter_progress_frame(1, "Downloading street lamps (Poly Haven)")
         lamp = polyhaven_mesh("street_lamp_01")
+        log("STEP 3/4: street trees")
         task.enter_progress_frame(1, "Downloading street trees (Poly Haven)")
         tree = polyhaven_mesh("tree_small_02") if IMPORT_TREES else []
+        log("STEP 4/4: building the city level")
         task.enter_progress_frame(1, "Building the city")
         setup_level(mats, lamp, tree)
         task.enter_progress_frame(1, "Done")
     log("Shift City is ready. Press Play.")
 
 
-main()
+try:
+    main()
+except Exception:
+    import traceback
+    unreal.log_error("[ShiftCity] SCRIPT FAILED:\n" + traceback.format_exc())
+    if CI:
+        unreal.SystemLibrary.quit_editor()
+    raise
+else:
+    if CI:
+        log("SCRIPT FINISHED (build robot run): closing the editor")
+        unreal.SystemLibrary.quit_editor()

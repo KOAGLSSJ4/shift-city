@@ -43,6 +43,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Shift City|Traffic", meta = (ClampMin = "0", ClampMax = "120")) int32 CarCount = 40;
 	/** Car bodies to pick from (the setup script uses the Vehicle template's cars). */
 	UPROPERTY(EditAnywhere, Category = "Shift City|Traffic") TArray<TObjectPtr<USkeletalMesh>> CarMeshes;
+	/** Parts bolted onto CarMeshes[i] (same index): the template's skeletal mesh is only the rig/suspension. */
+	UPROPERTY(EditAnywhere, Category = "Shift City|Traffic") TArray<TObjectPtr<UStaticMesh>> CarBodies;
+	UPROPERTY(EditAnywhere, Category = "Shift City|Traffic") TArray<TObjectPtr<UStaticMesh>> CarGlass;
+	UPROPERTY(EditAnywhere, Category = "Shift City|Traffic") TArray<TObjectPtr<UStaticMesh>> CarWheels;
 	/** Emissive material with "Color" (vector) and "Glow" (scalar) parameters, for signal lamps. */
 	UPROPERTY(EditAnywhere, Category = "Shift City|Traffic") TObjectPtr<UMaterialInterface> LampMaterial;
 	UPROPERTY(EditAnywhere, Category = "Shift City|Traffic") TObjectPtr<UMaterialInterface> PoleMaterial;

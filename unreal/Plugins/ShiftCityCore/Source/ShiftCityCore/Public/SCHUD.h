@@ -12,6 +12,7 @@ class ASCJobDirector;
 class UFont;
 class ASCDestination;
 class ASCTraffic;
+class ACameraActor;
 
 UCLASS()
 class SHIFTCITYCORE_API ASCHUD : public AHUD
@@ -47,4 +48,6 @@ private:
 	float RouteTimer = 0.f;
 	TWeakObjectPtr<ASCDestination> RouteTarget;
 	float S = 1.f; // UI scale
+	int32 RobotShot = 0; // screenshots taken so far for the build robot (-SCShots)
+	UPROPERTY() TObjectPtr<ACameraActor> RobotCam; // build robot: chase camera on a traffic car for the last shot
 };
