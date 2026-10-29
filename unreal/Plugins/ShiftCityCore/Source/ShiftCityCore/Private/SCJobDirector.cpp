@@ -1,4 +1,5 @@
 #include "SCJobDirector.h"
+#include "SCHUD.h"
 #include "SCDestination.h"
 #include "SCEconomySubsystem.h"
 #include "SCSaveGame.h"
@@ -54,7 +55,18 @@ void ASCJobDirector::BeginPlay()
 	}
 	USCEconomySubsystem* E = Economy();
 	if (E && E->GetSave() && E->GetSave()->StoryChapter >= E->GetStory().Num()) bStoryMode = false;
-	Toast(bStoryMode ? TEXT("STORY MODE  -  press M for Free Ride") : TEXT("FREE RIDE  -  press M for Story Mode"), Good, 5.f);
+}
+
+void ASCJobDirector::StartMode(bool bStory)
+{
+	USCEconomySubsystem* E = Economy();
+	if (bStory && E && E->GetSave() && E->GetSave()->StoryChapter >= E->GetStory().Num()) bStory = false;
+	bMenuOpen = false;
+	if (bHasJob && Job.Stage != ESCJobStage::Offer && bStory == bStoryMode) return; // carry on with the current job
+	bStoryMode = bStory;
+	bHasJob = false;
+	OfferTimer = 1.f;
+	Toast(bStoryMode ? TEXT("STORY MODE") : TEXT("FREE RIDE"), Good);
 }
 
 ASCDestination* ASCJobDirector::FindByName(const FString& Name) const
@@ -164,11 +176,10 @@ void ASCJobDirector::Decline()
 
 void ASCJobDirector::ToggleMode()
 {
+	// M opens the main menu (where you pick Story or Free Ride)
 	if (bHasJob && Job.Stage != ESCJobStage::Offer) { Toast(TEXT("Finish the current job first")); return; }
-	bStoryMode = !bStoryMode;
-	bHasJob = false;
-	OfferTimer = 0.5f;
-	Toast(bStoryMode ? TEXT("STORY MODE") : TEXT("FREE RIDE"), Good);
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (ASCHUD* Hud = PC ? Cast<ASCHUD>(PC->GetHUD()) : nullptr) Hud->ShowMenu();
 }
 
 void ASCJobDirector::ShowMarker()
@@ -211,7 +222,7 @@ void ASCJobDirector::Tick(float Dt)
 	if (bHasLastPos) E->AddDistance(FVector::Dist2D(Pos, LastPos) / 100.f);
 	LastPos = Pos; bHasLastPos = true;
 
-	if (!bHasJob) { if ((OfferTimer -= Dt) <= 0.f) NextOffer(); return; }
+	if (!bHasJob) { if (!bMenuOpen && (OfferTimer -= Dt) <= 0.f) NextOffer(); return; }
 	ASCDestination* T = GetTarget();
 	if (!T) return;
 	const float Dist = FVector::Dist2D(Pos, T->GetActorLocation());

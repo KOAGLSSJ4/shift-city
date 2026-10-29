@@ -1,4 +1,6 @@
 #include "SCHUD.h"
+#include "SCMenu.h"
+#include "Engine/GameViewportClient.h"
 #include "SCDestination.h"
 #include "SCEconomySubsystem.h"
 #include "SCJobDirector.h"
@@ -41,6 +43,69 @@ void ASCHUD::BeginPlay()
 	for (TActorIterator<ASCJobDirector> It(GetWorld()); It; ++It) { Director = *It; break; }
 	if (!Director.IsValid()) Director = GetWorld()->SpawnActor<ASCJobDirector>();
 	for (TActorIterator<ASCTraffic> It(GetWorld()); It; ++It) { Traffic = *It; break; }
+	ShowMenu();
+}
+
+void ASCHUD::EndPlay(const EEndPlayReason::Type Reason)
+{
+	HideMenu(); // viewport widgets outlive the world in the editor's Play mode
+	Super::EndPlay(Reason);
+}
+
+void ASCHUD::ShowMenu()
+{
+	if (MenuWidget.IsValid() || !GEngine || !GEngine->GameViewport) return;
+	SCMenu::FMenuInfo Info;
+	UGameInstance* GI = GetGameInstance();
+	if (USCEconomySubsystem* E = GI ? GI->GetSubsystem<USCEconomySubsystem>() : nullptr)
+	{
+		if (const USCSaveGame* Sv = E->GetSave())
+		{
+			Info.StoryChapter = Sv->StoryChapter;
+			Info.Wallet = FString::Printf(TEXT("$%.2f"), Sv->Wallet);
+			Info.Level = Sv->Level;
+		}
+		Info.StoryTotal = E->GetStory().Num();
+	}
+	TWeakObjectPtr<ASCHUD> Self(this);
+	MenuWidget = SCMenu::MakeMainMenu(Info, [Self](SCMenu::EChoice Choice) { if (Self.IsValid()) Self->OnMenuChoice(uint8(Choice)); });
+	GEngine->GameViewport->AddViewportWidgetContent(MenuWidget.ToSharedRef(), 50);
+	if (APlayerController* PC = GetOwningPlayerController())
+	{
+		FInputModeUIOnly Mode;
+		Mode.SetWidgetToFocus(MenuWidget);
+		PC->SetInputMode(Mode);
+		PC->SetShowMouseCursor(true);
+	}
+	if (ASCJobDirector* D = Director.Get()) D->SetMenuOpen(true);
+}
+
+void ASCHUD::HideMenu()
+{
+	if (!MenuWidget.IsValid()) return;
+	if (GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(MenuWidget.ToSharedRef());
+	MenuWidget.Reset();
+	if (APlayerController* PC = GetOwningPlayerController())
+	{
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->SetShowMouseCursor(false);
+	}
+}
+
+void ASCHUD::OnMenuChoice(uint8 Choice)
+{
+	switch (SCMenu::EChoice(Choice))
+	{
+	case SCMenu::EChoice::Quit:
+		if (APlayerController* PC = GetOwningPlayerController()) PC->ConsoleCommand(TEXT("quit"));
+		break;
+	case SCMenu::EChoice::Arcade:
+		break; // not ported yet (button is disabled)
+	default:
+		HideMenu();
+		if (ASCJobDirector* D = Director.Get()) D->StartMode(SCMenu::EChoice(Choice) == SCMenu::EChoice::Story);
+		break;
+	}
 }
 
 FSlateFontInfo ASCHUD::Font(float Scale) const
@@ -198,6 +263,8 @@ void ASCHUD::DrawHUD()
 	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
 	if (bRobotShots && RobotShot < 3 && GetWorld() && GetWorld()->GetTimeSeconds() > 12.f + RobotShot * 10.f)
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
+	// the robot can't click: leave the menu up for the first screenshot, then start Free Ride
+	if (bRobotShots && MenuWidget.IsValid() && RobotShot >= 1 && GetWorld()->GetTimeSeconds() > 15.f) OnMenuChoice(uint8(SCMenu::EChoice::FreeRide));
 	// after the second shot, follow traffic car 0 so the last shot shows whether traffic renders
 	if (bRobotShots && RobotShot >= 2 && PC && GetWorld())
 	{
@@ -215,6 +282,8 @@ void ASCHUD::DrawHUD()
 			if (RobotCam) RobotCam->SetActorLocationAndRotation(Eye, (CarPos[0] - Eye).Rotation());
 		}
 	}
+
+	if (MenuWidget.IsValid()) return; // the menu covers the screen: no HUD under it
 
 	// ---- career panel (top-left)
 	if (E && E->GetSave())

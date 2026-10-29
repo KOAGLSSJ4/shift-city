@@ -13,6 +13,7 @@ class UFont;
 class ASCDestination;
 class ASCTraffic;
 class ACameraActor;
+class SWidget;
 
 UCLASS()
 class SHIFTCITYCORE_API ASCHUD : public AHUD
@@ -21,6 +22,12 @@ class SHIFTCITYCORE_API ASCHUD : public AHUD
 public:
 	virtual void BeginPlay() override;
 	virtual void DrawHUD() override;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+
+	/** Main menu (Story / Free Ride / Arcade). Shown at start and with M; the game keeps running behind it. */
+	void ShowMenu();
+	void HideMenu();
+	bool IsMenuOpen() const { return MenuWidget.IsValid(); }
 
 	/** Turn on if your vehicle has no speedometer of its own. */
 	UPROPERTY(EditAnywhere, Category = "Shift City") bool bShowSpeed = false; // the Vehicle template already shows gear + speed
@@ -48,6 +55,8 @@ private:
 	float RouteTimer = 0.f;
 	TWeakObjectPtr<ASCDestination> RouteTarget;
 	float S = 1.f; // UI scale
+	TSharedPtr<SWidget> MenuWidget;
+	void OnMenuChoice(uint8 Choice);
 	int32 RobotShot = 0; // screenshots taken so far for the build robot (-SCShots)
 	UPROPERTY() TObjectPtr<ACameraActor> RobotCam; // build robot: chase camera on a traffic car for the last shot
 };

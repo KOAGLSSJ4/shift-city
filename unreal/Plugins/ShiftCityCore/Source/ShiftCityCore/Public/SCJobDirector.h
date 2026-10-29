@@ -34,6 +34,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Shift City") void Accept();
 	UFUNCTION(BlueprintCallable, Category = "Shift City") void Decline();
 	UFUNCTION(BlueprintCallable, Category = "Shift City") void ToggleMode();
+	/** Starts Story or Free Ride from the main menu. */
+	void StartMode(bool bStory);
+	/** While the menu is open no requests come in. */
+	void SetMenuOpen(bool bOpen) { bMenuOpen = bOpen; }
 
 	bool HasJob() const { return bHasJob; }
 	const FSCJob& GetJob() const { return Job; }
@@ -47,6 +51,7 @@ public:
 	void Toast(const FString& Text, const FLinearColor& Color = FLinearColor::White, float Seconds = 3.f);
 
 private:
+	bool bMenuOpen = false;
 	void NextOffer();
 	void Arrive();
 	APawn* PlayerPawn() const;
