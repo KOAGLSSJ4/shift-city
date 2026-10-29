@@ -16,13 +16,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Features (next up)
 
-- **Declines that matter, like the real Uber app** (David, 2026-10-28). Being built on branch
-  `feature/driver-app`, not on `main` until David says. Ideas:
-  - acceptance rate shown on the driver card; declining (or letting a request time out) lowers it;
-  - offers expire after ~15 s like the real app;
-  - decline 3 in a row and you're taken offline for a short cool-down;
-  - driver tiers (like Uber Pro: Blue, Gold, Platinum, Diamond) from trips, acceptance rate and rating,
-    giving fare bonuses and access to premium and VIP passengers.
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
@@ -61,6 +54,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: driver app merged: 15 s offers, acceptance rate, offline after 3 declines, Blue/Gold/Platinum/Diamond tiers.
 - 2026-10-29: GPS said "turn right" when you had to turn left first at the junction you're waiting at (web + Unreal):
   the first leg is now compared with where the car faces ("Turn left now").
 - 2026-10-29: Unreal HUD part 1: career panel, job card, story card, toasts, GPS banner and boarding bar in
