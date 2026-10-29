@@ -56,29 +56,29 @@ top-down heading-up) → time of day (day/golden/night, lit windows via `WindowG
 (wet roads, rain, windscreen drops) → Arcade Rush → contextual tutorial pointer → audio →
 passengers/pedestrians → port the web's original car designs.
 
-## Where we left off (web, 2026-10-27)
-- Shipped to `main`: arcade lane-block fix, original car designs (Ferrari removed), music + SFX,
-  mission types + passenger personalities, arcade blinkers + local/world leaderboards, mobile layout,
-  portal SDKs, release builds, LAUNCH.md.
-- Poki undecided (David's call): launch Vercel site + itch.io + CrazyGames now. If Poki later, David would
-  pull the game from other web sites to go exclusive; Steam may come first; Poki may never happen.
-- Since then: 10 cars (Shift Classic = original starter restored via `ClassicCar.ts`; Stellato 12 = Italian-style
-  V12 GT), Arcade: 100 points = $8 and 1 XP per 1,000 points (min 3, no cap; a city job gives 30).
-- Plan agreed: launch → gather feedback → story v1.1 (see Decisions). Don't start story before David says.
-- Waiting on David: follow LAUNCH.md (Vercel, itch.io, CrazyGames), optional Upstash for world board.
-- Not verified on real devices yet: phone touch play, real ad fill on portals.
+## Where we left off (web, 2026-10-29)
+- Live on Vercel: shift-city-theta.vercel.app (David launched it 2026-10-28). itch.io + CrazyGames uploads still
+  David's to do (LAUNCH.md); Upstash (World board) optional, not connected (api answers 503).
+- Shipped 2026-10-29 (all on `main`, `feature/driver-app` merged): driver app (15 s offers, acceptance, offline
+  after 3 declines, tiers), daily reward + daily challenge (`gameplay/Daily.ts`), power-up upgrades (banked
+  arcade points), car radio (`data/radio.ts`: B / 📻, stations, passenger music taste, creator songs = MP3 in
+  `public/music` + one line), trip streak + earnings card, surge zones on the minimap, rider cancellations
+  ($3 fee), rider compliments/badges, late-dodge near misses (12 m), garage hides HUD, phone toolbar fix.
+- Arcade rate stays 100 points = $8 (David still deciding if it's too generous).
+- Pushing to `main` deploys to the live site: David approved merges/pushes for backlog work on 2026-10-29.
+- Not verified on real devices: phone touch play, real ad fill on portals.
 
-## Where we left off (Unreal, 2026-10-27)
-- Last push: HUD text via Roboto font asset, round minimap, brighter midday lighting, traffic spawn log.
-  David has NOT yet tested it. First thing next session: ask for a Play screenshot + the Output Log line
-  `[ShiftCity] traffic: spawned N cars using M car model(s)` (traffic lights showed, cars didn't).
-- Build robot (2026-10-28): `.github/workflows/unreal-build.yml` runs on a self-hosted runner on David's
-  laptop (setup: `unreal/BUILD-ROBOT.md`): builds ShiftCityEditor, runs the setup script in the editor with
-  SHIFTCITY_CI=1 (no dialogs, quits when done), uploads Saved/Logs + Saved/Crashes. Trigger it with
-  workflow_dispatch and read results via the GitHub Actions job logs. David reported the script crashing
-  the editor (2026-10-28): first robot run should show where.
-- Then ship bigger batches: main menu + garage + goals + settings together.
-- Estimates given to David: ~2-3 weeks part-time to match the web game, ~1-2 months to a demo.
+## Where we left off (Unreal, 2026-10-29)
+- Build robot works end to end (runner "MSI"): checkout with LFS + `git lfs checkout`, build, setup script,
+  40 s play test with `-SCShots` (3 screenshots in `Saved/RobotShots`, uploaded as the `unreal-logs` artifact;
+  download via the artifacts API with curl, no auth needed). Last shot follows traffic car 0. It only runs while
+  the laptop is awake with `run.cmd` open; runs queue otherwise.
+- Fixed via robot: crash on Play (minimap null texture), traffic invisible (template SKM is only the rig: bolt on
+  SM body/glass/wheels on VisWheel bones), HUD overlaps, VSM warning (duplicate ini line), wheels spin.
+- Just pushed (check the robot result first): Slate main menu `Private/SCMenu.*` (Story / Free Ride /
+  Arcade "coming soon" / Quit), shown at start and on M, robot auto-picks Free Ride after shot 1.
+- Next: HUD design pass in the same Slate style (see BACKLOG Unreal), then garage + goals + settings screens.
+- David must re-run the setup script after pulling (traffic needs the body meshes), and rebuild in VS.
 
 ## Decisions
 - One monorepo (`web/` + `unreal/`), David's call. Push to `main` (he pulls with GitHub Desktop).
