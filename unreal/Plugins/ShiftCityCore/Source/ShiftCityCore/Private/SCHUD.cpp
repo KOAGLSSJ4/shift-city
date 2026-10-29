@@ -44,12 +44,20 @@ void ASCHUD::BeginPlay()
 	for (TActorIterator<ASCJobDirector> It(GetWorld()); It; ++It) { Director = *It; break; }
 	if (!Director.IsValid()) Director = GetWorld()->SpawnActor<ASCJobDirector>();
 	for (TActorIterator<ASCTraffic> It(GetWorld()); It; ++It) { Traffic = *It; break; }
+	if (GEngine && GEngine->GameViewport)
+	{
+		HudModel = MakeShared<FSCHudModel>();
+		HudWidget = SCMenu::MakeHud(HudModel.ToSharedRef());
+		GEngine->GameViewport->AddViewportWidgetContent(HudWidget.ToSharedRef(), 10);
+	}
 	ShowMenu();
 }
 
 void ASCHUD::EndPlay(const EEndPlayReason::Type Reason)
 {
 	HideMenu(); // viewport widgets outlive the world in the editor's Play mode
+	if (HudWidget.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(HudWidget.ToSharedRef());
+	HudWidget.Reset();
 	Super::EndPlay(Reason);
 }
 
@@ -287,67 +295,57 @@ void ASCHUD::DrawHUD()
 		}
 	}
 
+	FSCHudModel Dummy;
+	FSCHudModel& Hm = HudModel.IsValid() ? *HudModel : Dummy;
+	Hm.bVisible = !MenuWidget.IsValid();
+	Hm.bCareer = Hm.bCard = false;
+	Hm.Story.Reset();
+	for (FString& ToastText : Hm.Toast) ToastText.Reset();
 	if (MenuWidget.IsValid()) return; // the menu covers the screen: no HUD under it
 
 	// ---- career panel (top-left)
 	if (E && E->GetSave())
 	{
 		const USCSaveGame* Sv = E->GetSave();
-		// stacked from measured text sizes so lines never overlap and the panel always fits its text
-		const FString Money = FString::Printf(TEXT("$%.2f"), Sv->Wallet), Lv = FString::Printf(TEXT("LV %d"), Sv->Level);
-		const FString Stats = FString::Printf(TEXT("Rating %.2f  -  %d trips  -  %.1f km"), Sv->Rating, Sv->Trips, Sv->Km);
-		const FVector2D MoneyS = TextSize(Money, 1.4f), LvS = TextSize(Lv, 0.7f), StatsS = TextSize(Stats, 0.6f);
-		const float Pw = FMath::Max3(300.f * S, float(StatsS.X) + 32.f * S, float(MoneyS.X) + 32.f * S);
-		Panel(Pad, Pad, Pw, 8 * S + MoneyS.Y + LvS.Y + StatsS.Y + 18 * S);
-		float Ly = Pad + 6 * S;
-		Label(Money, Pad + 16 * S, Ly, Accent, 1.4f);
-		Ly += MoneyS.Y + 2 * S;
-		Label(Lv, Pad + 16 * S, Ly, FLinearColor::White, 0.7f);
-		const float Bx = Pad + 30 * S + LvS.X, Bw = Pad + Pw - 16 * S - Bx, By = Ly + LvS.Y * 0.5f - 3.5f * S;
-		DrawRect(FLinearColor(1, 1, 1, 0.12f), Bx, By, Bw, 7 * S);
-		DrawRect(Accent, Bx, By, Bw * FMath::Clamp(float(Sv->Xp) / E->XpToNext(Sv->Level), 0.f, 1.f), 7 * S);
-		Ly += LvS.Y + 4 * S;
-		Label(Stats, Pad + 16 * S, Ly, Muted, 0.6f);
+		Hm.bCareer = true;
+		Hm.Money = FString::Printf(TEXT("$%.2f"), Sv->Wallet);
+		Hm.Level = FString::Printf(TEXT("LV %d"), Sv->Level);
+		Hm.Xp = float(Sv->Xp) / FMath::Max(1, E->XpToNext(Sv->Level));
+		Hm.Stats = FString::Printf(TEXT("Rating %.2f  -  %d trips  -  %.1f km"), Sv->Rating, Sv->Trips, Sv->Km);
 	}
 
 	// ---- job card (top-right)
 	if (D)
 	{
-		const float Cw = 430 * S, Cx = W - Cw - Pad;
+		Hm.bCard = true;
+		Hm.TagColor = Accent;
+		Hm.Line1.Reset(); Hm.Line2.Reset(); Hm.Fare.Reset(); Hm.Keys.Reset();
 		if (!D->HasJob())
 		{
-			Panel(Cx, Pad, Cw, 70 * S);
-			Label(D->bStoryMode ? TEXT("STORY MODE") : TEXT("ONLINE - FREE RIDE"), Cx + 16 * S, Pad + 10 * S, Accent, 0.6f);
-			Label(TEXT("Waiting for the next request..."), Cx + 16 * S, Pad + 34 * S, FLinearColor::White, 0.85f);
+			Hm.Tag = D->bStoryMode ? TEXT("STORY MODE") : TEXT("ONLINE - FREE RIDE");
+			Hm.Title = TEXT("Waiting for the next request...");
 		}
 		else
 		{
 			const FSCJob& J = D->GetJob();
-			const FLinearColor TagC = J.Premium ? Gold : Accent;
 			const FString Kind = J.Food ? TEXT("FOOD DELIVERY") : J.Premium ? TEXT("PREMIUM RIDE") : TEXT("RIDE REQUEST");
+			Hm.TagColor = J.Premium ? Gold : Accent;
 			if (J.Stage == ESCJobStage::Offer)
 			{
-				// widen the card for long names (up to 45% of the screen), then shrink the title if it still doesn't fit
-				const FString Title = J.Food ? FString::Printf(TEXT("%s -> %s"), *J.Restaurant, *J.B->DisplayName) : J.Customer;
-				const float TitleW = TextSize(Title, 0.95f).X;
-				const float OCw = FMath::Clamp(TitleW + 32 * S, Cw, FMath::Max(Cw, W * 0.45f)), OCx = W - OCw - Pad;
-				const float TitleScale = 0.95f * FMath::Min(1.f, (OCw - 32 * S) / FMath::Max(1.f, TitleW));
-				Panel(OCx, Pad, OCw, 208 * S);
-				Label(FString(J.Chapter >= 0 ? TEXT("STORY - ") : TEXT("NEW ")) + Kind, OCx + 16 * S, Pad + 10 * S, TagC, 0.6f);
-				Label(Title, OCx + 16 * S, Pad + 34 * S, FLinearColor::White, TitleScale);
-				Label(FString::Printf(TEXT("Pickup: %s"), *J.A->DisplayName), OCx + 16 * S, Pad + 72 * S, Muted, 0.7f);
-				Label(FString::Printf(TEXT("Drop-off: %s"), *J.B->DisplayName), OCx + 16 * S, Pad + 98 * S, Muted, 0.7f);
-				const float Fare = E ? J.Fare * E->GetSelectedVehicle().Fare : J.Fare;
-				Label(FString::Printf(TEXT("$%.2f"), Fare), OCx + 16 * S, Pad + 126 * S, FLinearColor::White, 1.3f);
-				Label(J.Chapter >= 0 ? TEXT("ENTER  accept") : TEXT("ENTER  accept      N  decline"), OCx + 16 * S, Pad + 172 * S, Accent, 0.7f);
+				Hm.Tag = FString(J.Chapter >= 0 ? TEXT("STORY - ") : TEXT("NEW ")) + Kind;
+				Hm.Title = J.Food ? FString::Printf(TEXT("%s -> %s"), *J.Restaurant, *J.B->DisplayName) : J.Customer;
+				Hm.Line1 = FString::Printf(TEXT("Pickup: %s"), *J.A->DisplayName);
+				Hm.Line2 = FString::Printf(TEXT("Drop-off: %s"), *J.B->DisplayName);
+				Hm.Fare = FString::Printf(TEXT("$%.2f"), E ? J.Fare * E->GetSelectedVehicle().Fare : J.Fare);
+				Hm.Keys = J.Chapter >= 0 ? TEXT("[ENTER] accept") : TEXT("[ENTER] accept     [N] decline");
 			}
 			else if (ASCDestination* T = D->GetTarget())
 			{
 				const bool bPick = J.Stage == ESCJobStage::Pickup;
-				Panel(Cx, Pad, Cw, 96 * S);
-				Label(bPick ? (J.Food ? TEXT("> COLLECT ORDER") : TEXT("> PICK UP PASSENGER")) : (J.Food ? TEXT("> DELIVER ORDER") : TEXT("> DROP OFF PASSENGER")), Cx + 16 * S, Pad + 10 * S, bPick ? Accent : Gold, 0.6f);
-				Label(T->DisplayName, Cx + 16 * S, Pad + 34 * S, FLinearColor::White, 0.95f);
-				Label(bPick ? FString::Printf(TEXT("%s %s"), J.Food ? TEXT("Order for") : TEXT("Passenger:"), *J.Customer) : FString(TEXT("Drive smoothly - bumps cost stars")), Cx + 16 * S, Pad + 66 * S, Muted, 0.65f);
+				Hm.TagColor = bPick ? Accent : Gold;
+				Hm.Tag = bPick ? (J.Food ? TEXT("COLLECT ORDER") : TEXT("PICK UP PASSENGER")) : (J.Food ? TEXT("DELIVER ORDER") : TEXT("DROP OFF PASSENGER"));
+				Hm.Title = T->DisplayName;
+				Hm.Line1 = bPick ? FString::Printf(TEXT("%s %s"), J.Food ? TEXT("Order for") : TEXT("Passenger:"), *J.Customer) : FString(TEXT("Drive smoothly - bumps cost stars"));
 
 				// ---- GPS arrow + distance (top-centre), relative to where the camera faces
 				if (Pawn && PC->PlayerCameraManager)
@@ -427,26 +425,14 @@ void ASCHUD::DrawHUD()
 			DrawRect(Accent, Bx + 16 * S, By + 40 * S, (Bw - 32 * S) * Prog, 6 * S);
 		}
 
-		// ---- story card
-		if (!D->GetStoryCard().IsEmpty())
-		{
-			TArray<FString> Lines;
-			D->GetStoryCard().ParseIntoArrayLines(Lines);
-			// bottom-centre, above the car, so it never covers the career panel or job card
-			const float Bh = (24 + Lines.Num() * 32) * S, Bw = FMath::Min(760 * S, W - 2 * (300 * S + Pad)), Bx = W / 2.f - Bw / 2.f, By = H - Bh - 150 * S;
-			Panel(Bx, By, Bw, Bh);
-			for (int32 i = 0; i < Lines.Num(); ++i) Label(Lines[i], W / 2.f, By + (12 + i * 32) * S, i == 0 ? Accent : FLinearColor::White, i == 0 ? 0.65f : 0.8f, true);
-		}
-
-		// ---- toasts
+		// ---- story card + toasts (drawn by the Slate HUD)
+		Hm.Story = D->GetStoryCard();
 		const TArray<FSCToast>& Ts = D->GetToasts();
-		for (int32 i = 0; i < Ts.Num(); ++i)
+		for (int32 i = 0; i < FMath::Min(Ts.Num(), FSCHudModel::MaxToasts); ++i)
 		{
-			const float Ty = Pad + 100 * S + i * 44 * S; // just under the GPS panel
-			const float Tw = TextSize(Ts[i].Text, 0.75f).X + 32 * S;
-			FLinearColor C = Ts[i].Color; C.A = FMath::Clamp(Ts[i].Remaining * 2.f, 0.f, 1.f);
-			DrawRect(FLinearColor(PanelBg.R, PanelBg.G, PanelBg.B, PanelBg.A * C.A), W / 2.f - Tw / 2.f, Ty, Tw, 38 * S);
-			Label(Ts[i].Text, W / 2.f, Ty + 6 * S, C, 0.75f, true);
+			Hm.Toast[i] = Ts[i].Text;
+			Hm.ToastColor[i] = Ts[i].Color;
+			Hm.ToastColor[i].A = FMath::Clamp(Ts[i].Remaining * 2.f, 0.f, 1.f);
 		}
 	}
 

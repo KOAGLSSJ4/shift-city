@@ -8,6 +8,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Layout/Visibility.h"
 
 namespace
 {
@@ -109,6 +110,122 @@ TSharedRef<SWidget> SCMenu::MakeMainMenu(const FMenuInfo& Info, TFunction<void(E
 						.Text(FText::FromString(FString::Printf(TEXT("%s  -  Level %d  -  M opens this menu"), *Info.Wallet, Info.Level)))
 						.Font(MenuFont("Regular", 12)).ColorAndOpacity(FSlateColor(MenuMuted))
 					]
+				]
+			]
+		];
+}
+
+namespace
+{
+	const FSlateBrush* HudPanelBrush()
+	{
+		static const FSlateRoundedBoxBrush Brush(FLinearColor(0.04f, 0.07f, 0.11f, 0.8f), 16.f, FLinearColor(1.f, 1.f, 1.f, 0.08f), 1.f);
+		return &Brush;
+	}
+	const FSlateBrush* BarBrush(bool bFill)
+	{
+		static const FSlateRoundedBoxBrush Bg(FLinearColor(1.f, 1.f, 1.f, 0.14f), 3.f);
+		static const FSlateRoundedBoxBrush Fill(MenuAccent, 3.f);
+		return bFill ? &Fill : &Bg;
+	}
+}
+
+TSharedRef<SWidget> SCMenu::MakeHud(TSharedRef<FSCHudModel> Model)
+{
+	const TSharedRef<FSCHudModel> M = Model;
+	auto Text = [M](FString FSCHudModel::* Field) { return TAttribute<FText>::CreateLambda([M, Field]() { return FText::FromString((*M).*Field); }); };
+	auto ShownIf = [](TFunction<bool()> Test) { return TAttribute<EVisibility>::CreateLambda([Test]() { return Test() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; }); };
+	const float BarW = 170.f;
+
+	TSharedRef<SVerticalBox> ToastBox = SNew(SVerticalBox);
+	for (int32 i = 0; i < FSCHudModel::MaxToasts; ++i)
+	{
+		ToastBox->AddSlot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 6.f)
+		[
+			SNew(SBorder).BorderImage(HudPanelBrush()).Padding(FMargin(16.f, 7.f))
+			.Visibility(ShownIf([M, i]() { return !M->Toast[i].IsEmpty(); }))
+			[
+				SNew(STextBlock).Font(MenuFont("Bold", 15))
+				.Text_Lambda([M, i]() { return FText::FromString(M->Toast[i]); })
+				.ColorAndOpacity_Lambda([M, i]() { return FSlateColor(M->ToastColor[i]); })
+			]
+		];
+	}
+
+	return SNew(SOverlay)
+		.Visibility(ShownIf([M]() { return M->bVisible; }))
+		// career (top-left)
+		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(20.f)
+		[
+			SNew(SBorder).BorderImage(HudPanelBrush()).Padding(FMargin(18.f, 12.f))
+			.Visibility(ShownIf([M]() { return M->bCareer; }))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
+				[ SNew(STextBlock).Font(MenuFont("Bold", 30)).ColorAndOpacity(FSlateColor(MenuAccent)).Text(Text(&FSCHudModel::Money)) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 4.f)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 10.f, 0.f)
+					[ SNew(STextBlock).Font(MenuFont("Bold", 14)).ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::Level)) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(BarW).HeightOverride(6.f)
+						[
+							SNew(SOverlay)
+							+ SOverlay::Slot()[ SNew(SBorder).BorderImage(BarBrush(false)) ]
+							+ SOverlay::Slot().HAlign(HAlign_Left)
+							[
+								SNew(SBox).WidthOverride_Lambda([M, BarW]() { return FOptionalSize(BarW * FMath::Clamp(M->Xp, 0.f, 1.f)); })
+								[ SNew(SBorder).BorderImage(BarBrush(true)) ]
+							]
+						]
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[ SNew(STextBlock).Font(MenuFont("Regular", 12)).ColorAndOpacity(FSlateColor(MenuMuted)).Text(Text(&FSCHudModel::Stats)) ]
+			]
+		]
+		// job card (top-right)
+		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(20.f)
+		[
+			SNew(SBox).MinDesiredWidth(360.f).MaxDesiredWidth(520.f)
+			.Visibility(ShownIf([M]() { return M->bCard; }))
+			[
+				SNew(SBorder).BorderImage(HudPanelBrush()).Padding(FMargin(18.f, 14.f))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(STextBlock).Font(MenuFont("Bold", 12)).Text(Text(&FSCHudModel::Tag))
+						.ColorAndOpacity_Lambda([M]() { return FSlateColor(M->TagColor); })
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 6.f)
+					[ SNew(STextBlock).Font(MenuFont("Bold", 22)).AutoWrapText(true).ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::Title)) ]
+					+ SVerticalBox::Slot().AutoHeight()
+					[ SNew(STextBlock).Font(MenuFont("Regular", 14)).ColorAndOpacity(FSlateColor(MenuMuted)).Text(Text(&FSCHudModel::Line1)).Visibility(ShownIf([M]() { return !M->Line1.IsEmpty(); })) ]
+					+ SVerticalBox::Slot().AutoHeight()
+					[ SNew(STextBlock).Font(MenuFont("Regular", 14)).ColorAndOpacity(FSlateColor(MenuMuted)).Text(Text(&FSCHudModel::Line2)).Visibility(ShownIf([M]() { return !M->Line2.IsEmpty(); })) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
+					[ SNew(STextBlock).Font(MenuFont("Bold", 30)).ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::Fare)).Visibility(ShownIf([M]() { return !M->Fare.IsEmpty(); })) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
+					[ SNew(STextBlock).Font(MenuFont("Bold", 13)).ColorAndOpacity(FSlateColor(MenuAccent)).Text(Text(&FSCHudModel::Keys)).Visibility(ShownIf([M]() { return !M->Keys.IsEmpty(); })) ]
+				]
+			]
+		]
+		// toasts (top-centre, under the GPS banner)
+		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Top).Padding(FMargin(0.f, 128.f, 0.f, 0.f))
+		[ ToastBox ]
+		// story card (bottom-centre, above the car)
+		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(FMargin(0.f, 0.f, 0.f, 150.f))
+		[
+			SNew(SBox).MaxDesiredWidth(720.f)
+			.Visibility(ShownIf([M]() { return !M->Story.IsEmpty(); }))
+			[
+				SNew(SBorder).BorderImage(HudPanelBrush()).Padding(FMargin(22.f, 14.f))
+				[
+					SNew(STextBlock).Font(MenuFont("Regular", 17)).AutoWrapText(true).Justification(ETextJustify::Center)
+					.ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::Story))
 				]
 			]
 		];

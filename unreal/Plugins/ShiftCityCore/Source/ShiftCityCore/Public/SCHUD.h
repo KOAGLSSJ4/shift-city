@@ -14,6 +14,7 @@ class ASCDestination;
 class ASCTraffic;
 class ACameraActor;
 class SWidget;
+struct FSCHudModel;
 
 UCLASS()
 class SHIFTCITYCORE_API ASCHUD : public AHUD
@@ -56,6 +57,9 @@ private:
 	TWeakObjectPtr<ASCDestination> RouteTarget;
 	float S = 1.f; // UI scale
 	TSharedPtr<SWidget> MenuWidget;
+	/** Slate HUD panels (career, job card, story card, toasts) and the data they show. */
+	TSharedPtr<SWidget> HudWidget;
+	TSharedPtr<FSCHudModel> HudModel;
 	void OnMenuChoice(uint8 Choice);
 	int32 RobotShot = 0; // screenshots taken so far for the build robot (-SCShots)
 	UPROPERTY() TObjectPtr<ACameraActor> RobotCam; // build robot: chase camera on a traffic car for the last shot
