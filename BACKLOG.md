@@ -48,19 +48,18 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Unreal
 
-- **HUD looks janky / amateur** (David, 2026-10-28). Fixing overlaps wasn't enough; it needs a real design pass:
-  - flat dark boxes with square corners: use rounded, softly blurred panels with a thin accent edge, like the web game;
-  - inconsistent text sizes and cramped spacing: one type scale (title / body / small) and a fixed spacing grid;
-  - job card is a wall of text: icons for pickup/drop-off, fare as the hero, accept/decline as key-cap buttons;
-  - speed/gear readout comes from the Vehicle template and doesn't match: replace with our own;
+- **HUD design pass, part 2** (David, 2026-10-28). Done: money/level panel, job card, story card and toasts
+  are rounded Slate panels like the menu. Still to do:
+  - GPS banner (top-centre) and boarding bar still drawn the old flat way: move to Slate;
   - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
+  - speed/gear readout comes from the Vehicle template and doesn't match: replace with our own;
   - animations: cards slide/fade in, money counts up when paid.
-  Plan: do it with the menu batch so menus and HUD share one style (move from Canvas drawing to UMG widgets).
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Next batch: garage + goals + settings screens (same Slate style as the main menu, `Private/SCMenu.*`).
 
 ## Done
 
+- 2026-10-29: Unreal HUD part 1: career panel, job card, story card and toasts in rounded Slate panels.
 - 2026-10-29: world leaderboard reads Vercel's KV_REST_API_* env names too; perimeter forest no longer puts trees
   on roads near the city corners; traffic no longer spawns overlapping and goes round a stopped player.
 - 2026-10-29: Unreal main menu (Story / Free Ride / Arcade coming soon / Quit), shown at start and on M, in a
