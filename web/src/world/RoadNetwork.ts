@@ -1,5 +1,5 @@
 // Road graph for the grid city: nearest-segment lookup and street-aware GPS routing (Dijkstra).
-import { GRID, PITCH, ROUNDABOUTS, roadCoord, type Destination } from '../data/world';
+import { GRID, ONE_WAY, PITCH, ROUNDABOUTS, roadCoord, type Destination } from '../data/world';
 
 export interface Pt { x: number; z: number }
 export interface Segment { a: number; b: number; axis: 'x' | 'z' }
@@ -26,6 +26,18 @@ export function roundaboutExit(id: number, from: number, to: number): number {
   const target = ccw(aOut);
   return neighbours(id).filter((n) => n !== from && ccw(armAngle(id, n)) <= target + 1e-6).length;
 }
+
+/** False if a one-way street forbids driving from node `a` to the neighbouring node `b`. */
+export function canDrive(a: number, b: number): boolean {
+  const ai = a % N, aj = Math.floor(a / N), bi = b % N, bj = Math.floor(b / N);
+  for (const w of ONE_WAY) {
+    if (w.axis === 'x' && aj === w.k && bj === w.k && Math.sign(bi - ai) !== w.dir) return false;
+    if (w.axis === 'z' && ai === w.k && bi === w.k && Math.sign(bj - aj) !== w.dir) return false;
+  }
+  return true;
+}
+/** Neighbours you may legally drive to. */
+export const neighboursOut = (id: number) => neighbours(id).filter((n) => canDrive(id, n));
 
 export function neighbours(id: number): number[] {
   const i = id % N, j = Math.floor(id / N), out: number[] = [];
@@ -77,6 +89,9 @@ export function route(from: Pt, heading: Pt, to: Pt, toSeg: Segment): Route {
     for (const n of [seg.a, seg.b]) {
       const np = nodePos(n);
       if ((np.x - proj.x) * heading.x + (np.z - proj.z) * heading.z < 0) cost[n] += 25;
+      // on a one-way street you can only head for the end the traffic flows to
+      const other = n === seg.a ? seg.b : seg.a;
+      if (!canDrive(other, n)) cost[n] += 1e5;
     }
     for (;;) {
       let u = -1, best = Infinity;
@@ -87,12 +102,14 @@ export function route(from: Pt, heading: Pt, to: Pt, toSeg: Segment): Route {
         // check if the other end might still be cheaper including the final leg; continue until both done
         if (done[toSeg.a] && done[toSeg.b]) break;
       }
-      for (const v of neighbours(u)) {
+      for (const v of neighboursOut(u)) {
         const c = cost[u] + PITCH;
         if (c < cost[v]) { cost[v] = c; prev[v] = u; }
       }
     }
-    const ca = cost[toSeg.a] + dist(nodePos(toSeg.a), to), cb = cost[toSeg.b] + dist(nodePos(toSeg.b), to);
+    // enter the destination's street from an end the traffic is allowed to come from
+    const ca = cost[toSeg.a] + dist(nodePos(toSeg.a), to) + (canDrive(toSeg.a, toSeg.b) ? 0 : 1e5);
+    const cb = cost[toSeg.b] + dist(nodePos(toSeg.b), to) + (canDrive(toSeg.b, toSeg.a) ? 0 : 1e5);
     let n = ca <= cb ? toSeg.a : toSeg.b;
     const chain: Pt[] = [];
     while (n >= 0) { chain.unshift(nodePos(n)); n = prev[n]; }

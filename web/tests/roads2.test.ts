@@ -21,3 +21,23 @@ describe('roundabouts', () => {
     }
   });
 });
+
+import { ONE_WAY, PITCH, roadCoord } from '../src/data/world';
+import { canDrive, nearestSegment, route } from '../src/world/RoadNetwork';
+describe('one-way streets', () => {
+  const w = ONE_WAY.find((o) => o.axis === 'x')!;
+  it('forbid driving against the arrows', () => {
+    expect(canDrive(nodeId(3, w.k), nodeId(3 + w.dir, w.k))).toBe(true);
+    expect(canDrive(nodeId(3 + w.dir, w.k), nodeId(3, w.k))).toBe(false);
+  });
+  it('GPS goes round instead of the wrong way', () => {
+    const z = roadCoord(w.k);
+    const from = { x: roadCoord(6), z }, to = { x: roadCoord(2) + PITCH / 2, z }; // destination "behind" the flow
+    const r = route(from, { x: -w.dir, z: 0 }, to, nearestSegment(to).seg);
+    for (let i = 1; i < r.points.length; i++) {
+      const a = r.points[i - 1], b = r.points[i];
+      const onRow = Math.abs(a.z - z) < 0.5 && Math.abs(b.z - z) < 0.5;
+      if (onRow && Math.abs(b.x - a.x) > 1) expect(Math.sign(b.x - a.x)).toBe(w.dir);
+    }
+  });
+});

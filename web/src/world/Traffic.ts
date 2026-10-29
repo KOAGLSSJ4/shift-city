@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { DRIVE_RIGHT, LANE_W, RING_R, ROAD_W } from '../data/world';
 import type { DesignBody } from '../vehicles/designs';
 import { buildTrafficCar } from '../vehicles/CarFactory';
-import { isRoundabout, neighbours, nodePos, type Pt } from './RoadNetwork';
+import { isRoundabout, neighbours, neighboursOut, nodePos, type Pt } from './RoadNetwork';
 import { signal } from './City';
 
 interface Car {
@@ -71,7 +71,7 @@ export class Traffic {
 
   private spawn() {
     const from = Math.floor(this.r() * 121);
-    const nb = neighbours(from);
+    const nb = neighboursOut(from);
     const to = nb[Math.floor(this.r() * nb.length)];
     const mesh = buildTrafficCar(BODIES[Math.floor(this.r() * BODIES.length)], COLORS[Math.floor(this.r() * COLORS.length)]);
     this.group.add(mesh);
@@ -84,7 +84,7 @@ export class Traffic {
       this.place(c);
       if (!this.cars.some((o) => o.pos.distanceTo(c.pos) < 10)) break;
       c.from = Math.floor(this.r() * 121);
-      const n = neighbours(c.from);
+      const n = neighboursOut(c.from);
       c.to = n[Math.floor(this.r() * n.length)];
       c.s = HW + 4 + this.r() * 40;
     }
@@ -122,7 +122,7 @@ export class Traffic {
   }
 
   private chooseNext(c: Car): number {
-    const opts = neighbours(c.to).filter((n) => n !== c.from);
+    const opts = neighboursOut(c.to).filter((n) => n !== c.from);
     if (!opts.length) return c.from;
     const a = nodePos(c.from), b = nodePos(c.to);
     const d = { x: Math.sign(b.x - a.x), z: Math.sign(b.z - a.z) };

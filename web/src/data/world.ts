@@ -14,6 +14,15 @@ export const ROUNDABOUTS: [number, number][] = [[5, 5], [2, 7], [8, 3], [3, 2]];
 export const ISLAND_R = 3.2;  // raised centre island (m)
 export const RING_R = 5.2;    // where traffic drives around it
 
+/**
+ * One-way streets: the road along `axis` at roadCoord(k) only carries traffic towards +axis (dir 1) or -axis (-1).
+ * Chosen to avoid the roundabouts.
+ */
+export const ONE_WAY: { axis: 'x' | 'z'; k: number; dir: 1 | -1 }[] = [
+  { axis: 'x', k: 4, dir: 1 },
+  { axis: 'z', k: 6, dir: -1 },
+];
+
 export interface Destination {
   name: string;
   /** Road segment: axis 'x' = road running along X at z=roadCoord(j), between i and i+1. */

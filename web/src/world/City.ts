@@ -1,7 +1,7 @@
 // Procedural city built on the road grid. Geometry is merged per material to keep draw calls low.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DESTINATIONS, GRID, HALF, ISLAND_R, PITCH, ROAD_W, ROUNDABOUTS, WALK_W, roadCoord, type Destination } from '../data/world';
+import { DESTINATIONS, GRID, HALF, ISLAND_R, ONE_WAY, PITCH, ROAD_W, ROUNDABOUTS, WALK_W, roadCoord, type Destination } from '../data/world';
 import type { Materials } from '../graphics/Materials';
 import type { GraphicsMode } from '../core/Save';
 import { isRoundabout, neighbours, nodeId, nodePos } from './RoadNetwork';
@@ -117,8 +117,9 @@ export class City {
       for (let s = 0; s < GRID; s++) {
         const a = roadCoord(s) + hw + 4, b = roadCoord(s + 1) - hw - 4;
         for (const axis of ['x', 'z'] as const) {
-          strip(yellow, axis, c, -0.18, a, b, 0.12);
-          strip(yellow, axis, c, 0.18, a, b, 0.12);
+          // one-way streets: a white dashed centre line instead of the double yellow (arrows added below)
+          if (ONE_WAY.some((w) => w.axis === axis && w.k === k)) { for (let d = a + 2; d < b - 3; d += 9) strip(white, axis, c, 0, d, d + 3, 0.13); }
+          else { strip(yellow, axis, c, -0.18, a, b, 0.12); strip(yellow, axis, c, 0.18, a, b, 0.12); }
           strip(white, axis, c, -hw + 0.35, a, b, 0.15);
           strip(white, axis, c, hw - 0.35, a, b, 0.15);
           for (let d = a + 2; d < b - 3; d += 9) { strip(white, axis, c, -3.5, d, d + 3, 0.13); strip(white, axis, c, 3.5, d, d + 3, 0.13); }
@@ -213,6 +214,29 @@ export class City {
     facades.forEach((f, i) => add(f, M.facades[i], true));
     shops.forEach((f, i) => add(f, M.shopfronts[i], true));
 
+    // one-way arrows painted in every lane, twice per block
+    {
+      const shape = new THREE.Shape();
+      shape.moveTo(-0.25, -2.2); shape.lineTo(0.25, -2.2); shape.lineTo(0.25, 0.4); shape.lineTo(0.75, 0.4);
+      shape.lineTo(0, 1.8); shape.lineTo(-0.75, 0.4); shape.lineTo(-0.25, 0.4); shape.closePath();
+      const arrowGeo = new THREE.ShapeGeometry(shape);
+      arrowGeo.rotateX(-Math.PI / 2); // lie flat, pointing along -z before rotation below
+      const spots: THREE.Matrix4[] = [];
+      for (const w of ONE_WAY) {
+        const c = roadCoord(w.k);
+        for (let s = 0; s < GRID; s++) for (const t of [0.33, 0.67]) for (const lane of [-5.25, -1.75, 1.75, 5.25]) {
+          const along = roadCoord(s) + PITCH * t;
+          const pos = w.axis === 'x' ? V(along, 0.025, c + lane) : V(c + lane, 0.025, along);
+          // arrow points along -z after rotateX; turn it to face the traffic direction
+          const yaw = w.axis === 'x' ? (w.dir > 0 ? -Math.PI / 2 : Math.PI / 2) : (w.dir > 0 ? Math.PI : 0);
+          spots.push(new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), yaw), V(1, 1, 1)));
+        }
+      }
+      const arrows = new THREE.InstancedMesh(arrowGeo, M.paintWhite, spots.length);
+      spots.forEach((m, i) => arrows.setMatrixAt(i, m));
+      arrows.receiveShadow = true;
+      this.group.add(arrows);
+    }
     // roundabouts: a raised, planted island with a white ring, and a tree in the middle
     for (const [i, j] of ROUNDABOUTS) {
       const c = nodePos(nodeId(i, j));
