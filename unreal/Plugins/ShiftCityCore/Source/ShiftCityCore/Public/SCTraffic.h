@@ -10,6 +10,7 @@
 
 class USkeletalMesh;
 class UStaticMesh;
+class UStaticMeshComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UBoxComponent;
@@ -23,6 +24,8 @@ struct FSCTrafficCar
 {
 	GENERATED_BODY()
 	UPROPERTY() TObjectPtr<UBoxComponent> Body = nullptr;
+	/** Bolted-on wheels, spun to match the car's speed. */
+	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> Wheels;
 	int32 From = 0, To = 0, Lane = 0, Next = -1;
 	float S = 0.f, Len = 0.f, Speed = 0.f, Cruise = 0.f;
 	bool bTurning = false;

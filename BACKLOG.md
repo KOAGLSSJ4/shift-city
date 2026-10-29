@@ -61,12 +61,13 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
   - animations: cards slide/fade in, money counts up when paid.
   Plan: do it with the menu batch so menus and HUD share one style (move from Canvas drawing to UMG widgets).
-- Traffic car wheels don't spin yet (they're bolted on, not animated).
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Next batch: main menu + garage + goals + settings.
 
 ## Done
 
+- 2026-10-29: merged to live: driver app, daily reward/challenge, power-up upgrades, car radio, trip streak +
+  earnings. Unreal traffic wheels spin with speed.
 - 2026-10-29: Uber-style trip streak (every 3rd trip in a row without declining: +$5, +$10… up to $25) and an
   earnings card in Goals (today, last 7 days, best trip). Daily challenge covers "quests".
 - 2026-10-29: car radio: 📻 button / B key cycles Drive 101, Chill FM, Hype Radio, Off; station remembered;

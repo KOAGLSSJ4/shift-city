@@ -171,15 +171,16 @@ void ASCTraffic::SpawnCars()
 			Sk->RegisterComponent();
 			// body, glass and a wheel on every wheel bone, the way the template's car blueprints assemble them
 			const int32 Model = k % CarMeshes.Num();
-			auto Part = [&](UStaticMesh* Mesh, FName Bone, bool bMirror)
+			auto Part = [&](UStaticMesh* Mesh, FName Bone, bool bMirror) -> UStaticMeshComponent*
 			{
-				if (!Mesh) return;
+				if (!Mesh) return nullptr;
 				UStaticMeshComponent* M = NewObject<UStaticMeshComponent>(this);
 				M->SetStaticMesh(Mesh);
 				M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 				M->SetupAttachment(Sk, Bone);
 				if (bMirror) M->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
 				M->RegisterComponent();
+				return M;
 			};
 			Part(CarBodies.IsValidIndex(Model) ? CarBodies[Model].Get() : nullptr, NAME_None, false);
 			Part(CarGlass.IsValidIndex(Model) ? CarGlass[Model].Get() : nullptr, NAME_None, false);
@@ -194,7 +195,7 @@ void ASCTraffic::SpawnCars()
 					const FString B = Bone.ToString().ToLower();
 					if (!B.Contains(TEXT("wheel")) && !B.Contains(TEXT("tire"))) continue;
 					if (bHasVis && !B.StartsWith(TEXT("viswheel"))) continue;
-					Part(Wheel, Bone, B.Contains(TEXT("right")) || B.EndsWith(TEXT("_r")) || B.Contains(TEXT("_r_")));
+					if (UStaticMeshComponent* WheelComp = Part(Wheel, Bone, B.Contains(TEXT("right")) || B.EndsWith(TEXT("_r")) || B.Contains(TEXT("_r_")))) C.Wheels.Add(WheelComp);
 				}
 			}
 		}
@@ -319,5 +320,11 @@ void ASCTraffic::Tick(float Dt)
 			}
 		}
 		Place(C);
+		// roll the wheels: distance / radius (template wheels are ~35 cm)
+		if (C.Wheels.Num() > 0)
+		{
+			const float Deg = FMath::RadiansToDegrees(C.Speed * Dt / 35.f);
+			for (UStaticMeshComponent* WheelComp : C.Wheels) if (WheelComp) WheelComp->AddLocalRotation(FRotator(-Deg, 0.f, 0.f));
+		}
 	}
 }
