@@ -306,10 +306,13 @@ export class City {
   }
 
   private addTrees(spots: THREE.Vector3[]) {
-    // perimeter forest
-    for (let a = 0; a < 140; a++) {
-      const t = rand() * Math.PI * 2, r = HALF + 30 + rand() * 60;
-      spots.push(V(Math.cos(t) * r, 0, Math.sin(t) * r));
+    // perimeter forest: a square ring outside the outer roads (a circle cut into the city near the corners
+    // and put trees in the middle of roads)
+    for (let placed = 0; placed < 140;) {
+      const t = rand() * Math.PI * 2, r = HALF + 30 + rand() * 140;
+      const x = Math.cos(t) * r, z = Math.sin(t) * r;
+      if (Math.max(Math.abs(x), Math.abs(z)) < HALF + 25) continue;
+      spots.push(V(x, 0, z)); placed++;
     }
     const trunk = new THREE.CylinderGeometry(0.12, 0.2, 3, 6); trunk.translate(0, 1.5, 0);
     const crown = new THREE.IcosahedronGeometry(1.9, 1); crown.translate(0, 4.2, 0);

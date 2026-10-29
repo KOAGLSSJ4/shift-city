@@ -1,5 +1,5 @@
 // Vercel serverless function: global Arcade Rush leaderboard backed by Upstash Redis (REST API).
-// Needs UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (Vercel → Storage → Upstash adds them).
+// Needs the Upstash REST URL + token env vars (Vercel → Storage → Upstash adds them; see env() below).
 // Without them it answers 503 and the game simply hides the world board.
 //   GET  /api/leaderboard          → { top: [{ name, score, car }] }
 //   POST /api/leaderboard {name, score, time, near, car, runId} → { rank }
@@ -7,8 +7,15 @@ const KEY = 'shiftcity:arcade:v1';
 const MAX_ENTRIES = 200;
 const MAX_POINTS_PER_SECOND = 4000; // well above the best possible run; rejects edited scores
 
-const URL_ = process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+// Vercel's Upstash integration names these differently depending on how it was connected
+// (UPSTASH_REDIS_REST_*, KV_REST_API_*, or either with a custom prefix), so accept any of them.
+const env = (suffixes) => {
+  for (const s of suffixes) if (process.env[s]) return process.env[s];
+  const key = Object.keys(process.env).find((k) => suffixes.some((s) => k.endsWith('_' + s)));
+  return key ? process.env[key] : undefined;
+};
+const URL_ = env(['UPSTASH_REDIS_REST_URL', 'KV_REST_API_URL']);
+const TOKEN = env(['UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_TOKEN']);
 
 async function redis(...commands) {
   const res = await fetch(`${URL_}/pipeline`, {

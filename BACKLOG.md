@@ -39,7 +39,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 ## Launch / business
 
 - itch.io and CrazyGames uploads: steps in `web/LAUNCH.md`. (Vercel site is live: shift-city-theta.vercel.app)
-- Optional: connect Upstash in Vercel for the World leaderboard.
 - Poki: undecided (exclusive vs non-exclusive, maybe after Steam).
 
 ## Not yet checked on real devices
@@ -62,6 +61,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: world leaderboard reads Vercel's KV_REST_API_* env names too; perimeter forest no longer puts trees
+  on roads near the city corners; traffic no longer spawns overlapping and goes round a stopped player.
 - 2026-10-29: Unreal main menu (Story / Free Ride / Arcade coming soon / Quit), shown at start and on M, in a
   rounded translucent Slate style. Robot-tested.
 - 2026-10-29: destination filter in Goals ("only trips heading towards …").
