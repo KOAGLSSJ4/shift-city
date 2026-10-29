@@ -75,8 +75,9 @@ passengers/pedestrians → port the web's original car designs.
   the laptop is awake with `run.cmd` open; runs queue otherwise.
 - Fixed via robot: crash on Play (minimap null texture), traffic invisible (template SKM is only the rig: bolt on
   SM body/glass/wheels on VisWheel bones), HUD overlaps, VSM warning (duplicate ini line), wheels spin.
-- Just pushed (check the robot result first): Slate main menu `Private/SCMenu.*` (Story / Free Ride /
-  Arcade "coming soon" / Quit), shown at start and on M, robot auto-picks Free Ride after shot 1.
+- Done + robot-tested: Slate main menu `Private/SCMenu.*` (Story / Free Ride / Arcade "coming soon" / Quit),
+  shown at start and on M, robot auto-picks Free Ride after shot 1. New .cpp files: touch Build.cs or UBT
+  may not compile them (link error).
 - Next: HUD design pass in the same Slate style (see BACKLOG Unreal), then garage + goals + settings screens.
 - David must re-run the setup script after pulling (traffic needs the body meshes), and rebuild in VS.
 

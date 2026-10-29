@@ -58,10 +58,12 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - animations: cards slide/fade in, money counts up when paid.
   Plan: do it with the menu batch so menus and HUD share one style (move from Canvas drawing to UMG widgets).
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
-- Next batch: main menu + garage + goals + settings.
+- Next batch: garage + goals + settings screens (same Slate style as the main menu, `Private/SCMenu.*`).
 
 ## Done
 
+- 2026-10-29: Unreal main menu (Story / Free Ride / Arcade coming soon / Quit), shown at start and on M, in a
+  rounded translucent Slate style. Robot-tested.
 - 2026-10-29: destination filter in Goals ("only trips heading towards …").
 - 2026-10-29: rider compliments (Smooth driving, Great music, Speedy service, Great conversation, Expert
   navigation) on 4.8+ star rides, collected as badges on the earnings card.
