@@ -57,7 +57,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Launch / business
 
-- Launch on your site (Vercel), itch.io and CrazyGames: steps in `web/LAUNCH.md`.
+- itch.io and CrazyGames uploads: steps in `web/LAUNCH.md`. (Vercel site is live: shift-city-theta.vercel.app)
 - Optional: connect Upstash in Vercel for the World leaderboard.
 - Poki: undecided (exclusive vs non-exclusive, maybe after Steam).
 
@@ -76,13 +76,13 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
   - animations: cards slide/fade in, money counts up when paid.
   Plan: do it with the menu batch so menus and HUD share one style (move from Canvas drawing to UMG widgets).
-- Test the last push: Play screenshot + the Output Log line `[ShiftCity] traffic: spawned N cars using M car model(s)`.
 - Traffic car wheels don't spin yet (they're bolted on, not animated).
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Next batch: main menu + garage + goals + settings.
 
 ## Done
 
+- 2026-10-28: web version live on Vercel (David).
 - 2026-10-29: near misses only for late dodges (car within 12 m), garage hides the HUD, phone top buttons
   no longer run under the job card, name box says "Your name".
 - 2026-10-28: Unreal traffic cars visible (body, glass, wheels added), HUD panels fit their text, yellow VSM
