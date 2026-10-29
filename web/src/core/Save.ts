@@ -1,3 +1,4 @@
+import { newWeekRecord, type WeekRecord } from '../gameplay/Week';
 import { STATIONS, type StationId } from '../data/radio';
 // Versioned save schema with migration from the v3/v4 single-file prototype.
 import { newDailyRecord, type DailyRecord } from '../gameplay/Daily';
@@ -32,6 +33,8 @@ export interface SaveData {
   playerName: string;
   /** Ride-hailing record: acceptance, decline streak, offline cool-down. */
   driver: DriverRecord;
+  /** Story v1.1 "The Week" progress. */
+  week: WeekRecord;
   /** Daily login reward streak and today's challenge. */
   daily: DailyRecord;
   story: { chapter: number };
@@ -52,6 +55,7 @@ export function defaultSave(): SaveData {
     playerName: '',
     driver: newDriverRecord(),
     daily: newDailyRecord(),
+    week: newWeekRecord(),
     story: { chapter: 0 },
     stats: { trips: 0, earned: 0, km: 0, food: 0, nearMisses: 0, rating: 4.9, ratings: 1 },
     paidJobs: [], claimedGoals: [], tutorialDone: false,
@@ -100,6 +104,7 @@ export function normalize(raw: any): SaveData {
     stats: { ...d.stats, ...(raw?.stats ?? {}) },
     driver: { ...d.driver, ...(raw?.driver ?? {}) },
     daily: { ...d.daily, ...(raw?.daily ?? {}) },
+    week: { ...d.week, ...(raw?.week ?? {}) },
     settings: { ...d.settings, ...(raw?.settings ?? {}), volume: { ...d.settings.volume, ...(raw?.settings?.volume ?? {}) } },
     upgrades: { ...(raw?.upgrades ?? {}) },
   };
@@ -120,6 +125,9 @@ export function normalize(raw: any): SaveData {
   for (const k of Object.keys(s.arcade.powers)) s.arcade.powers[k] = Math.max(0, Math.min(5, Math.floor(num(s.arcade.powers[k]))));
   s.arcade.top = s.arcade.top.filter((e) => e && Number.isFinite(e.score)).slice(0, 10);
   if (typeof s.playerName !== 'string') s.playerName = '';
+  if (!Array.isArray(s.week.stars)) s.week.stars = [];
+  if (!Array.isArray(s.week.flags)) s.week.flags = [];
+  s.week.energy = Math.max(0, Math.min(100, num(s.week.energy, 100)));
   if (!Array.isArray(s.driver.recent)) s.driver.recent = [];
   s.driver.recent = s.driver.recent.map(Boolean).slice(-30);
   s.driver.declineStreak = Math.max(0, Math.floor(num(s.driver.declineStreak)));
