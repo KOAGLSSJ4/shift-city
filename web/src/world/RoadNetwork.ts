@@ -1,14 +1,31 @@
 // Road graph for the grid city: nearest-segment lookup and street-aware GPS routing (Dijkstra).
-import { GRID, PITCH, roadCoord, type Destination } from '../data/world';
+import { GRID, PITCH, ROUNDABOUTS, roadCoord, type Destination } from '../data/world';
 
 export interface Pt { x: number; z: number }
 export interface Segment { a: number; b: number; axis: 'x' | 'z' }
-export type TurnDir = 'left' | 'right' | 'straight' | 'arrive' | 'uturn';
-export interface Route { points: Pt[]; length: number; nextTurn: { dir: TurnDir; dist: number } }
+export type TurnDir = 'left' | 'right' | 'straight' | 'arrive' | 'uturn' | 'roundabout';
+export interface Route { points: Pt[]; length: number; nextTurn: { dir: TurnDir; dist: number; exit?: number } }
 
 const N = GRID + 1;
 export const nodeId = (i: number, j: number) => j * N + i;
 export const nodePos = (id: number): Pt => ({ x: roadCoord(id % N), z: roadCoord(Math.floor(id / N)) });
+
+const ROUNDABOUT_IDS = new Set(ROUNDABOUTS.map(([i, j]) => j * N + i));
+export const isRoundabout = (id: number) => ROUNDABOUT_IDS.has(id);
+
+/** Angle (radians, atan2(z, x)) of the road leaving node `id` towards node `to`. */
+const armAngle = (id: number, to: number) => { const a = nodePos(id), b = nodePos(to); return Math.atan2(b.z - a.z, b.x - a.x); };
+
+/**
+ * Exit number at a roundabout (1 = first exit), counting arms in the direction traffic circulates
+ * (island on the driver's left with right-hand traffic: decreasing atan2 angle).
+ */
+export function roundaboutExit(id: number, from: number, to: number): number {
+  const a0 = armAngle(id, from), aOut = armAngle(id, to);
+  const ccw = (a: number) => { let d = a0 - a; while (d <= 1e-6) d += Math.PI * 2; return d; };
+  const target = ccw(aOut);
+  return neighbours(id).filter((n) => n !== from && ccw(armAngle(id, n)) <= target + 1e-6).length;
+}
 
 export function neighbours(id: number): number[] {
   const i = id % N, j = Math.floor(id / N), out: number[] = [];
@@ -108,12 +125,28 @@ function nextTurn(points: Pt[], heading?: Pt): Route['nextTurn'] {
     if (!d1 || !d2) continue;
     const cross = d1.x * d2.z - d1.z * d2.x, dot = d1.x * d2.x + d1.z * d2.z;
     if (!isNode(points[i])) continue; // only intersections count as turns (not the snap onto the road)
+    const nodeHere = nodeAt(points[i]);
+    if (nodeHere !== null && isRoundabout(nodeHere)) {
+      const prevN = nodeAt(points[i - 1]) ?? nodeAt(stepBack(points[i], points[i - 1])), nextN = nodeAt(points[i + 1]) ?? nodeAt(stepBack(points[i], points[i + 1]));
+      if (prevN !== null && nextN !== null && prevN !== nextN) return { dir: 'roundabout', dist: acc, exit: roundaboutExit(nodeHere, prevN, nextN) };
+    }
     if (dot < -0.7) return { dir: 'uturn', dist: acc };
     if (Math.abs(cross) > 0.7) return { dir: cross < 0 ? 'left' : 'right', dist: acc };
   }
   let total = 0;
   for (let i = 1; i < points.length; i++) total += dist(points[i - 1], points[i]);
   return { dir: 'arrive', dist: total };
+}
+
+/** Node id at a point exactly on a junction (or null). */
+function nodeAt(p: Pt): number | null {
+  if (!isNode(p)) return null;
+  return Math.round((p.z - roadCoord(0)) / PITCH) * N + Math.round((p.x - roadCoord(0)) / PITCH);
+}
+/** The neighbouring junction in the direction of `toward` from junction `from`. */
+function stepBack(from: Pt, toward: Pt): Pt {
+  const dx = Math.sign(Math.round(toward.x - from.x)), dz = Math.sign(Math.round(toward.z - from.z));
+  return { x: from.x + dx * PITCH, z: from.z + dz * PITCH };
 }
 
 const onGrid = (v: number) => Math.abs(((v - roadCoord(0)) % PITCH + PITCH) % PITCH) < 0.01;

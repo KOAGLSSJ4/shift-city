@@ -1,22 +1,57 @@
 // Lane-following AI traffic that obeys the signals and brakes for cars (and the player) ahead.
 import * as THREE from 'three';
-import { DRIVE_RIGHT, LANE_W, ROAD_W } from '../data/world';
+import { DRIVE_RIGHT, LANE_W, RING_R, ROAD_W } from '../data/world';
 import type { DesignBody } from '../vehicles/designs';
 import { buildTrafficCar } from '../vehicles/CarFactory';
-import { neighbours, nodePos, type Pt } from './RoadNetwork';
+import { isRoundabout, neighbours, nodePos, type Pt } from './RoadNetwork';
 import { signal } from './City';
 
 interface Car {
   mesh: THREE.Group;
   from: number; to: number; lane: number;
   s: number; len: number; speed: number; cruise: number;
-  turn: { p0: Pt; p1: Pt; p2: Pt; t: number; dur: number; next: number } | null;
+  /** Path through a junction (a curve, or round a roundabout's island) as a polyline walked by distance. */
+  turn: { pts: Pt[]; cum: number[]; d: number; next: number; node: number } | null;
   pos: THREE.Vector3; heading: number;
   length: number; width: number;
   /** Current sideways offset from the road centre (eases toward the lane's offset when changing lanes). */
   shift: number;
   /** Seconds spent stopped behind the player. */
   stuck: number;
+}
+
+/** Quadratic Bezier sampled into a polyline (ordinary junction turns). */
+function bezierPts(p0: Pt, p1: Pt, p2: Pt): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10, u = 1 - t;
+    out.push({ x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x, z: u * u * p0.z + 2 * u * t * p1.z + t * t * p2.z });
+  }
+  return out;
+}
+
+/**
+ * Path round a roundabout: from the entry lane onto the ring, round the island keeping it on the left
+ * (right-hand traffic: decreasing atan2 angle), then out onto the exit lane.
+ */
+function ringPath(c: Pt, p0: Pt, p2: Pt): Pt[] {
+  const a0 = Math.atan2(p0.z - c.z, p0.x - c.x), a1 = Math.atan2(p2.z - c.z, p2.x - c.x);
+  let sweep = a0 - a1;
+  while (sweep <= 0.35) sweep += Math.PI * 2; // straight on is half a lap; a U-turn goes all the way round
+  const out: Pt[] = [p0];
+  const steps = Math.max(6, Math.ceil(sweep / 0.25));
+  for (let i = 0; i <= steps; i++) {
+    const a = a0 - (sweep * i) / steps;
+    out.push({ x: c.x + Math.cos(a) * RING_R, z: c.z + Math.sin(a) * RING_R });
+  }
+  out.push(p2);
+  return out;
+}
+
+function cumulative(pts: Pt[]): number[] {
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
+  return cum;
 }
 
 const COLORS = [0xf2f2f2, 0x111316, 0x8a8f96, 0x1d3f73, 0x7a1a1a, 0xc9c9c9, 0x2e4d39, 0xd8c7a0, 0x3a3a3a, 0x9b2c1a];
@@ -68,9 +103,13 @@ export class Traffic {
   private place(c: Car) {
     let p: Pt, dir: Pt;
     if (c.turn) {
-      const { p0, p1, p2, t } = c.turn, u = 1 - t;
-      p = { x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x, z: u * u * p0.z + 2 * u * t * p1.z + t * t * p2.z };
-      dir = { x: 2 * u * (p1.x - p0.x) + 2 * t * (p2.x - p1.x), z: 2 * u * (p1.z - p0.z) + 2 * t * (p2.z - p1.z) };
+      const { pts, cum, d } = c.turn;
+      let k = 1;
+      while (k < pts.length - 1 && cum[k] < d) k++;
+      const a = pts[k - 1], b = pts[k], seg = Math.max(1e-6, cum[k] - cum[k - 1]);
+      const f = Math.min(1, Math.max(0, (d - cum[k - 1]) / seg));
+      p = { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f };
+      dir = { x: b.x - a.x, z: b.z - a.z };
     } else {
       p = this.lanePoint(c.from, c.to, c.s, c.lane, c.shift);
       const a = nodePos(c.from), b = nodePos(c.to);
@@ -121,8 +160,18 @@ export class Traffic {
         if (clear) { c.lane = other; c.stuck = 0; gap = carGap; }
       }
       c.shift += (this.laneOffset(c.lane) - c.shift) * Math.min(1, dt * 2.5);
+      // roundabout: give way to cars already circling the island
+      if (!c.turn && isRoundabout(c.to)) {
+        const stopAt = c.len - ROAD_W / 2 - 4.5, toStop = stopAt - c.s;
+        if (toStop < 12 && toStop > -0.5) {
+          const centre = nodePos(c.to);
+          const busy = this.cars.some((o) => o !== c && o.turn?.node === c.to && Math.hypot(o.pos.x - centre.x, o.pos.z - centre.z) < RING_R + 2
+            && Math.hypot(o.pos.x - c.pos.x, o.pos.z - c.pos.z) < 14);
+          if (busy) gap = Math.min(gap, toStop + 0.5);
+        }
+      }
       // red light: stop before the crosswalk
-      if (!c.turn) {
+      if (!c.turn && !isRoundabout(c.to)) {
         const a = nodePos(c.from), b = nodePos(c.to);
         const axis = Math.abs(b.x - a.x) > 0 ? 'x' : 'z';
         const stopAt = c.len - HW - 4.5;
@@ -137,8 +186,8 @@ export class Traffic {
       if (c.speed < 0) c.speed = 0;
 
       if (c.turn) {
-        c.turn.t += (c.speed * dt) / c.turn.dur;
-        if (c.turn.t >= 1) {
+        c.turn.d += c.speed * dt;
+        if (c.turn.d >= c.turn.cum[c.turn.cum.length - 1]) {
           c.from = c.to; c.to = c.turn.next; c.s = HW + 4; c.turn = null;
         }
       } else {
@@ -153,8 +202,8 @@ export class Traffic {
           const a = nodePos(c.from);
           const inX = Math.abs(b.x - a.x) > 0;
           const p1 = next === c.from ? { x: b.x, z: b.z } : inX === (Math.abs(nodePos(next).x - b.x) > 0) ? { x: (p0.x + p2.x) / 2, z: (p0.z + p2.z) / 2 } : inX ? { x: p2.x, z: p0.z } : { x: p0.x, z: p2.z };
-          const dur = Math.max(4, Math.hypot(p2.x - p0.x, p2.z - p0.z) * 1.1);
-          c.turn = { p0, p1, p2, t: 0, dur, next };
+          const pts = isRoundabout(c.to) ? ringPath(b, p0, p2) : bezierPts(p0, p1, p2);
+          c.turn = { pts, cum: cumulative(pts), d: 0, next, node: c.to };
         }
       }
       this.place(c);

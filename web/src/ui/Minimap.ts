@@ -1,5 +1,5 @@
 // Heading-up circular minimap with roads, route, destinations and traffic.
-import { DESTINATIONS, GRID, ROAD_W, roadCoord } from '../data/world';
+import { DESTINATIONS, GRID, ISLAND_R, ROAD_W, ROUNDABOUTS, roadCoord } from '../data/world';
 import type { Pt } from '../world/RoadNetwork';
 
 export class Minimap {
@@ -26,6 +26,9 @@ export class Minimap {
     g.beginPath();
     for (let k = 0; k <= GRID; k++) { const r = roadCoord(k); g.moveTo(lo, r); g.lineTo(hi, r); g.moveTo(r, lo); g.lineTo(r, hi); }
     g.stroke();
+    // roundabout islands
+    g.fillStyle = '#2f5a3a';
+    for (const [i, j] of ROUNDABOUTS) { g.beginPath(); g.arc(roadCoord(i), roadCoord(j), ISLAND_R + 1.5, 0, 7); g.fill(); }
     // surge zone: a glowing orange patch, like the real app's heat map
     if (surge) {
       const grad = g.createRadialGradient(surge.x, surge.z, 0, surge.x, surge.z, surge.r);

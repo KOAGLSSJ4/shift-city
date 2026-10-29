@@ -1,10 +1,10 @@
 // Procedural city built on the road grid. Geometry is merged per material to keep draw calls low.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DESTINATIONS, GRID, HALF, PITCH, ROAD_W, WALK_W, roadCoord, type Destination } from '../data/world';
+import { DESTINATIONS, GRID, HALF, ISLAND_R, PITCH, ROAD_W, ROUNDABOUTS, WALK_W, roadCoord, type Destination } from '../data/world';
 import type { Materials } from '../graphics/Materials';
 import type { GraphicsMode } from '../core/Save';
-import { neighbours, nodeId, nodePos } from './RoadNetwork';
+import { isRoundabout, neighbours, nodeId, nodePos } from './RoadNetwork';
 import { instanceProp, treeImpostors, TREE_IMPOSTORS, type Placement } from './Props';
 
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
@@ -213,6 +213,20 @@ export class City {
     facades.forEach((f, i) => add(f, M.facades[i], true));
     shops.forEach((f, i) => add(f, M.shopfronts[i], true));
 
+    // roundabouts: a raised, planted island with a white ring, and a tree in the middle
+    for (const [i, j] of ROUNDABOUTS) {
+      const c = nodePos(nodeId(i, j));
+      const kerb = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R, ISLAND_R + 0.15, 0.3, 40), M.curb);
+      kerb.position.set(c.x, 0.15, c.z);
+      const top = new THREE.Mesh(new THREE.CircleGeometry(ISLAND_R - 0.25, 40), M.grass);
+      top.rotation.x = -Math.PI / 2; top.position.set(c.x, 0.31, c.z);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(ISLAND_R + 0.35, ISLAND_R + 0.5, 48), M.paintWhite);
+      ring.rotation.x = -Math.PI / 2; ring.position.set(c.x, 0.03, c.z);
+      kerb.castShadow = kerb.receiveShadow = top.receiveShadow = true;
+      this.group.add(kerb, top, ring);
+      this.islands.push({ x: c.x, z: c.z });
+      treeSpots.push(V(c.x, 0.3, c.z));
+    }
     this.addTrees(treeSpots);
     this.addLamps(lampSpots);
     this.treeSpots = treeSpots;
@@ -227,6 +241,8 @@ export class City {
   private cardTrees: THREE.Object3D[] = [];
   private procLamps: THREE.Object3D[] = [];
   private treeSpots: THREE.Vector3[] = [];
+  /** Roundabout island centres (solid for the player). */
+  readonly islands: { x: number; z: number }[] = [];
   private lampSpots: { p: THREE.Vector3; rot: number }[] = [];
   private roofSpots: Placement[] = [];
   /** Poly Haven props + photographic tree impostors (Photoreal / Hyper-real only). */
@@ -399,7 +415,7 @@ export class City {
     const up = V(0, 1, 0);
     for (let j = 0; j <= GRID; j++) for (let i = 0; i <= GRID; i++) {
       const id = nodeId(i, j), c = nodePos(id), nb = neighbours(id);
-      if (nb.length < 3) continue;
+      if (nb.length < 3 || isRoundabout(id)) continue; // roundabouts have no lights
       for (const n of nb) {
         const np = nodePos(n);
         // approach direction d: from neighbour toward this node
@@ -461,6 +477,10 @@ export class City {
 
   /** Pushes a set of points (car corners) out of block rectangles. Returns the correction applied. */
   collide(px: number, pz: number, radius: number): { x: number; z: number } | null {
+    for (const c of this.islands) {
+      const dx = px - c.x, dz = pz - c.z, d = Math.hypot(dx, dz), min = ISLAND_R + 0.15 + radius;
+      if (d < min && d > 1e-4) return { x: (dx / d) * (min - d), z: (dz / d) * (min - d) };
+    }
     for (const b of this.blocks) {
       if (px < b.x0 - radius || px > b.x1 + radius || pz < b.z0 - radius || pz > b.z1 + radius) continue;
       const cx = Math.max(b.x0, Math.min(b.x1, px)), cz = Math.max(b.z0, Math.min(b.z1, pz));
