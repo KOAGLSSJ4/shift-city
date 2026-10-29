@@ -29,6 +29,10 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - waiting-time fee at pickup;
   - airport queue;
   - stacked / batched food orders;
+- **Dynamic time of day + weather** (David, 2026-10-29): a "Dynamic" choice in Settings next to the fixed
+  Day/Sunset/Night and Dry/Wet/Rain. Sky moves day → sunset → night over a session; showers roll in now and
+  then, roads stay wet for a while and dry out. Fixed settings stay for players who prefer one look. Ideas: rain
+  surge pricing, more food orders at night. Unreal needs time of day + weather first (see port list).
 - **More complicated roads** (David, 2026-10-28): curves, roundabouts, a highway or ring road, one-way
   streets, bridges, junctions that aren't all right angles. Needs the road network, GPS routing, traffic
   AI and the city generator (web and Unreal) to support non-grid roads.
