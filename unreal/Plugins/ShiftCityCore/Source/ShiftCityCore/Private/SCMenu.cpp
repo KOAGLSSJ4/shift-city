@@ -9,6 +9,7 @@
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Layout/Visibility.h"
+#include "Widgets/Layout/SDPIScaler.h"
 
 namespace
 {
@@ -152,7 +153,10 @@ TSharedRef<SWidget> SCMenu::MakeHud(TSharedRef<FSCHudModel> Model)
 		];
 	}
 
-	return SNew(SOverlay)
+	// a touch bigger than Slate's default so it reads well on a laptop at a glance
+	return SNew(SDPIScaler).DPIScale(1.3f)
+		[
+		SNew(SOverlay)
 		.Visibility(ShownIf([M]() { return M->bVisible; }))
 		// career (top-left)
 		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(20.f)
@@ -228,5 +232,6 @@ TSharedRef<SWidget> SCMenu::MakeHud(TSharedRef<FSCHudModel> Model)
 					.ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::Story))
 				]
 			]
+		]
 		];
 }
