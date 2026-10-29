@@ -277,6 +277,9 @@ void ASCHUD::DrawHUD()
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
 	// the robot can't click: leave the menu up for the first screenshot, then start Free Ride
 	if (bRobotShots && MenuWidget.IsValid() && RobotShot >= 1 && GetWorld()->GetTimeSeconds() > 15.f) OnMenuChoice(uint8(SCMenu::EChoice::FreeRide));
+	// ...and accept the first request so the GPS banner shows in the next screenshot
+	if (bRobotShots && !MenuWidget.IsValid() && RobotShot == 1 && GetWorld()->GetTimeSeconds() > 19.f)
+		if (ASCJobDirector* RobotD = Director.Get()) if (RobotD->HasJob() && RobotD->GetJob().Stage == ESCJobStage::Offer) RobotD->Accept();
 	// after the second shot, follow traffic car 0 so the last shot shows whether traffic renders
 	if (bRobotShots && RobotShot >= 2 && PC && GetWorld())
 	{
