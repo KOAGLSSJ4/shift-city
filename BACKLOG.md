@@ -16,6 +16,10 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Features (next up)
 
+- **Surge zone easier to see on the minimap** (David, 2026-10-29). Today it's only a faint orange glow, and it isn't
+  shown at all when the zone is off the edge of the map, so in practice you mostly see the pop-up note. Make it
+  obvious: stronger orange patch with the multiplier ("×1.6") written on it, a pulsing outline, an arrow on the
+  minimap rim pointing to it when it's off-map, and maybe a small "SURGE ×1.6 · 400 m" chip under the minimap.
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
