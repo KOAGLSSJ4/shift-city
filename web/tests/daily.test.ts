@@ -85,3 +85,19 @@ describe('trip streak + earnings', () => {
     expect(e.today).toBeCloseTo(s.wallet, 2);
   });
 });
+
+import { applySurgeZone, randomJob, rollSurgeZone } from '../src/gameplay/Jobs';
+describe('surge zones', () => {
+  it('multiplies rides picked up inside the zone only', () => {
+    const z = rollSurgeZone(0, () => 0.5);
+    const car = vehicleById('classic');
+    let inside = 0;
+    for (let i = 0; i < 40; i++) {
+      const j = randomJob(car, z); if (j.food || j.surge) continue;
+      const fare = j.fare, applied = applySurgeZone(j, z);
+      if (applied) { inside++; expect(j.fare).toBeCloseTo(fare * z.mult, 1); expect(j.variant).toBe('surge'); }
+      else expect(Math.hypot(j.a.x - z.x, j.a.z - z.z)).toBeGreaterThan(z.r);
+    }
+    expect(inside).toBeGreaterThan(0);
+  });
+});

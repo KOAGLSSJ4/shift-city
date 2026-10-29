@@ -12,7 +12,7 @@ import { VehiclePhysics, type DriveInput } from '../vehicles/VehiclePhysics';
 import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
-import { randomJob, starsFor, storyJob, type Job } from './Jobs';
+import { applySurgeZone, randomJob, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
 import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, type Moment } from './Missions';
 
@@ -39,6 +39,8 @@ export class CityMode {
   route: Route | null = null;
   mode: 'story' | 'free' = 'free';
   holdTime = 0;
+  /** Current surge zone (free ride only), shown on the minimap. */
+  surgeZone: SurgeZone | null = null;
   private lastStation: StationId | null = null;
   private marker: THREE.Group;
   private beamMat: THREE.MeshBasicMaterial;
@@ -150,7 +152,10 @@ export class CityMode {
       if (!j) { this.mode = 'free'; this.ev.storyDone(); this.job = randomJob(def, this.physics.pos); }
       else this.job = j;
     } else {
-      this.job = randomJob(def, this.physics.pos, driverTier(this.save).premiumBoost);
+      // some requests come from the surge zone, so it's worth driving there
+      const z = this.surgeZone, fromZone = z && Math.random() < 0.3;
+      this.job = randomJob(def, fromZone ? z : this.physics.pos, driverTier(this.save).premiumBoost);
+      if (z) applySurgeZone(this.job, z);
       // like the real app: accept within 15 s or it goes to someone else (not while learning in the tutorial)
       if (this.save.tutorialDone) this.job.expires = OFFER_SECONDS;
     }
@@ -203,6 +208,10 @@ export class CityMode {
 
   update(dt: number, input: DriveInput) {
     this.time += dt;
+    if (this.mode === 'free' && (!this.surgeZone || this.time > this.surgeZone.until)) {
+      this.surgeZone = rollSurgeZone(this.time);
+      if (this.save.tutorialDone) this.ev.toast(`Surge ×${this.surgeZone.mult} near ${this.surgeZone.name}: rides from there pay more`);
+    } else if (this.mode !== 'free') this.surgeZone = null;
     const ph = this.physics;
     const before = ph.odometer;
     ph.update(dt, input);

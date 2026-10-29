@@ -595,7 +595,7 @@ export class Game {
       this.edgeArrow(new THREE.Vector3(t.x, 2, t.z), job.stage === 'pickup' ? '#54ffd0' : '#ffb347');
     } else { $('hold').hidden = true; $('edge-arrow').hidden = true; }
     const tc = this.traffic.cars.filter((c) => Math.abs(c.pos.x - ph.pos.x) < 200 && Math.abs(c.pos.z - ph.pos.z) < 200).map((c) => ({ x: c.pos.x, z: c.pos.z }));
-    this.minimap.draw(ph.pos, ph.heading, r?.points ?? null, t, tc, job?.stage === 'dropoff' ? '#ffb347' : '#54ffd0');
+    this.minimap.draw(ph.pos, ph.heading, r?.points ?? null, t, tc, job?.stage === 'dropoff' ? '#ffb347' : '#54ffd0', this.cityMode.surgeZone);
     if (this.save.wallet !== this.lastWallet) this.updateCareer();
   }
 

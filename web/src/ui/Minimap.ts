@@ -6,7 +6,7 @@ export class Minimap {
   private g: CanvasRenderingContext2D;
   constructor(private canvas: HTMLCanvasElement, private round = true) { this.g = canvas.getContext('2d')!; }
 
-  draw(pos: Pt, heading: number, route: Pt[] | null, target: Pt | null, traffic: Pt[], targetColor: string) {
+  draw(pos: Pt, heading: number, route: Pt[] | null, target: Pt | null, traffic: Pt[], targetColor: string, surge: (Pt & { r: number }) | null = null) {
     const c = this.canvas, g = this.g, W = c.width, H = c.height, S = 0.55; // px per metre
     g.clearRect(0, 0, W, H);
     g.save();
@@ -26,6 +26,12 @@ export class Minimap {
     g.beginPath();
     for (let k = 0; k <= GRID; k++) { const r = roadCoord(k); g.moveTo(lo, r); g.lineTo(hi, r); g.moveTo(r, lo); g.lineTo(r, hi); }
     g.stroke();
+    // surge zone: a glowing orange patch, like the real app's heat map
+    if (surge) {
+      const grad = g.createRadialGradient(surge.x, surge.z, 0, surge.x, surge.z, surge.r);
+      grad.addColorStop(0, '#ff8a3d88'); grad.addColorStop(1, '#ff8a3d00');
+      g.fillStyle = grad; g.beginPath(); g.arc(surge.x, surge.z, surge.r, 0, 7); g.fill();
+    }
     // route
     if (route && route.length > 1) {
       g.strokeStyle = '#4cc3ff'; g.lineWidth = 7; g.lineJoin = 'round'; g.lineCap = 'round';

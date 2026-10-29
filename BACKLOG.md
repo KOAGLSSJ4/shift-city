@@ -26,7 +26,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
-  - surge zones shown on the minimap;
   - rider cancellations with a cancellation fee;
   - waiting-time fee at pickup;
   - airport queue;
@@ -66,6 +65,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: surge zones: an orange patch on the minimap moves every 3 min; rides picked up there pay ×1.4–2.0.
 - 2026-10-29: merged to live: driver app, daily reward/challenge, power-up upgrades, car radio, trip streak +
   earnings. Unreal traffic wheels spin with speed.
 - 2026-10-29: Uber-style trip streak (every 3rd trip in a row without declining: +$5, +$10… up to $25) and an

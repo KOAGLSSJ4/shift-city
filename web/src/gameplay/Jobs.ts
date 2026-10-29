@@ -78,6 +78,22 @@ export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }, 
   };
 }
 
+/** A surge zone like the real app's heat map: rides picked up inside it pay a multiplier. */
+export interface SurgeZone { name: string; x: number; z: number; r: number; mult: number; until: number }
+export const SURGE_ZONE_SECONDS = 180;
+export function rollSurgeZone(now: number, rnd = Math.random): SurgeZone {
+  const d = DESTINATIONS[Math.floor(rnd() * DESTINATIONS.length)];
+  return { name: d.name, x: d.x, z: d.z, r: 90, mult: rollSurge(rnd), until: now + SURGE_ZONE_SECONDS };
+}
+/** Makes a ride that starts inside the zone a surge ride. Returns true if it applied. */
+export function applySurgeZone(job: Job, zone: SurgeZone): boolean {
+  if (job.food || job.surge || Math.hypot(job.a.x - zone.x, job.a.z - zone.z) > zone.r) return false;
+  job.variant = 'surge';
+  job.surge = zone.mult;
+  job.fare = Math.round(job.fare * zone.mult * 100) / 100;
+  return true;
+}
+
 const dist = (p: Destination, q: Destination) => Math.abs(p.x - q.x) + Math.abs(p.z - q.z);
 
 /** Star rating from driving behaviour: bumps cost stars, comfortable cars soften it. */
