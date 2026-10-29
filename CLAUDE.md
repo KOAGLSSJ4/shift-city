@@ -58,7 +58,7 @@ passengers/pedestrians → port the web's original car designs.
 
 ## Where we left off (web, 2026-10-29)
 - Live on Vercel: shift-city-theta.vercel.app (David launched it 2026-10-28). itch.io + CrazyGames uploads still
-  David's to do (LAUNCH.md); Upstash (World board) optional, not connected (api answers 503).
+  David's to do (LAUNCH.md); World leaderboard live (Upstash connected, api returns 200).
 - Shipped 2026-10-29 (all on `main`, `feature/driver-app` merged): driver app (15 s offers, acceptance, offline
   after 3 declines, tiers), daily reward + daily challenge (`gameplay/Daily.ts`), power-up upgrades (banked
   arcade points), car radio (`data/radio.ts`: B / 📻, stations, passenger music taste, creator songs = MP3 in
