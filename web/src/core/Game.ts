@@ -23,7 +23,7 @@ import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost, buyUpgrade, buyVehi
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
-import { OFFER_SECONDS, acceptanceRate, driverTier, nextTier } from '../gameplay/Driver';
+import { OFFER_SECONDS, acceptanceRate, driverTier, earnings, nextTier } from '../gameplay/Driver';
 import type { Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
@@ -927,7 +927,10 @@ export class Game {
     const dailyHtml = `<div class="goal daily ${ch.done ? 'done' : ''}"><b>Today: ${ch.def.text}</b><div class="gbar"><i style="width:${(ch.progress / ch.def.goal) * 100}%"></i></div>
         <div class="grow"><span>${Math.floor(ch.progress)} / ${ch.def.goal} · ${money(CHALLENGE_REWARD.cash)} + ${CHALLENGE_REWARD.xp} XP · new one every day</span>
         ${ch.done ? '<span>Claimed ✓</span>' : `<button class="action small" id="daily-claim" ${ch.ready ? '' : 'disabled'}>Claim</button>`}</div></div>`;
-    $('goals-list').innerHTML = dailyHtml + GOALS.map((g) => {
+    const ea = earnings(s.driver);
+    const earnHtml = `<div class="goal earn"><b>Earnings</b><div class="earn-row"><span><big>${money(ea.today)}</big>today · ${ea.todayTrips} trips</span><span><big>${money(ea.week)}</big>last 7 days · ${ea.weekTrips} trips</span><span><big>${money(ea.best)}</big>best trip</span></div>
+        <div class="grow"><span>Trip streak: ${s.driver.tripStreak} in a row · every 3rd trip without declining pays a bonus</span></div></div>`;
+    $('goals-list').innerHTML = earnHtml + dailyHtml + GOALS.map((g) => {
       const p = Math.min(g.goal, goalProgress(s, g)), done = s.claimedGoals.includes(g.id), ready = !done && p >= g.goal;
       return `<div class="goal ${done ? 'done' : ''}"><b>${g.name}</b><div class="gbar"><i style="width:${(p / g.goal) * 100}%"></i></div>
         <div class="grow"><span>${g.kind === 'distance' ? p.toFixed(1) : Math.floor(p)} / ${g.goal} · ${money(g.reward)} + ${g.xp} XP</span>

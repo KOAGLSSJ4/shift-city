@@ -67,3 +67,21 @@ describe('car radio', () => {
     expect(missionResult('standard', 'party', 20, 60, undefined, hated).starPenalty).toBeGreaterThan(base.starPenalty);
   });
 });
+
+import { earnings, recordDecline, streakBonus } from '../src/gameplay/Driver';
+import { payJob } from '../src/gameplay/Economy';
+import { vehicleById } from '../src/data/vehicles';
+describe('trip streak + earnings', () => {
+  it('pays a bonus every 3rd trip in a row and declining resets it', () => {
+    expect([1, 2, 3, 6, 30].map(streakBonus)).toEqual([0, 0, 5, 10, 25]);
+    const s = defaultSave(), car = vehicleById('classic');
+    const opts = { food: false, stars: 4, story: false };
+    payJob(s, 'a', 10, car, opts); payJob(s, 'b', 10, car, opts);
+    expect(payJob(s, 'c', 10, car, opts)?.streak).toBe(5);
+    recordDecline(s.driver, Date.now());
+    expect(s.driver.tripStreak).toBe(0);
+    const e = earnings(s.driver);
+    expect(e.todayTrips).toBe(3);
+    expect(e.today).toBeCloseTo(s.wallet, 2);
+  });
+});

@@ -340,7 +340,7 @@ export class CityMode {
         const text = line(job.persona, personaHappy(job.persona, onBoard, job.limit, job.log) >= 0.5 ? 'good' : 'bad');
         if (text) this.ev.say(job.customer, text);
       }
-      if (pay) this.ev.complete(job, { ...pay, note: mission.note }, stars);
+      if (pay) this.ev.complete(job, { ...pay, note: [mission.note, pay.note].filter(Boolean).join(' · ') }, stars);
       this.job = null;
       this.offerTimer = 2.2;
       if (job.chapter !== null && job.chapter + 1 >= STORY.length) this.ev.storyDone();

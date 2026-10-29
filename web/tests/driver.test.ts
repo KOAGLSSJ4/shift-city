@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { defaultSave, normalize } from '../src/core/Save';
-import { acceptanceRate, driverTier, nextTier, offlineLeft, recordAccept, recordDecline, DECLINE_LIMIT, OFFLINE_SECONDS } from '../src/gameplay/Driver';
+import { acceptanceRate, driverTier, nextTier, offlineLeft, recordAccept, recordDecline, DECLINE_LIMIT, OFFLINE_SECONDS, newDriverRecord } from '../src/gameplay/Driver';
 import { payJob } from '../src/gameplay/Economy';
 import { vehicleById } from '../src/data/vehicles';
 
@@ -39,7 +39,7 @@ describe('driver app rules', () => {
     expect(g.fare).toBeCloseTo(b.fare * 1.05);
   });
   it('old saves get a clean driver record', () => {
-    expect(normalize({}).driver).toEqual({ recent: [], declineStreak: 0, offlineUntil: 0 });
+    expect(normalize({}).driver).toEqual(newDriverRecord());
     expect(normalize({ driver: { recent: 'x', declineStreak: -3 } }).driver.declineStreak).toBe(0);
   });
 });

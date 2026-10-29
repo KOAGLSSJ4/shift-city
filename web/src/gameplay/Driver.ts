@@ -29,9 +29,25 @@ export interface DriverRecord {
   declineStreak: number;
   /** Date.now() until which you're offline (0 = online). Real time, so reloading doesn't skip it. */
   offlineUntil: number;
+  /** Trips finished in a row without declining (streak bonus every 3). */
+  tripStreak: number;
+  /** Earnings log for the earnings screen: [Date.now(), amount], newest last. */
+  log: [number, number][];
 }
 
-export const newDriverRecord = (): DriverRecord => ({ recent: [], declineStreak: 0, offlineUntil: 0 });
+export const newDriverRecord = (): DriverRecord => ({ recent: [], declineStreak: 0, offlineUntil: 0, tripStreak: 0, log: [] });
+
+/** Streak bonus paid on every 3rd trip in a row: $5, $10, $15... up to $25. */
+export const streakBonus = (streak: number) => (streak > 0 && streak % 3 === 0 ? Math.min(25, 5 * (streak / 3)) : 0);
+
+/** Today's and the last 7 days' earnings, from the log. */
+export function earnings(d: DriverRecord, now = Date.now()) {
+  const midnight = new Date(now); midnight.setHours(0, 0, 0, 0);
+  const today = d.log.filter(([t]) => t >= midnight.getTime());
+  const week = d.log.filter(([t]) => t >= now - 7 * 86400_000);
+  const sum = (l: [number, number][]) => Math.round(l.reduce((a, [, v]) => a + v, 0) * 100) / 100;
+  return { today: sum(today), todayTrips: today.length, week: sum(week), weekTrips: week.length, best: d.log.reduce((m, [, v]) => Math.max(m, v), 0) };
+}
 
 /** Until a driver has this many offers on record, the missing ones count as accepted (a fair start). */
 const CUSHION = 10;
@@ -56,6 +72,7 @@ export function recordAccept(d: DriverRecord) {
 export function recordDecline(d: DriverRecord, now: number): boolean {
   push(d, false);
   d.declineStreak++;
+  d.tripStreak = 0;
   if (d.declineStreak >= DECLINE_LIMIT) {
     d.declineStreak = 0;
     d.offlineUntil = now + OFFLINE_SECONDS * 1000;

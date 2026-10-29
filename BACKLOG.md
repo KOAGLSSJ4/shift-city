@@ -26,9 +26,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
-  - quests ("complete 5 trips → +$20") and streak bonuses;
   - surge zones shown on the minimap;
-  - earnings screen (today / this week, per-trip breakdown, cash out);
   - rider cancellations with a cancellation fee;
   - waiting-time fee at pickup;
   - airport queue;
@@ -69,6 +67,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: Uber-style trip streak (every 3rd trip in a row without declining: +$5, +$10… up to $25) and an
+  earnings card in Goals (today, last 7 days, best trip). Daily challenge covers "quests".
 - 2026-10-29: car radio: 📻 button / B key cycles Drive 101, Chill FM, Hype Radio, Off; station remembered;
   passengers have music taste (tips for the right station, lost stars for the wrong one, comments when you
   switch). Creator songs: MP3 in `web/public/music/` + one line in `web/src/data/radio.ts`.

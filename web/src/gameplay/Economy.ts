@@ -2,7 +2,7 @@
 import type { SaveData } from '../core/Save';
 import { BALANCE } from '../data/balancing';
 import { GOALS, type GoalDef } from '../data/goals';
-import { driverTier } from './Driver';
+import { driverTier, streakBonus } from './Driver';
 import { MAX_UPGRADE, vehicleById, type UpgradeTrack, type Upgrades, type VehicleDef } from '../data/vehicles';
 
 export const xpToNext = (level: number) => level * 100;
@@ -83,7 +83,7 @@ export function recordArcadeRun(s: SaveData, runId: string, score: number, nearM
   return Math.floor(score);
 }
 
-export interface JobPayment { fare: number; tip: number; total: number; xp: number; note?: string }
+export interface JobPayment { fare: number; tip: number; total: number; xp: number; note?: string; streak?: number }
 
 export function jobFare(distance: number, vehicle: VehicleDef, premium: boolean): number {
   const base = BALANCE.baseFare + distance * BALANCE.farePerMetre;
@@ -98,7 +98,11 @@ export function payJob(s: SaveData, jobId: string, fare: number, vehicle: Vehicl
   // driver tier bonus (Gold +5%, Platinum +10%, Diamond +15%)
   const payout = Math.round(fare * vehicle.fare * (1 + driverTier(s).fareBonus) * 100) / 100;
   const tip = Math.round(((opts.stars >= 4.5 ? payout * 0.04 * vehicle.comfort : 0) + (opts.bonusTip ?? 0)) * 100) / 100;
-  const total = payout + tip;
+  s.driver.tripStreak++;
+  const bonus = opts.story ? 0 : streakBonus(s.driver.tripStreak);
+  const total = Math.round((payout + tip + bonus) * 100) / 100;
+  s.driver.log.push([Date.now(), total]);
+  if (s.driver.log.length > 300) s.driver.log.splice(0, s.driver.log.length - 300);
   s.wallet += total;
   s.stats.earned += total;
   s.stats.trips++;
@@ -108,7 +112,7 @@ export function payJob(s: SaveData, jobId: string, fare: number, vehicle: Vehicl
   let xp = BALANCE.xpPerJob + (opts.bonusXp ?? 0);
   if (opts.story && s.story.chapter < 5) { s.story.chapter++; xp += BALANCE.xpPerStoryChapter; }
   addXP(s, xp);
-  return { fare: payout, tip, total, xp };
+  return { fare: payout, tip, total, xp, ...(bonus ? { note: `${s.driver.tripStreak}-trip streak +$${bonus}`, streak: bonus } : {}) };
 }
 
 export function goalProgress(s: SaveData, g: GoalDef): number {
