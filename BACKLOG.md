@@ -33,15 +33,14 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   Day/Sunset/Night and Dry/Wet/Rain. Sky moves day → sunset → night over a session; showers roll in now and
   then, roads stay wet for a while and dry out. Fixed settings stay for players who prefer one look. Ideas: rain
   surge pricing, more food orders at night. Unreal needs time of day + weather first (see port list).
-- **More complicated roads** (David, 2026-10-28): curves, roundabouts, a highway or ring road, one-way
-  streets, bridges, junctions that aren't all right angles. Needs the road network, GPS routing, traffic
-  AI and the city generator (web and Unreal) to support non-grid roads.
-- **Story v1.1, "The Week":** FT Uber Game-style story. Comic-panel cutscenes, evening choices, stats
-  (money, rating, energy) that change the driving, about 4 endings (more good than bad), city characters,
-  no personal/family storyline. Start after launch feedback. (Agreed 2026-10-27)
-
-## Launch / business
-
+- **More complicated roads** (David, 2026-10-28). Part 1+2 built on branch `feature/roads` (not live until David
+  says): four mini roundabouts (islands, traffic circles them and gives way, GPS "take the 2nd exit") and two
+  one-way streets (arrows, traffic + GPS obey them). Still to do: curves, a ring road/highway, bridges,
+  non-right-angle junctions (needs the road graph to support curved roads), and the Unreal port.
+- **Story v1.1, "The Week"**: built on branch `feature/story-week` (not live until David says). New menu mode:
+  5 days of comic-panel intros, story jobs with city characters, evening choices, energy that makes the car
+  sluggish when low, 4 endings (3 good, 1 bad). Next: David plays it; then the Unreal port (data in
+  `web/src/data/week.ts`).
 - itch.io and CrazyGames uploads: steps in `web/LAUNCH.md`. (Vercel site is live: shift-city-theta.vercel.app)
 - Poki: undecided (exclusive vs non-exclusive, maybe after Steam).
 
