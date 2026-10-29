@@ -193,6 +193,7 @@ body.garage-open #hud, body.garage-open #touch, body.garage-open #tutorial { vis
 .pips i.on { background: var(--accent); }
 .goal { padding: 12px; border-radius: 12px; border: 1px solid var(--line); margin-top: 8px; }
 .goal b { font-size: 14px; }
+.goal.daily { border-color: var(--accent); background: #4cf0af12; }
 .goal .gbar { height: 6px; background: #ffffff18; border-radius: 6px; margin: 8px 0; overflow: hidden; }
 .goal .gbar i { display: block; height: 100%; background: var(--accent); }
 .goal .grow { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }

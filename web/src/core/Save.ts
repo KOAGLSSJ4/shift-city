@@ -1,4 +1,5 @@
 // Versioned save schema with migration from the v3/v4 single-file prototype.
+import { newDailyRecord, type DailyRecord } from '../gameplay/Daily';
 import { VEHICLES, type Upgrades } from '../data/vehicles';
 import { newDriverRecord, type DriverRecord } from '../gameplay/Driver';
 
@@ -29,6 +30,8 @@ export interface SaveData {
   playerName: string;
   /** Ride-hailing record: acceptance, decline streak, offline cool-down. */
   driver: DriverRecord;
+  /** Daily login reward streak and today's challenge. */
+  daily: DailyRecord;
   story: { chapter: number };
   stats: { trips: number; earned: number; km: number; food: number; nearMisses: number; rating: number; ratings: number };
   paidJobs: string[];
@@ -46,6 +49,7 @@ export function defaultSave(): SaveData {
     arcade: { best: 0, points: 0, runs: 0, lastRunId: '', top: [] },
     playerName: '',
     driver: newDriverRecord(),
+    daily: newDailyRecord(),
     story: { chapter: 0 },
     stats: { trips: 0, earned: 0, km: 0, food: 0, nearMisses: 0, rating: 4.9, ratings: 1 },
     paidJobs: [], claimedGoals: [], tutorialDone: false,
@@ -93,6 +97,7 @@ export function normalize(raw: any): SaveData {
     story: { ...d.story, ...(raw?.story ?? {}) },
     stats: { ...d.stats, ...(raw?.stats ?? {}) },
     driver: { ...d.driver, ...(raw?.driver ?? {}) },
+    daily: { ...d.daily, ...(raw?.daily ?? {}) },
     settings: { ...d.settings, ...(raw?.settings ?? {}), volume: { ...d.settings.volume, ...(raw?.settings?.volume ?? {}) } },
     upgrades: { ...(raw?.upgrades ?? {}) },
   };

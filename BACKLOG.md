@@ -53,7 +53,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   (money, rating, energy) that change the driving, about 4 endings (more good than bad), city characters,
   no personal/family storyline. Start after launch feedback. (Agreed 2026-10-27)
 - Power-up upgrades (longer magnet/shield etc. bought with coins), like Subway Surfers. (Claude's suggestion; David likes it)
-- Daily challenge / daily reward to bring players back. (Claude's suggestion; David likes it)
 
 ## Launch / business
 
@@ -82,6 +81,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: daily login reward ($50, +$25 per day in a row, max $200) + a daily challenge in Goals ($100 + 15 XP).
 - 2026-10-28: web version live on Vercel (David).
 - 2026-10-29: near misses only for late dodges (car within 12 m), garage hides the HUD, phone top buttons
   no longer run under the job card, name box says "Your name".

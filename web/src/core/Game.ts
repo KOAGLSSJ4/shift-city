@@ -17,6 +17,7 @@ import { BALANCE } from '../data/balancing';
 import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
+import { CHALLENGE_REWARD, claimChallenge, claimDailyReward, dailyChallenge } from '../gameplay/Daily';
 import { buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
 import { PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
@@ -176,6 +177,11 @@ export class Game {
     this.closeModals();
     this.ensureCityRig();
     this.refreshMenu();
+    const daily = claimDailyReward(this.save);
+    if (daily) {
+      this.persist(); this.updateCareer(); this.refreshMenu();
+      this.toast(`Daily reward: ${money(daily.amount)}${daily.streak > 1 ? ` · ${daily.streak}-day streak` : ''} (come back tomorrow for more)`, 'good');
+    }
     this.tutorial.event('menuOpened');
     this.maybeShowFullscreenTip();
     this.audio.music('menu');
@@ -611,7 +617,7 @@ export class Game {
     tierEl.title = tier.fareBonus ? `${tier.label} driver: +${Math.round(tier.fareBonus * 100)}% fares` : 'Blue driver';
     $('trips').textContent = `${s.stats.trips} trips`;
     $('km').textContent = `${s.stats.km.toFixed(1)} km`;
-    const n = claimableGoals(s);
+    const n = claimableGoals(s) + (dailyChallenge(s).ready ? 1 : 0);
     for (const id of ['goals-badge', 'hud-goals-badge']) { const b = $(id); b.hidden = !n; b.textContent = String(n); }
   }
 
@@ -885,12 +891,21 @@ export class Game {
 
   private renderGoals() {
     const s = this.save;
-    $('goals-list').innerHTML = GOALS.map((g) => {
+    const ch = dailyChallenge(s);
+    const dailyHtml = `<div class="goal daily ${ch.done ? 'done' : ''}"><b>Today: ${ch.def.text}</b><div class="gbar"><i style="width:${(ch.progress / ch.def.goal) * 100}%"></i></div>
+        <div class="grow"><span>${Math.floor(ch.progress)} / ${ch.def.goal} · ${money(CHALLENGE_REWARD.cash)} + ${CHALLENGE_REWARD.xp} XP · new one every day</span>
+        ${ch.done ? '<span>Claimed ✓</span>' : `<button class="action small" id="daily-claim" ${ch.ready ? '' : 'disabled'}>Claim</button>`}</div></div>`;
+    $('goals-list').innerHTML = dailyHtml + GOALS.map((g) => {
       const p = Math.min(g.goal, goalProgress(s, g)), done = s.claimedGoals.includes(g.id), ready = !done && p >= g.goal;
       return `<div class="goal ${done ? 'done' : ''}"><b>${g.name}</b><div class="gbar"><i style="width:${(p / g.goal) * 100}%"></i></div>
         <div class="grow"><span>${g.kind === 'distance' ? p.toFixed(1) : Math.floor(p)} / ${g.goal} · ${money(g.reward)} + ${g.xp} XP</span>
         ${done ? '<span>Claimed ✓</span>' : `<button class="action small" data-goal="${g.id}" ${ready ? '' : 'disabled'}>Claim</button>`}</div></div>`;
     }).join('');
+    document.getElementById('daily-claim')?.addEventListener('click', () => {
+      const lvl = s.level;
+      if (claimChallenge(s)) { this.toast(`Daily challenge done: +${money(CHALLENGE_REWARD.cash)}`, 'good'); this.audio.success(); this.persist(); if (s.level > lvl) this.toast(`LEVEL UP! Level ${s.level}`, 'good'); }
+      this.renderGoals(); this.updateCareer(); this.refreshMenu();
+    });
     $('goals-list').querySelectorAll<HTMLElement>('[data-goal]').forEach((b) => b.addEventListener('click', () => {
       const lvl = s.level;
       const r = claimGoal(s, b.dataset.goal!);
@@ -935,7 +950,7 @@ export class Game {
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === s.settings.camera));
     const nt = nextTier(s);
     $('menu-stats').textContent = `${driverTier(s).label} driver${nt ? ` (${nt.tier.label}: ${nt.needs.join(', ') || 'almost there'})` : ''} · Level ${s.level} · ${money(Math.round(s.wallet))} wallet · ${s.stats.trips} trips · ${money(Math.round(s.stats.earned))} lifetime · ${s.arcade.points.toLocaleString()} arcade points · driving the ${vehicleById(s.selected).name}`;
-    const n = claimableGoals(s);
+    const n = claimableGoals(s) + (dailyChallenge(s).ready ? 1 : 0);
     $('goals-badge').hidden = !n; $('goals-badge').textContent = String(n);
   }
 
