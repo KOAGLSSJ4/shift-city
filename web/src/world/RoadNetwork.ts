@@ -85,10 +85,22 @@ export function route(from: Pt, heading: Pt, to: Pt, toSeg: Segment): Route {
   points = points.filter((p, i) => i === 0 || dist(p, points[i - 1]) > 0.5);
   let length = 0;
   for (let i = 1; i < points.length; i++) length += dist(points[i - 1], points[i]);
-  return { points, length, nextTurn: nextTurn(points) };
+  return { points, length, nextTurn: nextTurn(points, heading) };
 }
 
-function nextTurn(points: Pt[]): Route['nextTurn'] {
+function nextTurn(points: Pt[], heading?: Pt): Route['nextTurn'] {
+  // waiting at a junction, the very first leg can already be a turn: compare it with where the car faces
+  // (skip the short hop from the car onto its road)
+  if (heading && points.length >= 2) {
+    const lead = norm(points[0], points[points.length >= 3 && dist(points[0], points[1]) < 6 ? 2 : 1]);
+    const hl = Math.hypot(heading.x, heading.z);
+    if (lead && hl > 0) {
+      const h = { x: heading.x / hl, z: heading.z / hl };
+      const cross = h.x * lead.z - h.z * lead.x, dot = h.x * lead.x + h.z * lead.z;
+      if (dot < -0.7) return { dir: 'uturn', dist: 0 };
+      if (Math.abs(cross) > 0.7) return { dir: cross < 0 ? 'left' : 'right', dist: 0 };
+    }
+  }
   let acc = 0;
   for (let i = 1; i < points.length - 1; i++) {
     acc += dist(points[i - 1], points[i]);

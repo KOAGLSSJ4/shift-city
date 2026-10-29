@@ -379,8 +379,8 @@ void ASCHUD::DrawHUD()
 					FString Instr;
 					switch (Route.Next)
 					{
-					case SC::ETurn::Left: Instr = FString::Printf(TEXT("Turn left in %s"), *Dist(Route.NextDist)); break;
-					case SC::ETurn::Right: Instr = FString::Printf(TEXT("Turn right in %s"), *Dist(Route.NextDist)); break;
+					case SC::ETurn::Left: Instr = Route.NextDist < 1500.f ? FString(TEXT("Turn left now")) : FString::Printf(TEXT("Turn left in %s"), *Dist(Route.NextDist)); break;
+					case SC::ETurn::Right: Instr = Route.NextDist < 1500.f ? FString(TEXT("Turn right now")) : FString::Printf(TEXT("Turn right in %s"), *Dist(Route.NextDist)); break;
 					case SC::ETurn::UTurn: Instr = TEXT("Make a U-turn"); break;
 					default: Instr = FString::Printf(TEXT("Arrive in %s"), *Dist(Route.NextDist)); break;
 					}

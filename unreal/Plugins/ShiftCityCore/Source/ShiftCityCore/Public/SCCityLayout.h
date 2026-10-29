@@ -131,6 +131,16 @@ namespace SC
 		float Acc = 0.f;
 		R.Next = ETurn::Arrive; R.NextDist = R.Length;
 		auto OnGrid = [](float V) { const float M = FMath::Fmod(V - Road(0), Pitch); return FMath::Abs(M) < 1.f || FMath::Abs(M - Pitch) < 1.f; };
+		// waiting at a junction, the very first leg can already be a turn: compare it with where the car faces
+		// (skip the short hop from the car onto its road)
+		if (R.Points.Num() >= 2)
+		{
+			const int32 LeadIdx = R.Points.Num() >= 3 && FVector::Dist2D(R.Points[0], R.Points[1]) < 600.f ? 2 : 1;
+			const FVector H = FVector(Heading.X, Heading.Y, 0.f).GetSafeNormal(), Lead = (R.Points[LeadIdx] - R.Points[0]).GetSafeNormal2D();
+			const float Cross0 = H.X * Lead.Y - H.Y * Lead.X, Dot0 = H.X * Lead.X + H.Y * Lead.Y;
+			if (Dot0 < -0.7f) { R.Next = ETurn::UTurn; R.NextDist = 0.f; return R; }
+			if (FMath::Abs(Cross0) > 0.7f) { R.Next = Cross0 > 0.f ? ETurn::Right : ETurn::Left; R.NextDist = 0.f; return R; }
+		}
 		for (int32 i = 1; i + 1 < R.Points.Num(); ++i)
 		{
 			Acc += FVector::Dist2D(R.Points[i - 1], R.Points[i]);

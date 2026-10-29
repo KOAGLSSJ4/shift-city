@@ -111,3 +111,14 @@ describe('destination filter', () => {
     expect(headsTowards(j, j.a)).toBe(false);
   });
 });
+
+import { route as roadRoute, nearestSegment, nodePos as roadNode } from '../src/world/RoadNetwork';
+describe('GPS first turn', () => {
+  it('says turn now when the route leaves the junction sideways', () => {
+    const at = roadNode(60); // a junction in the middle of the grid
+    const to = { x: at.x + 30, z: at.z }; // straight to the side, along the road
+    const r = roadRoute(at, { x: 0, z: 1 }, to, nearestSegment(to).seg);
+    expect(r.nextTurn.dist).toBe(0);
+    expect(['left', 'right']).toContain(r.nextTurn.dir);
+  });
+});

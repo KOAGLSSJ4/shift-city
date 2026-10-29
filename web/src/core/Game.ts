@@ -583,7 +583,7 @@ export class Game {
       const rot = { left: 180, right: 0, straight: -90, arrive: -90, uturn: 90 }[nt.dir];
       $('nav-arrow').style.transform = `rotate(${rot}deg)`;
       const dist = (m: number) => (m > 950 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
-      $('nav-text').textContent = nt.dir === 'arrive' ? `Arrive at ${t.name}` : nt.dir === 'uturn' ? 'Make a U-turn' : `Turn ${nt.dir} in ${dist(nt.dist)}`;
+      $('nav-text').textContent = nt.dir === 'arrive' ? `Arrive at ${t.name}` : nt.dir === 'uturn' ? 'Make a U-turn' : nt.dist < 15 ? `Turn ${nt.dir} now` : `Turn ${nt.dir} in ${dist(nt.dist)}`;
       $('nav-dist').textContent = `${dist(r.length)} to ${job.stage === 'pickup' ? 'pickup' : 'drop-off'}`;
       const d = Math.hypot(ph.pos.x - t.x, ph.pos.z - t.z);
       const hold = $('hold');

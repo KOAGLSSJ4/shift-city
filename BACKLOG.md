@@ -58,6 +58,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-29: GPS said "turn right" when you had to turn left first at the junction you're waiting at (web + Unreal):
+  the first leg is now compared with where the car faces ("Turn left now").
 - 2026-10-29: Unreal HUD part 1: career panel, job card, story card, toasts, GPS banner and boarding bar in
   rounded Slate panels.
 - 2026-10-29: world leaderboard reads Vercel's KV_REST_API_* env names too; perimeter forest no longer puts trees
