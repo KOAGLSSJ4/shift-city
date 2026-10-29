@@ -50,7 +50,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 - **HUD design pass, part 2** (David, 2026-10-28). Done: money/level panel, job card, story card and toasts
   are rounded Slate panels like the menu. Still to do:
-  - GPS banner (top-centre) and boarding bar still drawn the old flat way: move to Slate;
   - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
   - speed/gear readout comes from the Vehicle template and doesn't match: replace with our own;
   - animations: cards slide/fade in, money counts up when paid.
@@ -59,7 +58,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
-- 2026-10-29: Unreal HUD part 1: career panel, job card, story card and toasts in rounded Slate panels.
+- 2026-10-29: Unreal HUD part 1: career panel, job card, story card, toasts, GPS banner and boarding bar in
+  rounded Slate panels.
 - 2026-10-29: world leaderboard reads Vercel's KV_REST_API_* env names too; perimeter forest no longer puts trees
   on roads near the city corners; traffic no longer spawns overlapping and goes round a stopped player.
 - 2026-10-29: Unreal main menu (Story / Free Ride / Arcade coming soon / Quit), shown at start and on M, in a

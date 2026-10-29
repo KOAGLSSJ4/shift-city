@@ -15,6 +15,15 @@ struct FSCHudModel
 	bool bCard = false;
 	FString Tag, Title, Line1, Line2, Fare, Keys;
 	FLinearColor TagColor = FLinearColor::White;
+	/** GPS banner (top-centre): next instruction, distance, arrow angle (0 = straight ahead, + = right). */
+	bool bGps = false;
+	FString GpsMain, GpsSub;
+	float GpsAngle = 0.f;
+	FLinearColor GpsColor = FLinearColor::White;
+	/** Boarding / arriving bar while stopped at a pickup or drop-off. */
+	bool bBoard = false;
+	FString BoardText;
+	float BoardProgress = 0.f;
 	/** Story intro card (first line = title); empty = hidden. */
 	FString Story;
 	static constexpr int32 MaxToasts = 3;

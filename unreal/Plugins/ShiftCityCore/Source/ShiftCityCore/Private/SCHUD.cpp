@@ -298,7 +298,7 @@ void ASCHUD::DrawHUD()
 	FSCHudModel Dummy;
 	FSCHudModel& Hm = HudModel.IsValid() ? *HudModel : Dummy;
 	Hm.bVisible = !MenuWidget.IsValid();
-	Hm.bCareer = Hm.bCard = false;
+	Hm.bCareer = Hm.bCard = Hm.bGps = Hm.bBoard = false;
 	Hm.Story.Reset();
 	for (FString& ToastText : Hm.Toast) ToastText.Reset();
 	if (MenuWidget.IsValid()) return; // the menu covers the screen: no HUD under it
@@ -372,7 +372,6 @@ void ASCHUD::DrawHUD()
 					const FVector To = Aim - Pawn->GetActorLocation();
 					const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(To.Y, To.X));
 					const float Rel = FRotator::NormalizeAxis(Yaw - PC->PlayerCameraManager->GetCameraRotation().Yaw);
-					const float Cx2 = W / 2.f;
 					auto Dist = [](float Cm) { const float M = Cm / 100.f; return M > 950.f ? FString::Printf(TEXT("%.1f km"), M / 1000.f) : FString::Printf(TEXT("%.0f m"), FMath::RoundToFloat(M / 10.f) * 10.f); };
 					FString Instr;
 					switch (Route.Next)
@@ -382,10 +381,11 @@ void ASCHUD::DrawHUD()
 					case SC::ETurn::UTurn: Instr = TEXT("Make a U-turn"); break;
 					default: Instr = FString::Printf(TEXT("Arrive in %s"), *Dist(Route.NextDist)); break;
 					}
-					Panel(Cx2 - 190 * S, Pad, 380 * S, 84 * S);
-					Arrow(Cx2 - 145 * S, Pad + 42 * S, Rel, 24 * S, bPick ? Accent : Gold);
-					Label(Instr, Cx2 - 100 * S, Pad + 12 * S, FLinearColor::White, 0.8f);
-					Label(FString::Printf(TEXT("%s to %s"), *Dist(Route.Length), bPick ? TEXT("pickup") : TEXT("drop-off")), Cx2 - 100 * S, Pad + 50 * S, Muted, 0.6f);
+					Hm.bGps = true;
+					Hm.GpsMain = Instr;
+					Hm.GpsSub = FString::Printf(TEXT("%s to %s"), *Dist(Route.Length), bPick ? TEXT("pickup") : TEXT("drop-off"));
+					Hm.GpsAngle = Rel;
+					Hm.GpsColor = bPick ? Accent : Gold;
 
 					// ---- on-screen objective marker, clamped to the screen edge when off-screen
 					const FVector World = T->GetActorLocation() + FVector(0, 0, 350.f);
@@ -416,13 +416,10 @@ void ASCHUD::DrawHUD()
 		// ---- boarding progress
 		if (D->IsNearTarget() && D->HasJob() && D->GetJob().Stage != ESCJobStage::Offer)
 		{
-			const float Bw = 360 * S, Bx = W / 2.f - Bw / 2.f, By = H * 0.62f;
-			Panel(Bx, By, Bw, 56 * S);
-			const float Prog = D->GetHoldProgress();
 			const bool bSlow = Pawn && Pawn->GetVelocity().Size() / 100.f < (E ? E->GetBalance().StopSpeed : 2.5f);
-			Label(bSlow ? (D->GetJob().Stage == ESCJobStage::Pickup ? TEXT("Boarding...") : TEXT("Arriving...")) : TEXT("Stop inside the ring"), W / 2.f, By + 8 * S, FLinearColor::White, 0.75f, true);
-			DrawRect(FLinearColor(1, 1, 1, 0.12f), Bx + 16 * S, By + 40 * S, Bw - 32 * S, 6 * S);
-			DrawRect(Accent, Bx + 16 * S, By + 40 * S, (Bw - 32 * S) * Prog, 6 * S);
+			Hm.bBoard = true;
+			Hm.BoardProgress = D->GetHoldProgress();
+			Hm.BoardText = bSlow ? (D->GetJob().Stage == ESCJobStage::Pickup ? TEXT("Boarding...") : TEXT("Arriving...")) : TEXT("Stop inside the ring");
 		}
 
 		// ---- story card + toasts (drawn by the Slate HUD)

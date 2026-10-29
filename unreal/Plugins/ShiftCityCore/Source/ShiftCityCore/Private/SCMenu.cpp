@@ -217,6 +217,57 @@ TSharedRef<SWidget> SCMenu::MakeHud(TSharedRef<FSCHudModel> Model)
 				]
 			]
 		]
+		// GPS banner (top-centre)
+		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Top).Padding(20.f)
+		[
+			SNew(SBorder).BorderImage(HudPanelBrush()).Padding(FMargin(16.f, 10.f, 22.f, 10.f))
+			.Visibility(ShownIf([M]() { return M->bGps; }))
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 14.f, 0.f)
+				[
+					SNew(SBox).WidthOverride(40.f).HeightOverride(40.f).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("\u2191"))).Font(MenuFont("Bold", 30))
+						.ColorAndOpacity_Lambda([M]() { return FSlateColor(M->GpsColor); })
+						.RenderTransformPivot(FVector2D(0.5f, 0.5f))
+						.RenderTransform_Lambda([M]() { return TOptional<FSlateRenderTransform>(FSlateRenderTransform(FQuat2f(FMath::DegreesToRadians(M->GpsAngle)))); })
+					]
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[ SNew(STextBlock).Font(MenuFont("Bold", 18)).ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::GpsMain)) ]
+					+ SVerticalBox::Slot().AutoHeight()
+					[ SNew(STextBlock).Font(MenuFont("Regular", 12)).ColorAndOpacity(FSlateColor(MenuMuted)).Text(Text(&FSCHudModel::GpsSub)) ]
+				]
+			]
+		]
+		// boarding bar (lower centre)
+		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(FMargin(0.f, 0.f, 0.f, 230.f))
+		[
+			SNew(SBorder).BorderImage(HudPanelBrush()).Padding(FMargin(18.f, 10.f))
+			.Visibility(ShownIf([M]() { return M->bBoard; }))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 6.f)
+				[ SNew(STextBlock).Font(MenuFont("Bold", 15)).ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::BoardText)) ]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SBox).WidthOverride(260.f).HeightOverride(6.f)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()[ SNew(SBorder).BorderImage(BarBrush(false)) ]
+						+ SOverlay::Slot().HAlign(HAlign_Left)
+						[
+							SNew(SBox).WidthOverride_Lambda([M]() { return FOptionalSize(260.f * FMath::Clamp(M->BoardProgress, 0.f, 1.f)); })
+							[ SNew(SBorder).BorderImage(BarBrush(true)) ]
+						]
+					]
+				]
+			]
+		]
 		// toasts (top-centre, under the GPS banner)
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Top).Padding(FMargin(0.f, 128.f, 0.f, 0.f))
 		[ ToastBox ]
