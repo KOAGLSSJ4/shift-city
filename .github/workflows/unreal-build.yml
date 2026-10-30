@@ -97,7 +97,7 @@ jobs:
       - name: Play the level for 40 seconds (like pressing Play)
         if: always() && steps.build.outcome == 'success'
         shell: powershell
-        timeout-minutes: 15
+        timeout-minutes: 20
         run: |
           $proj = "$env:GITHUB_WORKSPACE\unreal\ShiftCity.uproject"
           $logFile = "$env:GITHUB_WORKSPACE\unreal\Saved\Logs\PlayTest.log"
@@ -112,8 +112,8 @@ jobs:
             if ((Test-Path $logFile) -and (Select-String -Path $logFile -Pattern 'BeginPlay|Bringing up level for play|LogLoad: Took' -Quiet)) { break }
           }
           if (-not $crashed) {
-            Start-Sleep -Seconds 55
-            if ($game.HasExited) { $crashed = $true } else { Stop-Process -Id $game.Id -Force; "Played 55 s without crashing" }
+            Start-Sleep -Seconds 150 # long enough for first-time mesh preparation of the Fab pack; later runs use the cache
+            if ($game.HasExited) { $crashed = $true } else { Stop-Process -Id $game.Id -Force; "Played without crashing" }
           }
           if (Test-Path $logFile) {
             Get-Content $logFile | Select-String '\[ShiftCity\]|Error|Fatal|Assertion failed|Unhandled Exception|Crash' |

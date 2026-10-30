@@ -485,6 +485,8 @@ void ASCHUD::DrawHUD()
 	// ...and accept the first request so the GPS banner shows in the next screenshot
 	if (bRobotShots && !MenuWidget.IsValid() && RobotShot == 2 && RobotNow > 21.f)
 		if (ASCJobDirector* RobotD = Director.Get()) if (RobotD->HasJob() && RobotD->GetJob().Stage == ESCJobStage::Offer) RobotD->Accept();
+	// park the Fab line-up straight away (well away from the city): Unreal may need a while to prepare the meshes
+	if (bRobotShots && GetWorld() && RobotNow > 2.f) USCCarVisuals::RobotLineup(GetWorld(), 0);
 	// after the fourth shot, look at the Fab pack line-up (one row per shot)
 	if (bRobotShots && RobotShot >= 4 && RobotCam && GetWorld())
 	{

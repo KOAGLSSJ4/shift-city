@@ -466,6 +466,17 @@ FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 			++Slot;
 			AActor* Vehicle = VehicleClass ? World->SpawnActor<AActor>(VehicleClass, FTransform(FRotator(0.f, 90.f, 0.f), At)) : nullptr;
 			if (!Vehicle) { UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] FABCAR %s: could not spawn"), *AssetName); continue; }
+			// every visible part: the skeletal mesh is only the rig, the body/glass/wheels are separate meshes
+			TArray<UMeshComponent*> Parts;
+			Vehicle->GetComponents<UMeshComponent>(Parts);
+			for (UMeshComponent* Part : Parts)
+			{
+				const UStaticMeshComponent* SmPart = Cast<UStaticMeshComponent>(Part);
+				FString Mats;
+				for (int32 M = 0; M < Part->GetNumMaterials(); ++M) Mats += GetNameSafe(Part->GetMaterial(M)) + TEXT(" ");
+				UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s part %s (%s) attached to %s/%s mesh %s mats %s"), *AssetName, *Part->GetName(), *Part->GetClass()->GetName(),
+					*GetNameSafe(Part->GetAttachParent()), *Part->GetAttachSocketName().ToString(), SmPart ? *GetNameSafe(SmPart->GetStaticMesh()) : TEXT("-"), *Mats.Left(400));
+			}
 			USkeletalMeshComponent* Sk = Vehicle->FindComponentByClass<USkeletalMeshComponent>();
 			USkeletalMesh* Mesh = Sk ? Sk->GetSkeletalMeshAsset() : nullptr;
 			const FBoxSphereBounds B = Sk ? Sk->CalcBounds(FTransform::Identity) : FBoxSphereBounds(ForceInit);
@@ -476,9 +487,10 @@ FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 			FString BoneList;
 			for (const FName& Bone : Bones) BoneList += Bone.ToString() + TEXT(" ");
 			UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s bones: %s"), *AssetName, *BoneList.Left(1500));
-			for (int32 M = 0; M < Sk->GetNumMaterials(); ++M)
+			for (UMeshComponent* Part : Parts) for (int32 M = 0; M < Part->GetNumMaterials(); ++M)
 			{
-				UMaterialInterface* Mat = Sk->GetMaterial(M);
+				UMaterialInterface* Mat = Part->GetMaterial(M);
+				if (!Cast<UMaterialInstance>(Mat)) continue;
 				FString Params;
 				if (UMaterialInstance* MI = Cast<UMaterialInstance>(Mat))
 				{
@@ -489,7 +501,7 @@ FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 					MI->GetAllScalarParameterInfo(Infos, Ids);
 					for (const FMaterialParameterInfo& Info : Infos) Params += TEXT("s:") + Info.Name.ToString() + TEXT(" ");
 				}
-				const TArray<FName> SlotNames = Sk->GetMaterialSlotNames();
+				const TArray<FName> SlotNames = Part->GetMaterialSlotNames();
 				const FString SlotName = SlotNames.IsValidIndex(M) ? SlotNames[M].ToString() : FString(TEXT("?"));
 				UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s mat %d %s (%s): %s"), *AssetName, M, *SlotName, *GetNameSafe(Mat), *Params.Left(800));
 			}
