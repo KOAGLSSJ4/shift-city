@@ -43,16 +43,17 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Unreal
 
+- Chase camera sits close to the car since the cars changed: set the distance from each car's length.
 - **HUD design pass, part 2** (David, 2026-10-28). Done: money/level panel, job card, story card and toasts
   are rounded Slate panels like the menu. Still to do:
   - animations: cards slide/fade in, money counts up when paid.
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Unreal Story should be The Week too (port `data/week.ts` + comic panels); its menu still runs the old 5 chapters.
-- **More cars in Unreal** (David, 2026-10-30): the garage lists 8 cars but they all drive the same template
-  car. Build each one as its own model (port the web's original designs) and make them handle differently.
 
 ## Done
 
+- 2026-10-30: Unreal garage cars are our designs (body, wheels, handling per car + upgrades), traffic too; the
+  template sports car is the Furia V12. Starter cars reshaped (Classic, Kite Pico, Lumen).
 - 2026-10-30: The Week is now the Story (old 5-chapter story left the web menu); endings aren't counted or hinted,
   players discover them.
 - 2026-10-30: Merged to `main`: Unreal Garage/Goals/Settings screens (robot-tested), Story v1.1 "The Week",

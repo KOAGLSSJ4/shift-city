@@ -54,7 +54,8 @@ Next, in order: main menu (Story / Free Ride / Arcade) → garage (buy/equip/upg
 goals screen → settings (volume sliders, graphics, camera) → camera views (cockpit/chase/top-down,
 top-down heading-up) → time of day (day/golden/night, lit windows via `WindowGlow`) + weather
 (wet roads, rain, windscreen drops) → Arcade Rush → contextual tutorial pointer → audio →
-passengers/pedestrians → port the web's original car designs.
+passengers/pedestrians. (Car designs ported 2026-10-30: `SCCarVisuals.*` + `Data/Cars` from
+`npm run export-unreal-cars`; re-run that after changing a design.)
 
 ## Where we left off (web, 2026-10-29)
 - Live on Vercel: shift-city-theta.vercel.app (David launched it 2026-10-28). itch.io + CrazyGames uploads still
