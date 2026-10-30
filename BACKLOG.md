@@ -43,14 +43,14 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 - **HUD design pass, part 2** (David, 2026-10-28). Done: money/level panel, job card, story card and toasts
   are rounded Slate panels like the menu. Still to do:
-  - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
-  - speed/gear readout comes from the Vehicle template and doesn't match: replace with our own;
   - animations: cards slide/fade in, money counts up when paid.
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Next batch: garage + goals + settings screens (same Slate style as the main menu, `Private/SCMenu.*`).
 
 ## Done
 
+- 2026-10-30: Unreal HUD part 2a: our own Slate speedometer (km/h + D/R/N; the template's widget is hidden),
+  minimap rim with a soft shadow, solid car arrow, brighter route line.
 - 2026-10-30: stacked food orders: about 1 in 5 standard deliveries has a second drop-off nearby (shown on the
   offer, paid together at the end).
 - 2026-10-30: waiting-time fee: 1 in 4 riders/kitchens keep you waiting 8-30 s at pickup; after 8 s you earn
