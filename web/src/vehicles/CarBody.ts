@@ -613,6 +613,12 @@ export function tireGeometry(r: number, rr: number, w: number, seg: number) {
   pr.push(new THREE.Vector2(rr * 0.98, -hw + 0.02));
   pr.push(new THREE.Vector2(r - 0.05, -hw));
   for (let i = 0; i <= 4; i++) { const a = -Math.PI / 2 + (i / 4) * Math.PI / 2; pr.push(new THREE.Vector2(r - 0.035 + Math.cos(a) * 0.035, -hw + 0.035 + Math.sin(a) * 0.035)); }
+  // tread with three circumferential grooves (8 mm deep) between the shoulders
+  const t0 = -hw + 0.035, t1 = hw - 0.035;
+  for (const f of [0.22, 0.5, 0.78]) {
+    const c = t0 + (t1 - t0) * f, g = 0.008;
+    pr.push(new THREE.Vector2(r, c - g * 1.5), new THREE.Vector2(r - 0.008, c - g), new THREE.Vector2(r - 0.008, c + g), new THREE.Vector2(r, c + g * 1.5));
+  }
   for (let i = 0; i <= 4; i++) { const a = (i / 4) * Math.PI / 2; pr.push(new THREE.Vector2(r - 0.035 + Math.cos(a) * 0.035, hw - 0.035 + Math.sin(a) * 0.035)); }
   pr.push(new THREE.Vector2(r - 0.05, hw));
   pr.push(new THREE.Vector2(rr * 0.98, hw - 0.02));

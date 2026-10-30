@@ -7,7 +7,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import type { BodyType, VehicleDef } from '../data/vehicles';
 import { binaryUrl } from '../core/AssetUrl';
 import { BodyShape, Kit, mergeParts, rimGeometry, tireGeometry, type PartKey } from './CarBody';
-import { DESIGNS, type DesignBody } from './designs';
+import { DESIGNS, panelLines, type DesignBody } from './designs';
 
 export interface CarRig {
   root: THREE.Group;          // positioned/rotated by gameplay
@@ -305,6 +305,7 @@ function carParts(body: DesignBody, lod: 0 | 1) {
     add(lod === 0 ? b.bodyParts(96, 56) : b.bodyParts(40, 24));
     add(lod === 0 ? b.greenhouseParts(80, 32) : b.greenhouseParts(26, 12));
     DESIGNS[body].details(kit);
+    panelLines(kit);
     if (kit.skipped && import.meta.env?.DEV) console.warn(`car design ${body}: ${kit.skipped} decal triangles fell off the body`);
     const merged = mergeParts(kit.parts);
     Object.values(merged).forEach((g) => { g.userData.shared = true; });
@@ -347,7 +348,7 @@ function trafficParts(body: DesignBody) {
     for (const [k, g] of Object.entries(carParts(body, 1)) as [PartKey, THREE.BufferGeometry][]) {
       push(k === 'roof' && d.roofStyle !== 'paint' ? (d.roofStyle === 'glass' ? 'glass' : 'dark') : TRAFFIC_SLOT[k], g.clone());
     }
-    const w = d.tireW ?? 0.24, rr = d.wr * (d.rim ?? 0.68), tw = d.W / 2 - 0.05 - w / 2;
+    const w = d.tireW ?? 0.24, rr = d.wr * (d.rim ?? 0.68), tw = d.W / 2 - 0.03 - w / 2;
     for (const [x, z] of [[tw, d.wb / 2], [-tw, d.wb / 2], [tw, -d.wb / 2], [-tw, -d.wb / 2]]) {
       const tire = new THREE.CylinderGeometry(d.wr, d.wr, w, 14);
       tire.rotateZ(Math.PI / 2); tire.translate(x, d.wr, z);

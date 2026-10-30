@@ -35,10 +35,10 @@ export const DESIGNS: Record<DesignBody, CarDesign> = {
       k.ellipse('front', 0.6, 0.74, 0.055, 0.05, 'head', { mirror: true, lift: 0.012 });
       k.rrect('front', -0.4, 0.68, 0.4, 0.78, 0.04, 'decal');
       k.ribbon('front', [[-0.4, 0.73], [0.4, 0.73]], 0.02, 'chrome', { lift: 0.01 });
-      k.rrect('front', -0.5, 0.3, 0.5, 0.46, 0.05, 'decal');
+      k.rrect('front', -0.5, 0.45, 0.5, 0.56, 0.05, 'decal');
       k.rrect('rear', 0.5, 0.82, 0.76, 0.97, 0.04, 'tail', { mirror: true });
       plate(k, 0.5);
-      k.rrect('rear', -0.6, 0.3, 0.6, 0.4, 0.04, 'decal');
+      k.rrect('rear', -0.6, 0.44, 0.6, 0.49, 0.025, 'decal');
       k.ribbon('side', [[-1.25, 0.45], [1.2, 0.45]], 0.035, 'chrome');
       k.rrect('side', 0.05, 0.9, 0.2, 0.93, 0.01, 'chrome');
     },
@@ -57,13 +57,15 @@ export const DESIGNS: Record<DesignBody, CarDesign> = {
       // swept headlights with an LED brow, slim grille and a wide lower intake
       k.poly('front', [[0.36, 0.72], [0.8, 0.7], [0.76, 0.78], [0.4, 0.8]], 'lens', { mirror: true });
       k.ribbon('front', [[0.4, 0.775], [0.74, 0.76]], 0.018, 'head', { mirror: true, lift: 0.01 });
+      k.ellipse('front', 0.6, 0.74, 0.04, 0.025, 'chrome', { mirror: true, lift: 0.012 }); // projector lens
+      k.ellipse('front', 0.6, 0.74, 0.025, 0.016, 'head', { mirror: true, lift: 0.016 });
       k.rrect('front', -0.34, 0.66, 0.34, 0.74, 0.03, 'decal');
-      k.rrect('front', -0.52, 0.3, 0.52, 0.48, 0.05, 'decal');
+      k.rrect('front', -0.52, 0.43, 0.52, 0.55, 0.05, 'decal');
       k.ribbon('front', [[-0.34, 0.7], [0.34, 0.7]], 0.012, 'chrome', { lift: 0.01 });
       k.poly('rear', [[0.48, 0.86], [0.8, 0.84], [0.8, 0.95], [0.52, 0.97]], 'tail', { mirror: true });
       k.ribbon('rear', [[-0.48, 0.9], [0.48, 0.9]], 0.02, 'decal');
       plate(k, 0.5);
-      k.rrect('rear', -0.62, 0.3, 0.62, 0.4, 0.04, 'decal');
+      k.rrect('rear', -0.62, 0.44, 0.62, 0.49, 0.025, 'decal');
       k.ribbon('side', [[-1.3, 0.44], [1.25, 0.44]], 0.04, 'trim');
       k.rrect('side', 0.1, 0.9, 0.25, 0.93, 0.01, 'chrome');
       k.rrect('side', -0.95, 0.91, -0.8, 0.94, 0.01, 'chrome');
@@ -82,13 +84,14 @@ export const DESIGNS: Record<DesignBody, CarDesign> = {
     details(k) {
       k.poly('front', [[0.4, 0.64], [0.82, 0.63], [0.77, 0.71], [0.44, 0.705]], 'lens', { mirror: true });
       k.ribbon('front', [[0.44, 0.685], [0.78, 0.675]], 0.022, 'head', { mirror: true, lift: 0.01 });
+      for (const x of [0.52, 0.6, 0.68]) k.ellipse('front', x, 0.655, 0.018, 0.012, 'head', { mirror: true, lift: 0.012 }); // LED cells
       k.rrect('front', -0.36, 0.5, 0.36, 0.62, 0.04, 'decal');
       k.ribbon('front', [[-0.36, 0.585], [0.36, 0.585]], 0.012, 'chrome', { lift: 0.01 });
-      k.rrect('front', -0.58, 0.3, 0.58, 0.42, 0.05, 'decal');
+      k.rrect('front', -0.58, 0.42, 0.58, 0.49, 0.04, 'decal');
       k.poly('rear', [[0.38, 0.88], [0.86, 0.86], [0.82, 0.95], [0.4, 0.96]], 'tail', { mirror: true });
       k.ribbon('rear', [[-0.38, 0.92], [0.38, 0.92]], 0.02, 'tail');
       plate(k, 0.58);
-      k.rrect('rear', -0.6, 0.3, 0.6, 0.4, 0.04, 'decal');
+      k.rrect('rear', -0.6, 0.44, 0.6, 0.49, 0.025, 'decal');
       k.ribbon('side', [[-1.6, 0.9], [1.4, 0.88]], 0.015, 'chrome', { lift: 0.004 });
       k.rrect('side', 0.1, 0.89, 0.25, 0.92, 0.01, 'chrome');
       k.rrect('side', -0.95, 0.9, -0.8, 0.93, 0.01, 'chrome');
@@ -288,3 +291,29 @@ export const DESIGNS: Record<DesignBody, CarDesign> = {
 /** Garage line-up names live in data/vehicles.ts; this is just a sanity hook for tests. */
 export const DESIGN_BODIES = Object.keys(DESIGNS) as DesignBody[];
 export type { Pts };
+
+/** Shut lines every real car has (doors, bonnet, tailgate, fuel flap), drawn as hairline gaps on any design. */
+export function panelLines(k: Kit) {
+  const b = k.b, d = b.d, ra = d.wr + 0.06;
+  const gap = 0.006, o = { lift: 0.002 };
+  const sill = (z: number) => b.section(z).bot + 0.13;
+  const belt = (z: number) => { const s = b.section(z); return s.yw + (s.top - s.yw) * 0.78; };
+  // doors run from just behind the front arch to the B pillar (and on to the rear door's edge on four-door cars)
+  const front = Math.min(b.gz1 - 0.12, d.wb / 2 - ra - 0.06);
+  const rearArch = -d.wb / 2 + ra + 0.06;
+  const edges = d.bPillar !== undefined ? [front, d.bPillar, Math.max(rearArch, d.cPillar + 0.08)] : [front, Math.max(rearArch, d.cPillar + 0.25)];
+  for (const z of edges) k.ribbon('side', [[z, sill(z)], [z, belt(z)]], gap, 'decal', o);
+  const last = edges[edges.length - 1];
+  k.ribbon('side', [[front, sill(front)], [last, sill(last)]], gap, 'decal', o);
+  // fuel flap on the rear quarter
+  const fz = Math.min(last - 0.18, (last + rearArch) / 2), fy = belt(fz) - 0.12;
+  if (fz > rearArch - 0.3) k.ribbon('side', [[fz - 0.08, fy - 0.08], [fz + 0.08, fy - 0.08], [fz + 0.08, fy + 0.08], [fz - 0.08, fy + 0.08], [fz - 0.08, fy - 0.08]], gap, 'decal', o);
+  // bonnet: across the car just ahead of the windscreen, then down both sides to the nose
+  const hz = b.gz1 + 0.07, hx = b.section(hz).hw * 0.78;
+  k.ribbon('top', [[-hx, hz], [hx, hz]], gap, 'decal', o);
+  k.ribbon('top', [[hx, hz], [hx * 0.9, b.zMax - 0.14]], gap, 'decal', { ...o, mirror: true });
+  // tailgate / boot lid on the rear face
+  const ty = b.top(b.zMin + 0.12) - 0.05, tx = b.section(b.zMin + 0.12).hw * 0.7;
+  k.ribbon('rear', [[-tx, ty], [tx, ty]], gap, 'decal', { ...o, depth: 0.3 });
+}
+
