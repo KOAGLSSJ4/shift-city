@@ -112,8 +112,8 @@ jobs:
             if ((Test-Path $logFile) -and (Select-String -Path $logFile -Pattern 'BeginPlay|Bringing up level for play|LogLoad: Took' -Quiet)) { break }
           }
           if (-not $crashed) {
-            Start-Sleep -Seconds 40
-            if ($game.HasExited) { $crashed = $true } else { Stop-Process -Id $game.Id -Force; "Played 40 s without crashing" }
+            Start-Sleep -Seconds 55
+            if ($game.HasExited) { $crashed = $true } else { Stop-Process -Id $game.Id -Force; "Played 55 s without crashing" }
           }
           if (Test-Path $logFile) {
             Get-Content $logFile | Select-String '\[ShiftCity\]|Error|Fatal|Assertion failed|Unhandled Exception|Crash' |

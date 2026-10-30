@@ -14,6 +14,7 @@ class UPrimitiveComponent;
 class UProceduralMeshComponent;
 class UMaterialInstanceDynamic;
 class USceneComponent;
+class UWorld;
 
 UCLASS()
 class SHIFTCITYCORE_API USCCarVisuals : public UActorComponent
@@ -26,6 +27,10 @@ public:
 	/** Dresses Pawn as Car (adds this component the first time). Cheap to call every second: it only
 	 *  rebuilds when the car or its upgrades change. */
 	static void Apply(APawn* Pawn, const FSCVehicleDef& Car, const FSCUpgrades& Upgrades);
+
+	/** Build robot: parks every Fab pack vehicle on a floating floor (once) and logs its bones and paint parameters;
+	 *  returns the centre of line-up row Row (0 or 1) for the camera. */
+	static FVector RobotLineup(UWorld* World, int32 Row);
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 

@@ -15,6 +15,12 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/IAssetRegistry.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "Materials/MaterialInstance.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
@@ -422,3 +428,74 @@ void USCCarVisuals::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 		Spinners[Corner]->SetRelativeRotation(FRotator(Wheel->GetRotationAngle(), 0.f, 0.f));
 	}
 }
+
+// ------------------------------------------------------------------ build robot: Fab vehicle line-up
+
+FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
+{
+	static TWeakObjectPtr<AActor> Studio;
+	const FVector Origin(0.f, 0.f, 6000.f); // high above the city, so nothing is in the way
+	const float Spacing = 700.f, RowGap = 1100.f;
+	if (!World) return Origin;
+	if (!Studio.IsValid())
+	{
+		AActor* Floor = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform(Origin));
+		Studio = Floor;
+		USceneComponent* FloorRoot = NewObject<USceneComponent>(Floor);
+		Floor->SetRootComponent(FloorRoot);
+		FloorRoot->RegisterComponent();
+		if (UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
+		{
+			UStaticMeshComponent* Slab = NewObject<UStaticMeshComponent>(Floor);
+			Slab->SetStaticMesh(Cube);
+			Slab->SetupAttachment(FloorRoot);
+			Slab->SetRelativeLocation(FVector(3.f * Spacing, RowGap * 0.5f, -50.f));
+			Slab->SetRelativeScale3D(FVector(60.f, 30.f, 1.f));
+			Slab->RegisterComponent();
+		}
+		TArray<FAssetData> Assets;
+		FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get().GetAssetsByPath(FName(TEXT("/Game/CitySampleVehicles")), Assets, true);
+		Assets.Sort([](const FAssetData& A, const FAssetData& B) { return A.AssetName.LexicalLess(B.AssetName); });
+		int32 Slot = 0;
+		for (const FAssetData& Asset : Assets)
+		{
+			const FString AssetName = Asset.AssetName.ToString();
+			if (Asset.AssetClassPath.GetAssetName() != FName(TEXT("Blueprint")) || !(AssetName.StartsWith(TEXT("BP_vehicle")) || AssetName.StartsWith(TEXT("BP_trailer")))) continue;
+			UClass* VehicleClass = LoadClass<AActor>(nullptr, *(Asset.GetObjectPathString() + TEXT("_C")));
+			const FVector At = Origin + FVector((Slot % 7) * Spacing, (Slot / 7) * RowGap, 120.f);
+			++Slot;
+			AActor* Vehicle = VehicleClass ? World->SpawnActor<AActor>(VehicleClass, FTransform(FRotator(0.f, 90.f, 0.f), At)) : nullptr;
+			if (!Vehicle) { UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] FABCAR %s: could not spawn"), *AssetName); continue; }
+			USkeletalMeshComponent* Sk = Vehicle->FindComponentByClass<USkeletalMeshComponent>();
+			USkeletalMesh* Mesh = Sk ? Sk->GetSkeletalMeshAsset() : nullptr;
+			const FBoxSphereBounds B = Sk ? Sk->CalcBounds(FTransform::Identity) : FBoxSphereBounds(ForceInit);
+			UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s mesh %s size %.0fx%.0fx%.0f slot %d"), *AssetName, *GetNameSafe(Mesh), B.BoxExtent.X * 2.f, B.BoxExtent.Y * 2.f, B.BoxExtent.Z * 2.f, Slot - 1);
+			if (!Sk) continue;
+			TArray<FName> Bones;
+			Sk->GetBoneNames(Bones);
+			FString BoneList;
+			for (const FName& Bone : Bones) BoneList += Bone.ToString() + TEXT(" ");
+			UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s bones: %s"), *AssetName, *BoneList.Left(1500));
+			for (int32 M = 0; M < Sk->GetNumMaterials(); ++M)
+			{
+				UMaterialInterface* Mat = Sk->GetMaterial(M);
+				FString Params;
+				if (UMaterialInstance* MI = Cast<UMaterialInstance>(Mat))
+				{
+					TArray<FMaterialParameterInfo> Infos;
+					TArray<FGuid> Ids;
+					MI->GetAllVectorParameterInfo(Infos, Ids);
+					for (const FMaterialParameterInfo& Info : Infos) Params += TEXT("v:") + Info.Name.ToString() + TEXT(" ");
+					MI->GetAllScalarParameterInfo(Infos, Ids);
+					for (const FMaterialParameterInfo& Info : Infos) Params += TEXT("s:") + Info.Name.ToString() + TEXT(" ");
+				}
+				const TArray<FName> SlotNames = Sk->GetMaterialSlotNames();
+				const FString SlotName = SlotNames.IsValidIndex(M) ? SlotNames[M].ToString() : FString(TEXT("?"));
+				UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s mat %d %s (%s): %s"), *AssetName, M, *SlotName, *GetNameSafe(Mat), *Params.Left(800));
+			}
+		}
+		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR line-up: %d vehicles"), Slot);
+	}
+	return Origin + FVector(3.f * Spacing, Row * RowGap, 100.f);
+}
+
