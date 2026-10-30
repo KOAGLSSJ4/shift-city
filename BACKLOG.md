@@ -21,12 +21,12 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
-  - airport queue (needs an airport destination on the map first; could come with the ring road/highway);
 - Dynamic time/weather in Unreal (needs Unreal time of day + weather first, see port list).
 - **More complicated roads** (David, 2026-10-28). Part 1+2 built on branch `feature/roads` (not live until David
   says): four mini roundabouts (islands, traffic circles them and gives way, GPS "take the 2nd exit") and two
-  one-way streets (arrows, traffic + GPS obey them). Still to do: curves, a ring road/highway, bridges,
-  non-right-angle junctions (needs the road graph to support curved roads), and the Unreal port.
+  one-way streets (arrows, traffic + GPS obey them), and a ring road round the city with an airport and an
+  airport queue (roads can now curve). Still to do: bridges, curved/diagonal streets inside the city, and the
+  Unreal port.
 - **Story v1.1, "The Week"**: built on branch `feature/story-week` (not live until David says). New menu mode:
   5 days of comic-panel intros, story jobs with city characters, evening choices, energy that makes the car
   sluggish when low, 4 endings (3 good, 1 bad). Next: David plays it; then the Unreal port (data in
@@ -47,7 +47,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   are rounded Slate panels like the menu. Still to do:
   - animations: cards slide/fade in, money counts up when paid.
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
-- Next batch: garage + goals + settings screens (same Slate style as the main menu, `Private/SCMenu.*`).
+- Garage + goals + settings screens: built on branch `feature/unreal-screens`, waiting for a robot build.
 
 ## Done
 

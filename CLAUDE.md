@@ -64,8 +64,15 @@ passengers/pedestrians → port the web's original car designs.
   arcade points), car radio (`data/radio.ts`: B / 📻, stations, passenger music taste, creator songs = MP3 in
   `public/music` + one line), trip streak + earnings card, surge zones on the minimap, rider cancellations
   ($3 fee), rider compliments/badges, late-dodge near misses (12 m), garage hides HUD, phone toolbar fix.
-- Branches waiting for David's OK to merge: `feature/story-week` (Story v1.1 "The Week": `data/week.ts`,
-  `gameplay/Week.ts`, comic overlay in Game.ts) and `feature/roads` (roundabouts + one-way streets).
+- Branches waiting for David's OK to merge ("build now, push later", 2026-10-30):
+  - `feature/story-week`: Story v1.1 "The Week" (`data/week.ts`, `gameplay/Week.ts`, comic overlay in Game.ts).
+  - `feature/roads`: roundabouts, one-way streets, ring road + airport + airport queue. Roads are now paths
+    (`edgePath`/`pointAlong`/`edgeLength` in RoadNetwork.ts); ring nodes are ids 121-124. Airport is kept out of
+    the Unreal data export (`GRID_DESTINATIONS`). Web only so far.
+  - `feature/unreal-screens`: Unreal Garage/Goals/Settings (Slate list screens). NOT robot-built yet: run the
+    build robot on the branch (Actions → Unreal build → Run workflow → branch) before merging.
+- Live since 2026-10-30: dynamic time/weather (Settings "Dynamic", `gameplay/DayCycle.ts`), waiting-time fee,
+  stacked food orders, surge chip on the minimap, Shift Classic cockpit dash.
 - Arcade rate stays 100 points = $8 (David still deciding if it's too generous).
 - Pushing to `main` deploys to the live site: David approved merges/pushes for backlog work on 2026-10-29.
 - Not verified on real devices: phone touch play, real ad fill on portals.
