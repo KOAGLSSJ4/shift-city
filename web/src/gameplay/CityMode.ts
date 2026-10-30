@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { BALANCE } from '../data/balancing';
 import { DESTINATIONS, type Destination } from '../data/world';
 import { STORY } from '../data/story';
+import { currentJob, fatigue, finishJob } from './Week';
 import { effectiveStats, vehicleById } from '../data/vehicles';
 import type { City } from '../world/City';
 import type { Traffic } from '../world/Traffic';
@@ -13,7 +14,7 @@ import { VehiclePhysics, type DriveInput } from '../vehicles/VehiclePhysics';
 import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
-import { CANCEL_FEE, WAIT_GRACE, waitingFee, applySurgeZone, headsTowards, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
+import { CANCEL_FEE, WAIT_GRACE, waitingFee, applySurgeZone, headsTowards, isScripted, randomJob, weekJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
 import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, complimentFor, COMPLIMENTS, type Moment } from './Missions';
 
@@ -27,6 +28,10 @@ export interface CityEvents {
   toast(msg: string): void;
   /** A passenger speaks (shown as a speech bubble). */
   say(who: string, text: string): void;
+  /** The Week: today's jobs are done (show the evening choice). */
+  weekEvening?(): void;
+  /** The Week: a story job was delivered. */
+  weekProgress?(): void;
   /** The car radio station right now. */
   station(): StationId;
 }
@@ -38,7 +43,7 @@ export class CityMode {
   readonly markers = new THREE.Group();
   job: Job | null = null;
   route: Route | null = null;
-  mode: 'story' | 'free' = 'free';
+  mode: 'story' | 'free' | 'week' = 'free';
   holdTime = 0;
   /** Seconds to stay stopped at the target: boarding, plus any wait for a late rider at pickup. */
   get holdNeeded() { return BALANCE.boardTime + (this.job?.stage === 'pickup' ? this.job.lateBy ?? 0 : 0); }
@@ -97,7 +102,10 @@ export class CityMode {
 
   refreshStats() { this.setRig(this.rig); }
 
-  start(mode: 'story' | 'free') {
+  /** The Week: start the next day's requests after the evening/morning screens. */
+  resumeWeek() { this.offerTimer = 1.2; }
+
+  start(mode: 'story' | 'free' | 'week') {
     this.mode = mode;
     this.job = null;
     this.marker.visible = false;
@@ -118,17 +126,17 @@ export class CityMode {
 
   accept() {
     if (!this.job || this.job.stage !== 'offer') return;
-    if (this.job.chapter === null) recordAccept(this.save.driver);
+    if (!isScripted(this.job)) recordAccept(this.save.driver);
     this.job.stage = 'pickup';
     this.job.startedAt = this.time;
     this.showMarker(this.job.a, true);
     this.ev.stage(this.job);
     this.computeRoute();
-    if (this.job.chapter === null && !this.job.food && this.save.tutorialDone) this.job.patience = riderPatience(this.route?.length ?? 400);
+    if (!isScripted(this.job) && !this.job.food && this.save.tutorialDone) this.job.patience = riderPatience(this.route?.length ?? 400);
   }
 
   decline() {
-    if (!this.job || this.job.stage !== 'offer' || this.job.chapter !== null) return;
+    if (!this.job || this.job.stage !== 'offer' || isScripted(this.job)) return;
     this.job = null;
     this.offerTimer = 1.5;
     this.ev.offer(null); // clear the card right away
@@ -151,7 +159,12 @@ export class CityMode {
 
   private nextOffer() {
     const def = vehicleById(this.save.selected);
-    if (this.mode === 'story') {
+    if (this.mode === 'week') {
+      // The Week: today's next scripted job; in the evening the game shows the choice screen instead
+      const wj = currentJob(this.save.week);
+      if (!wj) { this.offerTimer = 1e9; this.ev.weekEvening?.(); return; }
+      this.job = weekJob(wj);
+    } else if (this.mode === 'story') {
       const j = storyJob(this.save.story.chapter);
       if (!j) { this.mode = 'free'; this.ev.storyDone(); this.job = randomJob(def, this.physics.pos); }
       else this.job = j;
@@ -223,6 +236,9 @@ export class CityMode {
     } else if (this.mode !== 'free') this.surgeZone = null;
     const ph = this.physics;
     const before = ph.odometer;
+    // The Week: a tired driver gets a slower, softer car
+    const tired = this.mode === 'week' ? fatigue(this.save.week) : 0;
+    if (tired > 0) input = { ...input, throttle: input.throttle * (1 - 0.35 * tired), steer: input.steer * (1 - 0.25 * tired) };
     ph.update(dt, input);
     this.save.stats.km += (ph.odometer - before) / 1000;
 
@@ -383,6 +399,7 @@ export class CityMode {
       if (waitFee) mission.note = [mission.note, `waiting fee $${waitFee.toFixed(2)}`].filter(Boolean).join(' · ');
       const bonusTip = (job.bonusTime && elapsed < job.bonusTime ? Math.round(job.fare * 0.25) : 0) + mission.tip + waitFee;
       const pay = payJob(this.save, job.id, job.fare, def, { food: job.food, stars, story: job.chapter !== null, bonusTip, bonusXp: mission.xp });
+      if (job.week && pay) { finishJob(this.save.week, pay.total, stars, job.log.bumps); this.ev.weekProgress?.(); }
       if (job.persona) {
         const text = line(job.persona, personaHappy(job.persona, onBoard, job.limit, job.log) >= 0.5 ? 'good' : 'bad');
         if (text) this.ev.say(job.customer, text);

@@ -19,6 +19,8 @@ import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
 import { nextStation, stationName } from '../data/radio';
 import { CHANGE_TOAST, timeAt, weatherAt } from '../gameplay/DayCycle';
+import { ENDINGS, WEEK, WEEK_GOAL, WEEK_TITLE, type Panel } from '../data/week';
+import { chooseEvening, currentDay, currentJob, fatigue, friends, isEvening, startWeek, weekRating } from '../gameplay/Week';
 import { DESTINATIONS } from '../data/world';
 import { CHALLENGE_REWARD, claimChallenge, claimDailyReward, dailyChallenge } from '../gameplay/Daily';
 import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost, buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
@@ -26,7 +28,7 @@ import { COMPLIMENTS, PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
 import { OFFER_SECONDS, acceptanceRate, driverTier, earnings, nextTier } from '../gameplay/Driver';
-import { waitingFee, type Job } from '../gameplay/Jobs';
+import { isScripted, waitingFee, type Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
 import { carThumbs } from '../ui/CarThumbs';
@@ -56,7 +58,7 @@ export class Game {
   rig!: CarRig;
   state: State = 'loading';
   paused = false;
-  private sessionMode: 'story' | 'free' | null = null;
+  private sessionMode: 'story' | 'free' | 'week' | null = null;
   private tutorial: Tutorial;
   private minimap = new Minimap($<HTMLCanvasElement>('minimap'));
   private clock = new THREE.Clock();
@@ -198,7 +200,7 @@ export class Game {
     this.city.group.visible = this.traffic.group.visible = this.cityMode.markers.visible = true;
   }
 
-  startCity(mode: 'story' | 'free') {
+  startCity(mode: 'story' | 'free' | 'week') {
     this.audio.unlock();
     goFullscreen();
     if (mode === 'story' && this.save.story.chapter >= STORY.length) this.toast('Story complete — replaying as Free Ride with bonus jobs', 'good');
@@ -215,6 +217,80 @@ export class Game {
     this.updateCareer();
     if (!this.save.tutorialDone && !this.tutorial.active) this.tutorial.start();
     else if (this.tutorial.active) this.tutorial.show();
+    if (mode === 'week') {
+      if (!this.save.week.active) { startWeek(this.save.week); this.persist(); }
+      if (isEvening(this.save.week)) this.showWeekEvening();
+      else if (this.save.week.job === 0) this.showWeekMorning();
+    }
+    this.updateWeekHud();
+  }
+
+  // ---- Story v1.1 "The Week": comic panels, evening choices, ending
+  private comic(title: string, panels: Panel[], extra: string, actions: { label: string; hint?: string; cls?: string; on: () => void }[]) {
+    this.paused = true;
+    $('comic-day').textContent = title;
+    $('comic-panels').innerHTML = panels.map((p, i) => `<div class="panel ${p.tone ?? 'cool'}" style="animation-delay:${i * 0.25}s"><div class="art">${p.art}</div><div class="who">${p.who}</div><p>${p.text}</p></div>`).join('');
+    $('comic-extra').innerHTML = extra;
+    const row = $('comic-actions');
+    row.innerHTML = '';
+    for (const a of actions) {
+      const b = document.createElement('button');
+      b.className = a.cls ?? 'action';
+      b.innerHTML = a.hint ? `${a.label}<small>${a.hint}</small>` : a.label;
+      b.addEventListener('click', () => { this.audio.click(); a.on(); });
+      row.appendChild(b);
+    }
+    $('comic').hidden = false;
+  }
+  private closeComic() { $('comic').hidden = true; this.paused = false; this.cam.cut(); }
+
+  private showWeekMorning() {
+    const w = this.save.week, d = currentDay(w);
+    if (!d) return;
+    this.comic(d.title, d.panels, `<div class="week-stats">${this.weekStatsHtml()}</div>`, [{ label: w.day === 0 ? 'Start the week' : 'Start the day', on: () => { this.closeComic(); this.cityMode.resumeWeek(); } }]);
+  }
+
+  private showWeekEvening() {
+    const w = this.save.week, d = currentDay(w);
+    if (!d) return;
+    const tired = w.flags.includes('exhausted') && w.energy <= 0 ? '<p class="warn">You ran out of energy and had to stop early today.</p>' : '';
+    this.comic(d.title.split('·')[0] + '· EVENING', [d.evening.panel], `<p class="prompt">${d.evening.prompt}</p>${tired}<div class="week-stats">${this.weekStatsHtml()}</div>`,
+      d.evening.choices.map((c) => ({ label: c.label, hint: c.hint, cls: 'action choice', on: () => {
+        const cash = chooseEvening(w, c.effect);
+        if (cash) { this.save.wallet += cash; this.save.stats.earned += cash; }
+        this.persist(); this.updateCareer(); this.updateWeekHud();
+        if (!w.active) { this.showWeekEnding(); return; }
+        if (c.reply) this.toast(c.reply, 'good');
+        this.showWeekMorning();
+      } })));
+  }
+
+  private showWeekEnding() {
+    const w = this.save.week, e = ENDINGS[w.ending];
+    this.comic(`${WEEK_TITLE} · THE END`, [{ who: e.title, art: e.art, text: e.text, tone: e.good ? 'gold' : 'night' }],
+      `<div class="week-stats">${this.weekStatsHtml()}<span>Ending: <b>${e.title}</b>${e.good ? '' : ' (try again for a better one)'}</span></div>`,
+      [
+        { label: 'Play The Week again', on: () => { startWeek(w); this.persist(); this.cityMode.start('week'); this.renderJob(null); this.updateWeekHud(); this.showWeekMorning(); } },
+        { label: 'Free Ride', cls: 'action secondary', on: () => { this.closeComic(); this.sessionMode = null; this.startCity('free'); } },
+      ]);
+    this.audio.success();
+  }
+
+  private weekStatsHtml() {
+    const w = this.save.week;
+    return `<span>Earned <b>${money(Math.round(w.earned))}</b> / ${money(WEEK_GOAL)} lease</span><span>Energy <b>${Math.round(w.energy)}%</b></span><span>Rating <b>★ ${weekRating(w).toFixed(2)}</b></span><span>Friends <b>${friends(w)}</b></span>`;
+  }
+
+  private updateWeekHud() {
+    const on = this.sessionMode === 'week' && this.state === 'city' && this.save.week.active;
+    $('week-hud').hidden = !on;
+    document.body.classList.toggle('tired', on && fatigue(this.save.week) > 0);
+    if (!on) return;
+    const w = this.save.week;
+    $('wk-day').textContent = (currentDay(w)?.title.split('·')[0] ?? '').trim();
+    ($('wk-energy') as HTMLElement).style.width = `${w.energy}%`;
+    $('wk-energy').classList.toggle('low', w.energy < 35);
+    $('wk-money').textContent = `${money(Math.round(w.earned))} / ${money(WEEK_GOAL)}`;
   }
 
   startArcade() {
@@ -458,6 +534,7 @@ export class Game {
         if (!job) return;
         this.audio.click();
         if (job.chapter !== null) this.showStoryCard(job.chapter, 'intro');
+        else if (job.week) { const wj = currentJob(this.save.week); if (wj) this.say(job.customer, wj.intro); }
       },
       stage: (job: Job) => {
         this.renderJob(job);
@@ -473,6 +550,10 @@ export class Game {
         this.earnPop(`+${money(pay.total)}`, `★ ${stars.toFixed(1)}${pay.tip ? ` · tip ${money(pay.tip)}` : ''} · +${pay.xp} XP${pay.note ? ` · ${pay.note}` : ''}`);
         this.audio.cash(); this.audio.success();
         if (job.chapter !== null) { this.showStoryCard(job.chapter, 'outro'); }
+        else if (job.week) {
+          const done = WEEK[this.save.week.day]?.jobs[this.save.week.job - 1] ?? WEEK[this.save.week.day - 1]?.jobs.at(-1);
+          if (done) this.say(job.customer, done.outro);
+        }
         this.renderJob(null);
         this.updateCareer();
         if (this.save.level > lvl) { this.toast(`LEVEL UP! Level ${this.save.level}`, 'good'); this.audio.levelUp(); }
@@ -484,6 +565,8 @@ export class Game {
       toast: (m: string) => this.toast(m),
       say: (who: string, text: string) => this.say(who, text),
       station: () => this.audio.currentStation,
+      weekEvening: () => { this.updateWeekHud(); this.showWeekEvening(); },
+      weekProgress: () => this.updateWeekHud(),
     };
   }
 
@@ -527,13 +610,13 @@ export class Game {
     tag.className = job.premium || job.variant === 'vip' ? 'tag premium' : job.variant !== 'standard' ? 'tag special' : 'tag';
     const def = vehicleById(this.save.selected);
     if (job.stage === 'offer') {
-      tag.textContent = (job.chapter !== null ? STORY[job.chapter].title + ' · ' : 'NEW ') + kind;
+      tag.textContent = (job.chapter !== null ? STORY[job.chapter].title + ' · ' : job.week ? `${(currentDay(this.save.week)?.title.split('·')[0] ?? '').trim()} · ` : 'NEW ') + kind;
       title.textContent = job.food ? `${job.restaurant} → ${job.b.name}` : `${job.customer}`;
       const who = job.persona ? ` · ${PERSONAS[job.persona].label}` : '';
       det.innerHTML = `Pickup: <b>${job.food ? job.restaurant + ' @ ' : ''}${job.a.name}</b><br>Drop-off: <b>${job.b.name}</b>${job.extraDrop ? ` then <b>${job.extraDrop.name}</b> <span class="hint">(2 orders)</span>` : ''}<br>~${(this.estimateDistance(job) / 1000).toFixed(1)} km${who}${v.blurb ? `<br><span class="hint">${v.blurb}${job.limit ? ` (${job.limit}s)` : ''}</span>` : ''}`;
       fare.textContent = money(Math.round(job.fare * def.fare * 100) / 100);
       btns.hidden = false;
-      $<HTMLButtonElement>('decline').disabled = job.chapter !== null;
+      $<HTMLButtonElement>('decline').disabled = isScripted(job);
     } else {
       tag.textContent = job.stage === 'pickup' ? (job.food ? '● COLLECT ORDER' : '● PICK UP PASSENGER') : (job.food ? '● DELIVER ORDER' : '● DROP OFF PASSENGER');
       title.textContent = job.stage === 'pickup' ? (job.food ? `${job.restaurant} @ ${job.a.name}` : job.a.name) : job.b.name;
@@ -559,7 +642,7 @@ export class Game {
   /** Live mission line on the job card: countdown for timed jobs, comfort for VIP / fragile. */
   private updateMissionLive(job: Job | null) {
     const el = $('job-live');
-    if (!job || job.stage !== 'dropoff' || job.chapter !== null) { el.hidden = true; return; }
+    if (!job || job.stage !== 'dropoff' || isScripted(job)) { el.hidden = true; return; }
     el.hidden = false;
     if (job.limit !== undefined) {
       const left = Math.ceil(job.limit - (this.cityMode.time - (job.pickedAt ?? 0)));
@@ -1012,6 +1095,7 @@ export class Game {
     const s = this.save;
     $('story-progress').textContent = s.story.chapter >= STORY.length ? 'Complete ✓' : `Chapter ${s.story.chapter + 1} of ${STORY.length}`;
     $('arcade-best').textContent = `Best ${s.arcade.best.toLocaleString()}`;
+    $('week-progress').textContent = s.week.active ? `${(WEEK[s.week.day]?.title.split('·')[0] ?? '').trim()} · ${money(Math.round(s.week.earned))} earned` : s.week.ending ? `Last ending: ${ENDINGS[s.week.ending]?.title ?? ''}` : 'New · 5 days, 4 endings';
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.classList.toggle('on', b.dataset.gfx === s.settings.graphics));
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === s.settings.camera));
     const nt = nextTier(s);
@@ -1024,6 +1108,7 @@ export class Game {
     const on = (id: string, fn: () => void) => $(id).addEventListener('click', () => { this.audio.unlock(); fn(); (document.activeElement as HTMLElement)?.blur(); });
     on('mode-story', () => this.startCity('story'));
     on('mode-free', () => this.startCity('free'));
+    on('mode-week', () => this.startCity('week'));
     on('mode-arcade', () => this.startArcade());
     on('menu-garage', () => this.openGarage());
     on('menu-goals', () => this.openGoals());

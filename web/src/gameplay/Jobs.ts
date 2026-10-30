@@ -1,6 +1,7 @@
 // Job generation for Story and Free Ride. Data-driven: story chapters come from data/story.ts.
 import { DESTINATIONS, RESTAURANTS, destinationByName, type Destination } from '../data/world';
 import { STORY } from '../data/story';
+import type { WeekJob } from '../data/week';
 import type { VehicleDef } from '../data/vehicles';
 import { jobFare } from './Economy';
 import { newLog, rollPersona, rollSurge, rollVariant, timeLimit, type Persona, type RideLog, type Variant } from './Missions';
@@ -37,7 +38,12 @@ export interface Job {
   /** Time the passenger/order came on board (CityMode clock). */
   pickedAt?: number;
   log: RideLog;
+  /** A scripted job from Story v1.1 "The Week" (no declining, no timer, like story chapters). */
+  week?: boolean;
 }
+
+/** Story jobs (chapters or The Week) can't be declined, don't expire and don't cancel. */
+export const isScripted = (j: Job) => j.chapter !== null || !!j.week;
 
 const NAMES = ['Sam', 'Priya', 'Tunde', 'Lucia', 'Ken', 'Amara', 'Jonas', 'Mei', 'Kwame', 'Sofia', 'Omar', 'Hannah', 'Diego', 'Zara', 'Leo', 'Ifeoma'];
 const VIP = ['Ms. Duval (CEO)', 'Mr. Adeyemi (VIP)', 'Lady Hart', 'Dr. Romano', 'Sir Bellamy'];
@@ -52,6 +58,16 @@ export function storyJob(chapter: number): Job | null {
     id: newId(), food: ch.food, a: destinationByName(ch.a), b: destinationByName(ch.b),
     restaurant: ch.food ? 'Noodle Street' : undefined, customer: ch.passenger,
     fare: ch.price, premium: chapter >= 4, chapter, stage: 'offer', startedAt: 0, bumps: 0, bonusTime: ch.bonusTime,
+    variant: 'standard', log: newLog(),
+  };
+}
+
+/** A job for Story v1.1 "The Week". */
+export function weekJob(w: WeekJob): Job {
+  return {
+    id: newId(), food: w.food, a: destinationByName(w.a), b: destinationByName(w.b),
+    restaurant: w.food ? 'Noodle Street' : undefined, customer: w.passenger,
+    fare: w.price, premium: w.price >= 100, chapter: null, week: true, stage: 'offer', startedAt: 0, bumps: 0, bonusTime: w.bonusTime,
     variant: 'standard', log: newLog(),
   };
 }

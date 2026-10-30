@@ -29,6 +29,7 @@
     <p class="tagline">Drive the city. Build a career. Chase the high score.</p>
     <div class="modes">
       <button class="mode-card" id="mode-story"><b>Story</b><small id="story-progress">Chapter 1 of 5</small><span>Your driving career, chapter by chapter.</span></button>
+      <button class="mode-card week" id="mode-week"><b>The Week</b><small id="week-progress">New · 5 days, 4 endings</small><span>Five days in Shift City. Big choices, real stakes.</span></button>
       <button class="mode-card" id="mode-free"><b>Free Ride</b><small>Open city</small><span>Take rides and food orders at your own pace.</span></button>
       <button class="mode-card arcade" id="mode-arcade"><b>Arcade Rush</b><small id="arcade-best">Best 0</small><span>Dodge, collect, chain near misses.</span></button>
     </div>
@@ -52,6 +53,7 @@
     <div class="wallet" id="wallet">$0</div>
     <div class="lvl"><span id="level">LV 1</span><b class="tier" id="tier">BLUE</b><div class="xp"><i id="xp-bar"></i></div></div>
     <div class="sub"><span id="rating">★ 4.90</span> · <span id="trips">0 trips</span> · <span id="km">0.0 km</span></div>
+    <div class="week-hud" id="week-hud" hidden><b id="wk-day"></b> <span id="wk-money"></span><div class="ebar" title="Energy"><i id="wk-energy"></i></div></div>
   </div>
   <div class="nav" id="nav" hidden>
     <div class="nav-arrow" id="nav-arrow">➤</div>
@@ -104,6 +106,15 @@
   </div>
 </div>
 
+<div id="comic" class="screen dim" hidden>
+  <div class="comic-box">
+    <div class="tag" id="comic-day"></div>
+    <div class="panels" id="comic-panels"></div>
+    <div class="comic-extra" id="comic-extra"></div>
+    <div class="row comic-actions" id="comic-actions"></div>
+  </div>
+</div>
+<div id="tired-vignette"></div>
 <div id="arcade-over" class="screen dim" hidden>
   <div class="over-card">
     <div class="tag">RUN COMPLETE</div>

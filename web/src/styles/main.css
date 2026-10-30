@@ -395,3 +395,47 @@ body.garage-open #hud, body.garage-open #touch, body.garage-open #tutorial { vis
 .credits b { color: #fff; }
 #o-double { width: 100%; margin: 4px 0 8px; }
 .action.gold { background: linear-gradient(90deg, var(--gold), #ff9a3d); color: #1b1004; }
+
+/* ---- Story v1.1 "The Week": comic panels, choices, energy */
+.mode-card.week { border-color: #ffd27a88; }
+.mode-card.week b { color: #ffd27a; }
+.week-hud { margin-top: 6px; font-size: 11px; color: #c2d1e0; }
+.week-hud b { color: #ffd27a; letter-spacing: 1px; }
+.ebar { height: 5px; border-radius: 3px; background: #ffffff22; margin-top: 4px; overflow: hidden; }
+.ebar i { display: block; height: 100%; background: linear-gradient(90deg, #4cf0af, #a6f04c); transition: width .4s; }
+.ebar i.low { background: linear-gradient(90deg, #ff5a4c, #ffb347); }
+#comic { z-index: 40; }
+.comic-box { width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; text-align: center; }
+.comic-box > .tag { color: #ffd27a; font-weight: 900; letter-spacing: 2px; font-size: 13px; margin-bottom: 12px; }
+.panels { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.panel { flex: 1 1 240px; max-width: 300px; min-height: 220px; border-radius: 18px; padding: 16px; text-align: left; position: relative;
+  border: 3px solid #0b1118; box-shadow: 0 0 0 2px #ffffff22, 0 14px 40px rgba(0,0,0,.45); opacity: 0; transform: translateY(14px) rotate(-1deg);
+  animation: panel-in .45s ease-out forwards; }
+.panel:nth-child(2) { transform: translateY(14px) rotate(1deg); }
+.panel.warm { background: linear-gradient(160deg, #ffb36b, #ff6f61); color: #1b0f0a; }
+.panel.cool { background: linear-gradient(160deg, #6bc8ff, #4c6bff); color: #08142a; }
+.panel.night { background: linear-gradient(160deg, #3a3f7a, #141734); color: #eef; }
+.panel.gold { background: linear-gradient(160deg, #ffe08a, #e0a43c); color: #231a05; }
+.panel .art { font-size: 64px; line-height: 1; margin: 4px 0 10px; filter: drop-shadow(0 4px 0 rgba(0,0,0,.25)); }
+.panel .who { font-weight: 900; text-transform: uppercase; letter-spacing: 1px; font-size: 12px; opacity: .8; }
+.panel p { margin: 6px 0 0; font-size: 15px; line-height: 1.4; font-weight: 600; background: #ffffffd9; color: #111; padding: 10px 12px;
+  border-radius: 14px; position: relative; }
+.panel.night p { background: #0b1020cc; color: #eef; }
+@keyframes panel-in { to { opacity: 1; transform: none; } }
+.comic-extra .prompt { font-size: 17px; font-weight: 700; margin: 16px 0 4px; }
+.comic-extra .warn { color: #ffb347; margin: 4px 0; }
+.week-stats { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 14px 0 6px; font-size: 13px; color: #c2d1e0; }
+.week-stats b { color: #fff; }
+.comic-actions { justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.comic-actions .choice { display: flex; flex-direction: column; align-items: center; min-width: 200px; }
+.comic-actions small { display: block; font-size: 11.5px; font-weight: 600; opacity: .75; margin-top: 2px; }
+#tired-vignette { position: fixed; inset: 0; pointer-events: none; z-index: 3; opacity: 0; transition: opacity 1.5s;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.65) 100%); }
+body.tired.playing #tired-vignette { opacity: 1; animation: blink 6s ease-in-out infinite; }
+@keyframes blink { 0%, 90%, 100% { opacity: 1; } 94% { opacity: .2; } }
+@media (pointer: coarse) and (max-height: 520px) {
+  .panels { flex-wrap: nowrap; }
+  .panel { min-height: 0; padding: 10px; flex: 1 1 0; }
+  .panel .art { font-size: 34px; margin: 0 0 4px; }
+  .panel p { font-size: 12px; padding: 7px 9px; }
+}
