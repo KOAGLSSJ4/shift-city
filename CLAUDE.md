@@ -101,6 +101,9 @@ passengers/pedestrians. (Car designs ported 2026-10-30: `SCCarVisuals.*` + `Data
 - Traffic dots hidden on the minimap (clean GPS look).
 - Assets: Poly Haven CC0 first. No NonCommercial assets. Cars: keep our own designs (David, 2026-10-30: no Sketchfab);
   real models only if they ever look bad. Look: pristine, picture-like realism (no paint flake, no wear).
+- Unreal (David, 2026-10-30): use Epic's free Fab assets for realism: City Sample Vehicles for the cars (and a city
+  pack later). Fab packs live only in David's project folder (gitignored); the robot mirrors `Content/CitySample*`
+  and `Content/Fab` from `D:\Projects\Shift City\shift-city\unreal` before building. Web: no more realism needed.
 - Cars are original procedural designs (web `src/vehicles/designs.ts`, lofted bodies in `CarBody.ts`, preview at
   `web/dev/cars.html`). The Ferrari placeholder is gone; vehicle ids stay stable for saves.
   2026-10-30: Classic (now lofted, round lamps), Kite Pico and Lumen reshaped; David happy, leave them be. In Unreal
