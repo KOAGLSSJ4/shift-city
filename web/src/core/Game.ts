@@ -600,7 +600,7 @@ export class Game {
     if (this.save) this.updateCareer(); // acceptance rate / tier can change with every offer
     const tag = $('job-tag'), title = $('job-title'), det = $('job-detail'), fare = $('job-fare'), btns = $('offer-buttons');
     if (!job) {
-      tag.textContent = this.cityMode?.mode === 'story' ? 'STORY MODE' : 'ONLINE · FREE RIDE';
+      tag.textContent = this.cityMode?.mode === 'week' ? 'STORY · THE WEEK' : this.cityMode?.mode === 'story' ? 'STORY MODE' : 'ONLINE · FREE RIDE';
       tag.className = 'tag';
       title.textContent = 'Waiting for the next request…'; det.textContent = ''; fare.textContent = ''; btns.hidden = true;
       $('nav').hidden = true;
