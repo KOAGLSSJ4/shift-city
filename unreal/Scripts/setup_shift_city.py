@@ -553,15 +553,13 @@ def setup_level(mats, lamp, tree):
     try:
         # brighten the street canyons: exposure bias up a stop, and stop auto-exposure going too dark
         st = pp.get_editor_property("settings")
-        # plus a camera-like finish: gentle bloom and vignette, soft contact shadows, high-quality reflections
+        # plus a camera-like finish: gentle bloom and vignette, soft contact shadows (Lumen quality stays default: higher ran a 4 GB card out of memory)
         for k, v in (("override_auto_exposure_bias", True), ("auto_exposure_bias", 1.0),
                      ("override_auto_exposure_min_brightness", True), ("auto_exposure_min_brightness", 0.6),
                      ("override_bloom_intensity", True), ("bloom_intensity", 0.45),
                      ("override_vignette_intensity", True), ("vignette_intensity", 0.25),
                      ("override_ambient_occlusion_intensity", True), ("ambient_occlusion_intensity", 0.6),
-                     ("override_lumen_reflection_quality", True), ("lumen_reflection_quality", 2.0),
-                     ("override_lumen_final_gather_quality", True), ("lumen_final_gather_quality", 1.5),
-                     ("override_film_grain_intensity", True), ("film_grain_intensity", 0.0)):
+                                          ("override_film_grain_intensity", True), ("film_grain_intensity", 0.0)):
             try:
                 st.set_editor_property(k, v)
             except Exception:

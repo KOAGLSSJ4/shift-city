@@ -47,7 +47,7 @@ private:
 	TArray<FVector> PivotRest;
 	TArray<int32> PhysicsWheel; // physics wheel index driving each visual wheel
 
-	float BaseArmLength = -1.f, BaseSocketZ = 0.f;
+	TMap<FName, FVector> BaseArms; // per chase arm: X = arm length, Y = socket height
 	bool bHaveBase = false;
 	float BaseTorque = 0.f, BaseDrag = 0.f;
 	TArray<float> BaseFriction, BaseSteer, BaseBrake;

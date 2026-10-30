@@ -346,12 +346,22 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 void USCCarVisuals::SetCameraFor(const FSCCarModel* Model)
 {
 	APawn* Pawn = Cast<APawn>(GetOwner());
-	USpringArmComponent* Arm = Pawn ? Pawn->FindComponentByClass<USpringArmComponent>() : nullptr;
-	if (!Arm) return;
-	if (BaseArmLength < 0.f) { BaseArmLength = Arm->TargetArmLength; BaseSocketZ = Arm->SocketOffset.Z; }
-	// the template's chase camera is set for its low sports car: pull back for longer cars and up for taller ones
-	Arm->TargetArmLength = Model ? BaseArmLength * FMath::Clamp(Model->Length / 440.f, 1.f, 1.3f) * 1.12f : BaseArmLength;
-	Arm->SocketOffset.Z = Model ? BaseSocketZ + FMath::Max(0.f, Model->Height - 125.f) * 1.5f : BaseSocketZ;
+	if (!Pawn) return;
+	// the template has a chase arm and an in-car arm: only move the chase one(s) (anything not named Front/Interior)
+	TArray<USpringArmComponent*> Arms;
+	Pawn->GetComponents<USpringArmComponent>(Arms);
+	for (USpringArmComponent* Arm : Arms)
+	{
+		const FString ArmName = Arm->GetName();
+		if (ArmName.Contains(TEXT("Front")) || ArmName.Contains(TEXT("Interior")) || ArmName.Contains(TEXT("Cockpit"))) continue;
+		const FName Key = Arm->GetFName();
+		if (!BaseArms.Contains(Key)) BaseArms.Add(Key, FVector(Arm->TargetArmLength, Arm->SocketOffset.Z, 0.f));
+		const FVector Base = BaseArms[Key];
+		// the template's chase camera is set for its low sports car: pull back for longer cars and up for taller ones
+		Arm->TargetArmLength = float(Model ? Base.X * FMath::Clamp(Model->Length / 440.f, 1.f, 1.3f) * 1.15f : Base.X);
+		Arm->SocketOffset.Z = Model ? Base.Y + FMath::Max(0.f, Model->Height - 125.f) * 1.5 : Base.Y;
+		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: camera arm %s length %.0f -> %.0f"), *ArmName, float(Base.X), Arm->TargetArmLength);
+	}
 }
 
 void USCCarVisuals::SetHandling(const FSCVehicleDef& Car, const FSCUpgrades& Upgrades)
