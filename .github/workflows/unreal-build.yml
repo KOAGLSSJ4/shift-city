@@ -87,7 +87,7 @@ jobs:
           Remove-Item $logFile -ErrorAction SilentlyContinue
           Remove-Item "$env:GITHUB_WORKSPACE\unreal\Saved\RobotShots" -Recurse -ErrorAction SilentlyContinue
           $game = Start-Process -FilePath "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor.exe" `
-            -ArgumentList @("`"$proj`"", "/Game/ShiftCity/Maps/L_ShiftCity", "-game", "-windowed", "-ResX=1280", "-ResY=720", "-nosplash", "-unattended", "-SCShots", "-log=PlayTest.log") -PassThru
+            -ArgumentList @("`"$proj`"", "/Game/ShiftCity/Maps/L_ShiftCity", "-game", "-windowed", "-ResX=1280", "-ResY=720", "-nosplash", "-unattended", "-SCShots", "-SCCar=lux_ev", "-log=PlayTest.log") -PassThru
           $crashed = $false
           for ($i = 0; $i -lt 120; $i++) {   # up to ~2 min to load + 40 s of play
             Start-Sleep -Seconds 2

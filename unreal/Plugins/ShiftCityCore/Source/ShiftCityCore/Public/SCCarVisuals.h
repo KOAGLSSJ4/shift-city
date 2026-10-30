@@ -1,0 +1,47 @@
+// Turns the Vehicle template's car into the garage car the player picked: hides the template's body,
+// builds the Shift City design (from Data/Cars) in its place, animates its wheels from the physics wheels
+// and scales engine, brakes, grip and steering by the car's stats and upgrades.
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "SCTypes.h"
+#include "SCCarVisuals.generated.h"
+
+class APawn;
+class UPrimitiveComponent;
+class UProceduralMeshComponent;
+class USceneComponent;
+
+UCLASS()
+class SHIFTCITYCORE_API USCCarVisuals : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	USCCarVisuals();
+
+	/** Dresses Pawn as Car (adds this component the first time). Cheap to call every second: it only
+	 *  rebuilds when the car or its upgrades change. */
+	static void Apply(APawn* Pawn, const FSCVehicleDef& Car, const FSCUpgrades& Upgrades);
+
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+private:
+	void Rebuild(const FSCVehicleDef& Car);
+	void SetHandling(const FSCVehicleDef& Car, const FSCUpgrades& Upgrades);
+	void Clear();
+
+	FString AppliedKey;
+	UPROPERTY() TObjectPtr<USceneComponent> CarRoot;
+	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Pivots;   // FL FR RL RR
+	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Spinners;
+	UPROPERTY() TArray<TObjectPtr<UProceduralMeshComponent>> Meshes;
+	UPROPERTY() TArray<TObjectPtr<UPrimitiveComponent>> HiddenParts;
+	TArray<FVector> PivotRest;
+	TArray<int32> PhysicsWheel; // physics wheel index driving each visual wheel
+
+	bool bHaveBase = false;
+	float BaseTorque = 0.f, BaseDrag = 0.f;
+	TArray<float> BaseFriction, BaseSteer, BaseBrake;
+};
