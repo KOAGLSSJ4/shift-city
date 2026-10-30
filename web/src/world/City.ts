@@ -1,10 +1,10 @@
 // Procedural city built on the road grid. Geometry is merged per material to keep draw calls low.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DESTINATIONS, GRID, HALF, ISLAND_R, ONE_WAY, PITCH, ROAD_W, ROUNDABOUTS, WALK_W, roadCoord, type Destination } from '../data/world';
+import { DESTINATIONS, GRID, HALF, ISLAND_R, ONE_WAY, PITCH, RING_D, ROAD_W, ROUNDABOUTS, WALK_W, roadCoord, type Destination } from '../data/world';
 import type { Materials } from '../graphics/Materials';
 import type { GraphicsMode } from '../core/Save';
-import { isRoundabout, neighbours, nodeId, nodePos } from './RoadNetwork';
+import { RING_NODES, edgePath, isRoundabout, neighbours, nodeId, nodePos, type Pt } from './RoadNetwork';
 import { instanceProp, treeImpostors, TREE_IMPOSTORS, type Placement } from './Props';
 
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
@@ -31,6 +31,41 @@ function geom(arr: number[][]) {
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
 /** Horizontal rectangle with planar world UVs (scale = metres per texture tile). */
+/** A strip along a polyline between lateral offsets o0..o1 (right of travel is +), lying flat at height y. */
+function ribbon(out: number[][], path: Pt[], o0: number, o1: number, y: number, scale: number) {
+  let along = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i], L = Math.hypot(b.x - a.x, b.z - a.z);
+    if (L < 1e-3) continue;
+    const dx = (b.x - a.x) / L, dz = (b.z - a.z) / L, rx = -dz, rz = dx; // right of travel
+    const A0 = V(a.x + rx * o0, y, a.z + rz * o0), A1 = V(a.x + rx * o1, y, a.z + rz * o1);
+    const B0 = V(b.x + rx * o0, y, b.z + rz * o0), B1 = V(b.x + rx * o1, y, b.z + rz * o1);
+    const u0 = along / scale, u1 = (along + L) / scale, v0 = o0 / scale, v1 = o1 / scale;
+    const up = new THREE.Vector3().subVectors(B0, A0).cross(new THREE.Vector3().subVectors(A1, A0)).y > 0;
+    if (up) quad(out, A0, B0, B1, A1, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]]);
+    else quad(out, A0, A1, B1, B0, [[u0, v0], [u0, v1], [u1, v1], [u1, v0]]);
+    along += L;
+  }
+}
+/** The pieces of a polyline between `from` and `to` metres along it. */
+function slice(path: Pt[], from: number, to: number): Pt[] {
+  const out: Pt[] = [];
+  let acc = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i], L = Math.hypot(b.x - a.x, b.z - a.z);
+    const s0 = Math.max(from, acc), s1 = Math.min(to, acc + L);
+    if (s1 > s0 && L > 0) {
+      const p0 = { x: a.x + ((b.x - a.x) * (s0 - acc)) / L, z: a.z + ((b.z - a.z) * (s0 - acc)) / L };
+      const p1 = { x: a.x + ((b.x - a.x) * (s1 - acc)) / L, z: a.z + ((b.z - a.z) * (s1 - acc)) / L };
+      if (!out.length) out.push(p0);
+      out.push(p1);
+    }
+    acc += L;
+  }
+  return out;
+}
+const pathLength = (p: Pt[]) => p.reduce((a, q, i) => (i ? a + Math.hypot(q.x - p[i - 1].x, q.z - p[i - 1].z) : 0), 0);
+
 function flat(out: number[][], x0: number, z0: number, x1: number, z1: number, y: number, scale: number) {
   quad(out, V(x0, y, z1), V(x1, y, z1), V(x1, y, z0), V(x0, y, z0), [[x0 / scale, z1 / scale], [x1 / scale, z1 / scale], [x1 / scale, z0 / scale], [x0 / scale, z0 / scale]]);
 }
@@ -75,6 +110,7 @@ export class City {
   private landmarkBlocks() {
     const m = new Map<string, Destination>();
     for (const d of DESTINATIONS) {
+      if (d.edge) continue; // the airport isn't on a city block
       let bi: number, bj: number;
       if (d.axis === 'x') { bi = d.i; bj = d.side > 0 ? d.j : d.j - 1; }
       else { bi = d.side > 0 ? d.j : d.j - 1; bj = d.i; }
@@ -133,6 +169,34 @@ export class City {
           }
         }
       }
+    }
+
+    // ring road round the city and the four link roads that join it, with lane markings
+    for (let k = 0; k < 4; k++) {
+      const ring = edgePath(RING_NODES[k], RING_NODES[(k + 1) % 4]);
+      const link = edgePath(neighbours(RING_NODES[k])[2], RING_NODES[k]);
+      for (const [path, trim] of [[ring, 0], [link, hw + 1]] as const) {
+        const len = pathLength(path), body = slice(path, trim, len);
+        ribbon(road, body, -hw, hw, 0.004, 8);
+        ribbon(yellow, slice(path, trim + 4, len - 6), -0.3, -0.06, 0.024, 1);
+        ribbon(yellow, slice(path, trim + 4, len - 6), 0.06, 0.3, 0.024, 1);
+        for (const e of [-hw + 0.35, hw - 0.35]) ribbon(white, slice(path, trim + 4, len - 6), e - 0.075, e + 0.075, 0.024, 1);
+        for (let d = trim + 6; d < len - 10; d += 9) for (const e of [-3.5, 3.5]) ribbon(white, slice(path, d, d + 3), e - 0.065, e + 0.065, 0.024, 1);
+      }
+    }
+    // the airport: a glass terminal and a control tower beside the ring road's east side
+    {
+      const ax = RING_D + ROAD_W / 2, z0 = 140, z1 = 240;
+      flat(road, ax, z0, ax + 26, z1, 0.004, 8); // drop-off apron
+      flat(walk, ax + 26, z0, ax + 32, z1, 0.15, 3);
+      walls(facades[0], ax + 32, z0 + 5, ax + 62, z1 - 5, 0, 15, 0);
+      flat(roof, ax + 32, z0 + 5, ax + 62, z1 - 5, 15, 6);
+      this.blocks.push({ x0: ax + 26, z0, x1: ax + 62, z1 });
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 38, 16), M.curb);
+      tower.position.set(ax + 75, 19, z0 + 20);
+      const cab = new THREE.Mesh(new THREE.CylinderGeometry(6, 4.5, 6, 16), new THREE.MeshStandardMaterial({ color: 0x1b2a3a, metalness: 0.6, roughness: 0.15 }));
+      cab.position.set(ax + 75, 40, z0 + 20);
+      this.group.add(tower, cab);
     }
 
     // blocks: sidewalks, kerbs, buildings / parks
@@ -351,7 +415,11 @@ export class City {
     for (let placed = 0; placed < 140;) {
       const t = rand() * Math.PI * 2, r = HALF + 30 + rand() * 140;
       const x = Math.cos(t) * r, z = Math.sin(t) * r;
-      if (Math.max(Math.abs(x), Math.abs(z)) < HALF + 25) continue;
+      const m = Math.max(Math.abs(x), Math.abs(z));
+      if (m < HALF + 25) continue;
+      // keep trees off the ring road, the link roads and the airport
+      if (Math.abs(m - RING_D) < 16 || (Math.abs(x) < 14 && Math.abs(z) < RING_D) || (Math.abs(z) < 14 && Math.abs(x) < RING_D)) continue;
+      if (x > RING_D - 10 && z > 120 && z < 260) continue;
       spots.push(V(x, 0, z)); placed++;
     }
     const trunk = new THREE.CylinderGeometry(0.12, 0.2, 3, 6); trunk.translate(0, 1.5, 0);

@@ -13,7 +13,7 @@ import { VehiclePhysics, type DriveInput } from '../vehicles/VehiclePhysics';
 import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
-import { CANCEL_FEE, WAIT_GRACE, waitingFee, applySurgeZone, headsTowards, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
+import { AIRPORT_QUEUE_SECONDS, CANCEL_FEE, WAIT_GRACE, airportJob, waitingFee, applySurgeZone, headsTowards, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
 import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, complimentFor, COMPLIMENTS, type Moment } from './Missions';
 
@@ -40,6 +40,8 @@ export class CityMode {
   route: Route | null = null;
   mode: 'story' | 'free' = 'free';
   holdTime = 0;
+  /** Seconds waited in the airport queue. */
+  private airportWait = 0;
   /** Seconds to stay stopped at the target: boarding, plus any wait for a late rider at pickup. */
   get holdNeeded() { return BALANCE.boardTime + (this.job?.stage === 'pickup' ? this.job.lateBy ?? 0 : 0); }
   /** Current surge zone (free ride only), shown on the minimap. */
@@ -253,8 +255,8 @@ export class CityMode {
       }
     }
     // keep inside the world
-    ph.pos.x = THREE.MathUtils.clamp(ph.pos.x, -400, 400);
-    ph.pos.z = THREE.MathUtils.clamp(ph.pos.z, -400, 400);
+    ph.pos.x = THREE.MathUtils.clamp(ph.pos.x, -470, 470); // room for the ring road and the airport
+    ph.pos.z = THREE.MathUtils.clamp(ph.pos.z, -470, 470);
     this.bumpCooldown = Math.max(0, this.bumpCooldown - dt);
 
     this.applyRig(dt, input);
@@ -283,7 +285,23 @@ export class CityMode {
         this.ev.toast(`${pj.customer} cancelled the ride. Cancellation fee +$${CANCEL_FEE}`);
       }
     }
-    if (!this.job && this.offlineLeft <= 0 && (this.offerTimer -= dt) <= 0) this.nextOffer();
+    // airport queue (Free Ride): wait at the airport with no job and a long, well-paid ride comes up
+    const airport = DESTINATIONS.find((d) => d.edge);
+    const inQueue = this.mode === 'free' && !this.job && !!airport && this.offlineLeft <= 0 && this.save.tutorialDone
+      && Math.hypot(ph.pos.x - airport.x, ph.pos.z - airport.z) < 28 && ph.speed < 3;
+    if (inQueue) {
+      if (this.airportWait === 0) this.ev.toast(`You're in the airport queue: a long ride comes up in about ${AIRPORT_QUEUE_SECONDS} s`);
+      this.airportWait += dt;
+      if (this.airportWait >= AIRPORT_QUEUE_SECONDS) {
+        this.airportWait = 0;
+        this.job = airportJob(vehicleById(this.save.selected));
+        this.job.expires = OFFER_SECONDS;
+        this.ev.offer(this.job);
+      }
+    } else {
+      this.airportWait = 0;
+      if (!this.job && this.offlineLeft <= 0 && (this.offerTimer -= dt) <= 0) this.nextOffer();
+    }
     const t = this.target;
     if (t && this.job) {
       const d = Math.hypot(ph.pos.x - t.x, ph.pos.z - t.z);

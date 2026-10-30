@@ -18,6 +18,13 @@ export const RING_R = 5.2;    // where traffic drives around it
  * One-way streets: the road along `axis` at roadCoord(k) only carries traffic towards +axis (dir 1) or -axis (-1).
  * Chosen to avoid the roundabouts.
  */
+/**
+ * Ring road: a loop round the city RING_D from the centre (rounded corners of radius RING_CORNER), joined to the
+ * grid by short link roads from the middle of each edge.
+ */
+export const RING_D = 375;
+export const RING_CORNER = 55;
+
 export const ONE_WAY: { axis: 'x' | 'z'; k: number; dir: 1 | -1 }[] = [
   { axis: 'x', k: 4, dir: 1 },
   { axis: 'z', k: 6, dir: -1 },
@@ -30,7 +37,9 @@ export interface Destination {
   i: number;
   j: number;
   side: 1 | -1;    // which kerb the stop is on
-  landmark: 'station' | 'apartments' | 'hospital' | 'mall' | 'campus' | 'hotel' | 'market' | 'oldtown' | 'park' | 'arts';
+  landmark: 'station' | 'apartments' | 'hospital' | 'mall' | 'campus' | 'hotel' | 'market' | 'oldtown' | 'park' | 'arts' | 'airport';
+  /** Destinations off the grid (the airport on the ring road): the road edge [node a, node b] they're on. */
+  edge?: [number, number];
   x: number;
   z: number;
 }
@@ -55,7 +64,11 @@ export const DESTINATIONS: Destination[] = [
   dest('Old Town', 'z', 8, 6, -1, 'oldtown'),
   dest('South Park', 'x', 1, 9, -1, 'park'),
   dest('Arts District', 'z', 5, 5, -1, 'arts'),
+  // on the outer kerb of the ring road's east side, between the east and south link roads (ring nodes 122 → 123)
+  { name: 'Airport', axis: 'z', i: -1, j: -1, side: 1, landmark: 'airport', x: RING_D + ROAD_W / 2 - LANE_W / 2, z: 190, edge: [122, 123] },
 ];
+/** Destinations on the city grid (everything except the airport). */
+export const GRID_DESTINATIONS = () => DESTINATIONS.filter((d) => !d.edge);
 
 export const destinationByName = (n: string) => DESTINATIONS.find((d) => d.name === n)!;
 

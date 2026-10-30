@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { DRIVE_RIGHT, LANE_W, RING_R, ROAD_W } from '../data/world';
 import type { DesignBody } from '../vehicles/designs';
 import { buildTrafficCar } from '../vehicles/CarFactory';
-import { isRoundabout, neighbours, neighboursOut, nodePos, type Pt } from './RoadNetwork';
+import { edgeLength, isRingNode, isRoundabout, neighbours, neighboursOut, nodePos, pointAlong, type Pt } from './RoadNetwork';
 import { signal } from './City';
 
 interface Car {
@@ -77,7 +77,7 @@ export class Traffic {
     this.group.add(mesh);
     const cruise = 9 + this.r() * 5;
     const lane = this.r() < 0.5 ? 0 : 1;
-    const c: Car = { mesh, from, to, lane, s: HW + 4 + this.r() * 40, len: 64, speed: cruise, cruise, turn: null,
+    const c: Car = { mesh, from, to, lane, s: HW + 4 + this.r() * 40, len: edgeLength(from, to), speed: cruise, cruise, turn: null,
       pos: new THREE.Vector3(), heading: 0, length: mesh.userData.length, width: mesh.userData.width, shift: this.laneOffset(lane), stuck: 0 };
     // don't start on top of another car: try a few other spots on the network
     for (let tries = 0; tries < 30; tries++) {
@@ -86,7 +86,8 @@ export class Traffic {
       c.from = Math.floor(this.r() * 121);
       const n = neighboursOut(c.from);
       c.to = n[Math.floor(this.r() * n.length)];
-      c.s = HW + 4 + this.r() * 40;
+      c.len = edgeLength(c.from, c.to);
+      c.s = HW + 4 + this.r() * Math.min(40, c.len - 2 * HW - 10);
     }
     this.cars.push(c);
   }
@@ -94,11 +95,13 @@ export class Traffic {
   private laneOffset(lane: number) { return (DRIVE_RIGHT ? 1 : -1) * (LANE_W / 2 + lane * LANE_W); }
 
   private lanePoint(from: number, to: number, s: number, lane: number, off = this.laneOffset(lane)): Pt {
-    const a = nodePos(from), b = nodePos(to);
-    const dx = Math.sign(b.x - a.x), dz = Math.sign(b.z - a.z);
-    // right of direction (dx,dz) is (-dz, dx)
-    return { x: a.x + dx * s - dz * off, z: a.z + dz * s + dx * off };
+    // follows the road's real shape (curves on the ring road); right of direction (dx,dz) is (-dz, dx)
+    const { p, dir } = pointAlong(from, to, s);
+    return { x: p.x - dir.z * off, z: p.z + dir.x * off };
   }
+  /** Direction of travel arriving at `to` from `from`, and leaving `to` towards `next` (axis-aligned at junctions). */
+  private endDir(from: number, to: number): Pt { const d = pointAlong(from, to, edgeLength(from, to) - 0.05).dir; return { x: Math.round(d.x), z: Math.round(d.z) }; }
+  private startDir(to: number, next: number): Pt { const d = pointAlong(to, next, 0.05).dir; return { x: Math.round(d.x), z: Math.round(d.z) }; }
 
   private place(c: Car) {
     let p: Pt, dir: Pt;
@@ -112,8 +115,7 @@ export class Traffic {
       dir = { x: b.x - a.x, z: b.z - a.z };
     } else {
       p = this.lanePoint(c.from, c.to, c.s, c.lane, c.shift);
-      const a = nodePos(c.from), b = nodePos(c.to);
-      dir = { x: b.x - a.x, z: b.z - a.z };
+      dir = pointAlong(c.from, c.to, c.s).dir;
     }
     c.pos.set(p.x, 0, p.z);
     c.heading = Math.atan2(dir.x, dir.z);
@@ -124,10 +126,9 @@ export class Traffic {
   private chooseNext(c: Car): number {
     const opts = neighboursOut(c.to).filter((n) => n !== c.from);
     if (!opts.length) return c.from;
-    const a = nodePos(c.from), b = nodePos(c.to);
-    const d = { x: Math.sign(b.x - a.x), z: Math.sign(b.z - a.z) };
+    const d = this.endDir(c.from, c.to);
     const kind = (n: number) => {
-      const p = nodePos(n), e = { x: Math.sign(p.x - b.x), z: Math.sign(p.z - b.z) };
+      const e = this.startDir(c.to, n);
       const cross = d.x * e.z - d.z * e.x;
       return cross === 0 ? 'straight' : cross < 0 ? 'left' : 'right';
     };
@@ -171,9 +172,8 @@ export class Traffic {
         }
       }
       // red light: stop before the crosswalk
-      if (!c.turn && !isRoundabout(c.to)) {
-        const a = nodePos(c.from), b = nodePos(c.to);
-        const axis = Math.abs(b.x - a.x) > 0 ? 'x' : 'z';
+      if (!c.turn && !isRoundabout(c.to) && !isRingNode(c.to)) {
+        const axis = Math.abs(this.endDir(c.from, c.to).x) > 0 ? 'x' : 'z';
         const stopAt = c.len - HW - 4.5;
         const st = signal(axis, time);
         if (neighbours(c.to).length >= 3 && st !== 'green' && c.s < stopAt + 0.5) {
@@ -188,7 +188,7 @@ export class Traffic {
       if (c.turn) {
         c.turn.d += c.speed * dt;
         if (c.turn.d >= c.turn.cum[c.turn.cum.length - 1]) {
-          c.from = c.to; c.to = c.turn.next; c.s = HW + 4; c.turn = null;
+          c.from = c.to; c.to = c.turn.next; c.s = HW + 4; c.turn = null; c.len = edgeLength(c.from, c.to);
         }
       } else {
         c.s += c.speed * dt;
@@ -198,10 +198,16 @@ export class Traffic {
           const p0 = this.lanePoint(c.from, c.to, c.len - HW - 4, c.lane);
           const p2 = this.lanePoint(c.to, next, HW + 4, c.lane);
           const b = nodePos(c.to);
-          // control point: intersection of the two lane lines (or midpoint for straight)
-          const a = nodePos(c.from);
-          const inX = Math.abs(b.x - a.x) > 0;
-          const p1 = next === c.from ? { x: b.x, z: b.z } : inX === (Math.abs(nodePos(next).x - b.x) > 0) ? { x: (p0.x + p2.x) / 2, z: (p0.z + p2.z) / 2 } : inX ? { x: p2.x, z: p0.z } : { x: p0.x, z: p2.z };
+          // control point: where the two lane lines cross (midpoint going straight, the junction for a U-turn)
+          const d1 = this.endDir(c.from, c.to), d2 = this.startDir(c.to, next);
+          const crossZ = d1.x * d2.z - d1.z * d2.x;
+          let p1: Pt;
+          if (next === c.from || d1.x * d2.x + d1.z * d2.z < -0.5) p1 = { x: b.x, z: b.z };
+          else if (Math.abs(crossZ) < 0.5) p1 = { x: (p0.x + p2.x) / 2, z: (p0.z + p2.z) / 2 };
+          else {
+            const t = ((p2.x - p0.x) * d2.z - (p2.z - p0.z) * d2.x) / crossZ;
+            p1 = { x: p0.x + d1.x * t, z: p0.z + d1.z * t };
+          }
           const pts = isRoundabout(c.to) ? ringPath(b, p0, p2) : bezierPts(p0, p1, p2);
           c.turn = { pts, cum: cumulative(pts), d: 0, next, node: c.to };
         }
