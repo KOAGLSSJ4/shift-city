@@ -428,6 +428,11 @@ def make_signal_materials():
     MEL.recompile_material(lamp)
     EAL.save_loaded_asset(lamp)
     pole = make_material("M_SignalPole", tint=(0.04, 0.045, 0.05), rough_value=0.45, metal_value=0.8)
+    # the signals are instanced meshes: without this flag a standalone game draws them in the default grey
+    for m in (lamp, pole):
+        setp(m, "used_with_instanced_static_meshes", True)
+        MEL.recompile_material(m)
+        EAL.save_loaded_asset(m)
     return lamp, pole
 
 
