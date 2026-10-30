@@ -22,10 +22,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   - waiting-time fee at pickup;
   - airport queue;
   - stacked / batched food orders;
-- **Dynamic time of day + weather** (David, 2026-10-29): a "Dynamic" choice in Settings next to the fixed
-  Day/Sunset/Night and Dry/Wet/Rain. Sky moves day → sunset → night over a session; showers roll in now and
-  then, roads stay wet for a while and dry out. Fixed settings stay for players who prefer one look. Ideas: rain
-  surge pricing, more food orders at night. Unreal needs time of day + weather first (see port list).
+- Dynamic time/weather in Unreal (needs Unreal time of day + weather first, see port list).
 - **More complicated roads** (David, 2026-10-28). Part 1+2 built on branch `feature/roads` (not live until David
   says): four mini roundabouts (islands, traffic circles them and gives way, GPS "take the 2nd exit") and two
   one-way streets (arrows, traffic + GPS obey them). Still to do: curves, a ring road/highway, bridges,
@@ -56,6 +53,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-30: "Dynamic" time of day + weather in Settings (web): day → golden hour → night → dawn over ~15 min,
+  showers in about a third of 10-min slots then wet roads, rides pay 20% more in the rain, a note on each change.
 - 2026-10-30: surge zone obvious on the minimap: stronger orange patch, pulsing outline, "SURGE ×1.6" label,
   and a "×1.6" chip on the rim pointing to it when it's off the map.
 - 2026-10-29: driver app merged: 15 s offers, acceptance rate, offline after 3 declines, Blue/Gold/Platinum/Diamond tiers.

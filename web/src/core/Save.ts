@@ -14,6 +14,8 @@ export interface Settings {
   graphics: GraphicsMode; camera: CameraView; audio: boolean;
   volume: { master: number; engine: number; sfx: number; music: number };
   time: TimeOfDay; weather: Weather; showFps: boolean;
+  /** "Dynamic": time of day / weather change by themselves while you drive (DayCycle). */
+  autoTime: boolean; autoWeather: boolean;
   station: StationId;
 }
 export type CameraView = 'cockpit' | 'chase' | 'top';
@@ -55,7 +57,7 @@ export function defaultSave(): SaveData {
     story: { chapter: 0 },
     stats: { trips: 0, earned: 0, km: 0, food: 0, nearMisses: 0, rating: 4.9, ratings: 1 },
     paidJobs: [], claimedGoals: [], tutorialDone: false,
-    settings: { graphics: 'photoreal', camera: 'chase', audio: true, volume: { master: 0.8, engine: 0.7, sfx: 0.8, music: 0.6 }, time: 'day', weather: 'dry', showFps: false, station: 'drive' },
+    settings: { graphics: 'photoreal', camera: 'chase', audio: true, volume: { master: 0.8, engine: 0.7, sfx: 0.8, music: 0.6 }, time: 'day', weather: 'dry', showFps: false, autoTime: false, autoWeather: false, station: 'drive' },
   };
 }
 

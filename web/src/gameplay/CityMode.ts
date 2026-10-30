@@ -1,3 +1,4 @@
+import { RAIN_FARE_BONUS } from './DayCycle';
 import type { StationId } from '../data/radio';
 // Story / Free Ride: the player drives the city, takes jobs, follows GPS and earns money.
 import * as THREE from 'three';
@@ -160,6 +161,8 @@ export class CityMode {
       const want = this.save.driver.filter ? DESTINATIONS.find((d) => d.name === this.save.driver.filter) : undefined;
       for (let i = 0; want && i < 6 && !headsTowards(this.job, want); i++) this.job = randomJob(def, this.physics.pos, driverTier(this.save).premiumBoost);
       if (z) applySurgeZone(this.job, z);
+      // rides pay more in the rain
+      if (this.save.settings.weather === 'rain') this.job.fare = Math.round(this.job.fare * RAIN_FARE_BONUS * 100) / 100;
       // like the real app: accept within 15 s or it goes to someone else (not while learning in the tutorial)
       if (this.save.tutorialDone) this.job.expires = OFFER_SECONDS;
     }
