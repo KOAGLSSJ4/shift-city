@@ -47,10 +47,13 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   are rounded Slate panels like the menu. Still to do:
   - animations: cards slide/fade in, money counts up when paid.
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
-- Garage + goals + settings screens: built on branch `feature/unreal-screens`, waiting for a robot build.
+- **More cars in Unreal** (David, 2026-10-30): the garage lists 8 cars but they all drive the same template
+  car. Build each one as its own model (port the web's original designs) and make them handle differently.
 
 ## Done
 
+- 2026-10-30: Merged to `main`: Unreal Garage/Goals/Settings screens (robot-tested), Story v1.1 "The Week",
+  roundabouts + one-way streets + ring road + airport queue.
 - 2026-10-30: Shift Classic cockpit: full-width dashboard that hides the bonnet, screens raised, dark windscreen
   pillars and headliner (it showed bright body paint everywhere before).
 - 2026-10-30: Unreal HUD part 2a: our own Slate speedometer (km/h + D/R/N; the template's widget is hidden),
