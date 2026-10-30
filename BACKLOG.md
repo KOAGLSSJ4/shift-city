@@ -55,6 +55,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-30: Time of day + weather are always dynamic in the city (no player setting); Arcade Rush is always a
+  dry day.
 - 2026-10-30: Realism pass: Unreal photo look (TSR anti-aliasing, sharpen, Lumen reflection/GI quality, bloom,
   vignette, AO); every car gets wheel nuts + centre caps, "SHIFT CITY" tyre lettering, wipers, exhaust tips (everyday
   cars), side repeaters, rear badge, "SC 207" plates, chrome-reflector headlights; Unreal brake lights glow when braking.

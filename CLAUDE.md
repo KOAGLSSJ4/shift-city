@@ -71,7 +71,7 @@ passengers/pedestrians. (Car designs ported 2026-10-30: `SCCarVisuals.*` + `Data
     (`edgePath`/`pointAlong`/`edgeLength` in RoadNetwork.ts); ring nodes are ids 121-124. Airport is kept out of
     the Unreal data export (`GRID_DESTINATIONS`). Web only so far.
   - `feature/unreal-screens`: Unreal Garage/Goals/Settings (Slate list screens), robot shot 2 = Garage screen.
-- Live since 2026-10-30: dynamic time/weather (Settings "Dynamic", `gameplay/DayCycle.ts`), waiting-time fee,
+- Live since 2026-10-30: dynamic time/weather, always on in the city (no setting; Arcade = dry day), `gameplay/DayCycle.ts`, waiting-time fee,
   stacked food orders, surge chip on the minimap, Shift Classic cockpit dash.
 - Arcade rate stays 100 points = $8 (David still deciding if it's too generous).
 - Pushing to `main` deploys to the live site: David approved merges/pushes for backlog work on 2026-10-29.

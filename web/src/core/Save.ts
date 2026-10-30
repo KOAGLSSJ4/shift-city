@@ -61,7 +61,7 @@ export function defaultSave(): SaveData {
     story: { chapter: 0 },
     stats: { trips: 0, earned: 0, km: 0, food: 0, nearMisses: 0, rating: 4.9, ratings: 1 },
     paidJobs: [], claimedGoals: [], tutorialDone: false,
-    settings: { graphics: 'photoreal', camera: 'chase', audio: true, volume: { master: 0.8, engine: 0.7, sfx: 0.8, music: 0.6 }, time: 'day', weather: 'dry', showFps: false, autoTime: false, autoWeather: false, station: 'drive' },
+    settings: { graphics: 'photoreal', camera: 'chase', audio: true, volume: { master: 0.8, engine: 0.7, sfx: 0.8, music: 0.6 }, time: 'day', weather: 'dry', showFps: false, autoTime: true, autoWeather: true, station: 'drive' },
   };
 }
 
@@ -114,6 +114,8 @@ export function normalize(raw: any): SaveData {
   if (!['rendered', 'photoreal', 'hyper'].includes(s.settings.graphics)) s.settings.graphics = 'photoreal';
   if (!['day', 'sunset', 'night'].includes(s.settings.time)) s.settings.time = 'day';
   if (!['dry', 'wet', 'rain'].includes(s.settings.weather)) s.settings.weather = 'dry';
+  // time of day and weather are always dynamic in the city (David, 2026-10-30): no player setting any more
+  s.settings.autoTime = s.settings.autoWeather = true;
   if (!STATIONS.some((x) => x.id === s.settings.station)) s.settings.station = 'drive';
   for (const k of ['master', 'engine', 'sfx', 'music'] as const) s.settings.volume[k] = Math.min(1, Math.max(0, num(s.settings.volume[k], k === 'music' ? 0.6 : 0.8)));
   s.owned = Array.isArray(s.owned) ? s.owned.filter((id) => VEHICLES.some((v) => v.id === id)) : ['classic'];

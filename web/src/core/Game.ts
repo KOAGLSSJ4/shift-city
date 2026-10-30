@@ -211,6 +211,9 @@ export class Game {
     if (this.sessionMode !== mode || !this.cityMode.job) { this.cityMode.start(mode); this.renderJob(null); }
     this.sessionMode = mode;
     this.state = 'city';
+    // the city's time and weather always follow the day cycle (back from Arcade's fixed day straight away)
+    const time = timeAt(this.envClock), weather = weatherAt(this.envClock, this.envSeed);
+    if (time !== this.save.settings.time || weather !== this.save.settings.weather) this.applyGraphics(undefined, time, weather);
     document.body.classList.add('playing');
     this.audio.music('city');
     this.cam.cut();
@@ -308,6 +311,8 @@ export class Game {
     this.arcade.powerLevels = { ...this.save.arcade.powers };
     this.arcade.start(this.rig, vehicleById(this.save.selected));
     this.state = 'arcade';
+    // Arcade Rush is always a dry day run
+    if (this.save.settings.time !== 'day' || this.save.settings.weather !== 'dry') this.applyGraphics(undefined, 'day', 'dry');
     document.body.classList.add('playing');
     this.audio.music('arcade');
     this.cam.cut();
@@ -1081,8 +1086,6 @@ export class Game {
       $(`vol-${k}-v`).textContent = st.audio ? `${Math.round(st.volume[k] * 100)}` : 'off';
     }
     $('s-mute').textContent = st.audio ? 'Mute all' : 'Unmute';
-    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.classList.toggle('on', st.autoTime ? b.dataset.time === 'auto' : b.dataset.time === st.time));
-    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.classList.toggle('on', st.autoWeather ? b.dataset.weather === 'auto' : b.dataset.weather === st.weather));
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.classList.toggle('on', b.dataset.gfx === st.graphics));
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === st.camera));
     $<HTMLInputElement>('s-fps').checked = st.showFps;
@@ -1120,16 +1123,6 @@ export class Game {
     on('menu-credits', () => { this.closeModals(); $('credits').hidden = false; });
     on('c-close', () => this.closeModals());
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(b.dataset.gfx as GraphicsMode)));
-    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.addEventListener('click', () => {
-      const auto = b.dataset.time === 'auto';
-      this.save.settings.autoTime = auto;
-      this.applyGraphics(undefined, auto ? timeAt(this.envClock) : b.dataset.time as TimeOfDay);
-    }));
-    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.addEventListener('click', () => {
-      const auto = b.dataset.weather === 'auto';
-      this.save.settings.autoWeather = auto;
-      this.applyGraphics(undefined, undefined, auto ? weatherAt(this.envClock, this.envSeed) : b.dataset.weather as Weather);
-    }));
     for (const k of ['master', 'music', 'engine', 'sfx'] as const) {
       const el = $<HTMLInputElement>(`vol-${k}`);
       el.addEventListener('input', () => {
