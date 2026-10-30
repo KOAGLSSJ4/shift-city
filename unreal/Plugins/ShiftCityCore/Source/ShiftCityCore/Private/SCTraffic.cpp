@@ -32,7 +32,7 @@ namespace
 	constexpr float SignalCycle = 22.f;
 	// everyday cars most of the time, the odd supercar; colours of real city traffic
 	const TCHAR* const TrafficBodies[] = { TEXT("hatch"), TEXT("sedan"), TEXT("suv"), TEXT("classic"), TEXT("hatch"), TEXT("sedan"), TEXT("gt"),
-		TEXT("suv"), TEXT("royal"), TEXT("classic"), TEXT("sedan"), TEXT("super"), TEXT("hatch"), TEXT("hybrid"), TEXT("gtv12"), TEXT("hyper") };
+		TEXT("suv"), TEXT("royal"), TEXT("classic"), TEXT("sedan"), TEXT("sedan"), TEXT("hatch"), TEXT("hybrid"), TEXT("gtv12"), TEXT("hyper") };
 	const TCHAR* const TrafficColours[] = { TEXT("#e8e8e6"), TEXT("#141518"), TEXT("#9ca1a7"), TEXT("#5b6168"), TEXT("#1f3a64"), TEXT("#8c1c1c"),
 		TEXT("#e8e8e6"), TEXT("#2b2d31"), TEXT("#c9c3b6"), TEXT("#2f5d46"), TEXT("#b8bcc2"), TEXT("#d9a21b"), TEXT("#3d6fb6") };
 }

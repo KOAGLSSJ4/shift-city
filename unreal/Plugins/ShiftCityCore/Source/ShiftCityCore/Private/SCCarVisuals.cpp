@@ -248,6 +248,12 @@ void USCCarVisuals::Clear()
 void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 {
 	Clear();
+	// the Vehicle template's own sports car stays in the game as the Furia V12 (David's pick, 2026-10-30)
+	if (Car.Id == TEXT("apex_v12"))
+	{
+		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (the template sports car)"), *Car.Name);
+		return;
+	}
 	APawn* Pawn = Cast<APawn>(GetOwner());
 	const FSCCarModel* Model = SCCars::Get(Car.Body, true);
 	USkeletalMeshComponent* Sk = Pawn ? Pawn->FindComponentByClass<USkeletalMeshComponent>() : nullptr;
