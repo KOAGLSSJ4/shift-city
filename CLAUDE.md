@@ -69,8 +69,7 @@ passengers/pedestrians → port the web's original car designs.
   - `feature/roads`: roundabouts, one-way streets, ring road + airport + airport queue. Roads are now paths
     (`edgePath`/`pointAlong`/`edgeLength` in RoadNetwork.ts); ring nodes are ids 121-124. Airport is kept out of
     the Unreal data export (`GRID_DESTINATIONS`). Web only so far.
-  - `feature/unreal-screens`: Unreal Garage/Goals/Settings (Slate list screens). NOT robot-built yet: run the
-    build robot on the branch (Actions → Unreal build → Run workflow → branch) before merging.
+  - `feature/unreal-screens`: Unreal Garage/Goals/Settings (Slate list screens). Robot-tested OK 2026-10-30 (shot 2 = Garage screen).
 - Live since 2026-10-30: dynamic time/weather (Settings "Dynamic", `gameplay/DayCycle.ts`), waiting-time fee,
   stacked food orders, surge chip on the minimap, Shift Classic cockpit dash.
 - Arcade rate stays 100 points = $8 (David still deciding if it's too generous).
