@@ -472,15 +472,20 @@ void ASCHUD::DrawHUD()
 	APawn* Pawn = PC ? PC->GetPawn() : nullptr;
 	// build robot: with -SCShots on the command line, save a few screenshots so visuals can be checked remotely
 	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
-	if (bRobotShots && RobotShot < 3 && GetWorld() && GetWorld()->GetTimeSeconds() > 12.f + RobotShot * 10.f)
+	// shots: 1 = main menu, 2 = garage screen, 3 = gameplay with GPS, 4 = traffic car close-up
+	static const float RobotShotTimes[] = { 12.f, 17.f, 25.f, 33.f };
+	const float RobotNow = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	if (bRobotShots && RobotShot < 4 && RobotNow > RobotShotTimes[RobotShot])
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
-	// the robot can't click: leave the menu up for the first screenshot, then start Free Ride
-	if (bRobotShots && MenuWidget.IsValid() && RobotShot >= 1 && GetWorld()->GetTimeSeconds() > 15.f) OnMenuChoice(uint8(SCMenu::EChoice::FreeRide));
+	// the robot can't click: open the garage after the first screenshot, then start Free Ride after the second
+	if (bRobotShots && MenuWidget.IsValid() && RobotShot == 1 && CurrentScreen != uint8(SCMenu::EChoice::Garage) && RobotNow > 13.f)
+		OnMenuChoice(uint8(SCMenu::EChoice::Garage));
+	if (bRobotShots && MenuWidget.IsValid() && RobotShot >= 2 && RobotNow > 18.f) OnMenuChoice(uint8(SCMenu::EChoice::FreeRide));
 	// ...and accept the first request so the GPS banner shows in the next screenshot
-	if (bRobotShots && !MenuWidget.IsValid() && RobotShot == 1 && GetWorld()->GetTimeSeconds() > 19.f)
+	if (bRobotShots && !MenuWidget.IsValid() && RobotShot == 2 && RobotNow > 21.f)
 		if (ASCJobDirector* RobotD = Director.Get()) if (RobotD->HasJob() && RobotD->GetJob().Stage == ESCJobStage::Offer) RobotD->Accept();
-	// after the second shot, follow traffic car 0 so the last shot shows whether traffic renders
-	if (bRobotShots && RobotShot >= 2 && PC && GetWorld())
+	// after the third shot, follow traffic car 0 so the last shot shows whether traffic renders
+	if (bRobotShots && RobotShot >= 3 && PC && GetWorld())
 	{
 		TActorIterator<ASCTraffic> It(GetWorld());
 		TArray<FVector> CarPos;

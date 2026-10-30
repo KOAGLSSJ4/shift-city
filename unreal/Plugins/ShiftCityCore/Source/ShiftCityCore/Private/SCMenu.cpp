@@ -85,7 +85,7 @@ TSharedRef<SWidget> SCMenu::MakeMainMenu(const FMenuInfo& Info, TFunction<void(E
 		]
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
 		[
-			SNew(SBox).WidthOverride(520.f)
+			SNew(SBox).WidthOverride(600.f)
 			[
 				SNew(SBorder).BorderImage(PanelBrush()).Padding(FMargin(40.f, 32.f))
 				[
@@ -107,9 +107,9 @@ TSharedRef<SWidget> SCMenu::MakeMainMenu(const FMenuInfo& Info, TFunction<void(E
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
 					[
 						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 5.f, 0.f)[ MakeButton(EChoice::Garage, TEXT("Garage"), TEXT("Cars + upgrades"), false, true) ]
-						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(5.f, 0.f, 5.f, 0.f)[ MakeButton(EChoice::Goals, TEXT("Goals"), TEXT("Claim rewards"), false, true) ]
-						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(5.f, 0.f, 0.f, 0.f)[ MakeButton(EChoice::Settings, TEXT("Settings"), TEXT("Sound, graphics"), false, true) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 5.f, 0.f)[ MakeButton(EChoice::Garage, TEXT("Garage"), TEXT("Buy + tune"), false, true) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(5.f, 0.f, 5.f, 0.f)[ MakeButton(EChoice::Goals, TEXT("Goals"), TEXT("Rewards"), false, true) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(5.f, 0.f, 0.f, 0.f)[ MakeButton(EChoice::Settings, TEXT("Settings"), TEXT("Sound + video"), false, true) ]
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 18.f)
 					[ MakeButton(EChoice::Quit, TEXT("Quit"), TEXT("See you next shift"), false, true) ]
