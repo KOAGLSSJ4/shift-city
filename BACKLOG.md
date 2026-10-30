@@ -46,8 +46,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Highways** (David, 2026-10-30, for later; web + Unreal): multi-lane highway with on/off ramps, a bridge or
   flyover over the streets, faster traffic and merging, GPS routing onto it. Do after the street port.
 - **Port the complex streets** (roundabouts, one-way, ring road, airport + queue) from web to Unreal.
-- **One game, two editions** (David, 2026-10-30): web = Lite graphics, Unreal PC download = Ultra graphics, same
-  game. Needs a shared account/cloud save so progress follows the player between them.
+- **One game, two editions** (David, 2026-10-30: NOT yet, only once it's on Steam): web = Lite graphics, Unreal PC
+  download = Ultra graphics, same game, shared account/cloud save.
 - **HUD design pass, part 2** (David, 2026-10-28). Done: money/level panel, job card, story card and toasts
   are rounded Slate panels like the menu. Still to do:
   - animations: cards slide/fade in, money counts up when paid.
@@ -56,7 +56,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 ## Done
 
 - 2026-10-30: Car detail pass: door/bonnet/tailgate shut lines and fuel flaps on every car, tyre tread grooves,
-  projector/LED headlights on the Kite Pico and Lumen, clean lower intakes; Unreal paint gets a metallic flake.
+  projector/LED headlights on the Kite Pico and Lumen, clean lower intakes, pristine gloss paint (no flake, David's call).
 - 2026-10-30: Unreal trees have leaves in the game (material usage flags), traffic lights keep their colours, no
   flickering inner lining on the cars, glossier paint, chase camera set per car.
 - 2026-10-30: Unreal garage cars are our designs (body, wheels, handling per car + upgrades), traffic too; the

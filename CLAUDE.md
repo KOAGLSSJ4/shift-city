@@ -100,7 +100,7 @@ passengers/pedestrians. (Car designs ported 2026-10-30: `SCCarVisuals.*` + `Data
 - One monorepo (`web/` + `unreal/`), David's call. Push to `main` (he pulls with GitHub Desktop).
 - Traffic dots hidden on the minimap (clean GPS look).
 - Assets: Poly Haven CC0 first. No NonCommercial assets. Cars: keep our own designs (David, 2026-10-30: no Sketchfab);
-  real models only if they ever look bad.
+  real models only if they ever look bad. Look: pristine, picture-like realism (no paint flake, no wear).
 - Cars are original procedural designs (web `src/vehicles/designs.ts`, lofted bodies in `CarBody.ts`, preview at
   `web/dev/cars.html`). The Ferrari placeholder is gone; vehicle ids stay stable for saves.
   2026-10-30: Classic (now lofted, round lamps), Kite Pico and Lumen reshaped; David happy, leave them be. In Unreal

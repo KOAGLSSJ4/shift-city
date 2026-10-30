@@ -68,8 +68,8 @@ export function makeHeadlights(width: number, y: number, front: number) {
 
 export function makePaint(color: number, photoreal: boolean) {
   return new THREE.MeshPhysicalMaterial({
-    color, metalness: 0.55, roughness: 0.32,
-    clearcoat: photoreal ? 1 : 0.4, clearcoatRoughness: 0.04,
+    color, metalness: 0.45, roughness: 0.22, // pristine showroom paint
+    clearcoat: photoreal ? 1 : 0.5, clearcoatRoughness: 0.02,
   });
 }
 

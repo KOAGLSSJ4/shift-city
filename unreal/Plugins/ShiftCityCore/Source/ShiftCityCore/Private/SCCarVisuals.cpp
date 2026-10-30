@@ -202,7 +202,7 @@ UProceduralMeshComponent* SCCars::Build(const FSCCarModel& Model, uint32 Part, U
 			UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Base, Mesh);
 			Mid->SetVectorParameterValue(TEXT("Color"), (S.Flags & Paint) ? PaintColor : S.Color);
 			Mid->SetScalarParameterValue(TEXT("Metallic"), S.Metallic);
-			Mid->SetScalarParameterValue(TEXT("Roughness"), (S.Flags & Paint) ? FMath::Min(S.Roughness, 0.18f) : S.Roughness); // glossy paint under the clear coat
+			Mid->SetScalarParameterValue(TEXT("Roughness"), (S.Flags & Paint) ? FMath::Min(S.Roughness, 0.1f) : S.Roughness); // pristine, showroom-gloss paint under the clear coat
 			Mid->SetScalarParameterValue(TEXT("ClearCoat"), (S.Flags & Paint) ? 1.f : S.ClearCoat);
 			Mid->SetScalarParameterValue(TEXT("Opacity"), S.Opacity);
 			Mid->SetVectorParameterValue(TEXT("Emissive"), S.Emissive);
