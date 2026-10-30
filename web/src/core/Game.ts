@@ -530,7 +530,7 @@ export class Game {
       tag.textContent = (job.chapter !== null ? STORY[job.chapter].title + ' · ' : 'NEW ') + kind;
       title.textContent = job.food ? `${job.restaurant} → ${job.b.name}` : `${job.customer}`;
       const who = job.persona ? ` · ${PERSONAS[job.persona].label}` : '';
-      det.innerHTML = `Pickup: <b>${job.food ? job.restaurant + ' @ ' : ''}${job.a.name}</b><br>Drop-off: <b>${job.b.name}</b><br>~${(this.estimateDistance(job) / 1000).toFixed(1)} km${who}${v.blurb ? `<br><span class="hint">${v.blurb}${job.limit ? ` (${job.limit}s)` : ''}</span>` : ''}`;
+      det.innerHTML = `Pickup: <b>${job.food ? job.restaurant + ' @ ' : ''}${job.a.name}</b><br>Drop-off: <b>${job.b.name}</b>${job.extraDrop ? ` then <b>${job.extraDrop.name}</b> <span class="hint">(2 orders)</span>` : ''}<br>~${(this.estimateDistance(job) / 1000).toFixed(1)} km${who}${v.blurb ? `<br><span class="hint">${v.blurb}${job.limit ? ` (${job.limit}s)` : ''}</span>` : ''}`;
       fare.textContent = money(Math.round(job.fare * def.fare * 100) / 100);
       btns.hidden = false;
       $<HTMLButtonElement>('decline').disabled = job.chapter !== null;

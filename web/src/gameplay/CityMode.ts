@@ -361,6 +361,14 @@ export class CityMode {
       this.showMarker(job.b, false);
       this.ev.stage(job);
       this.computeRoute();
+    } else if (job.stage === 'dropoff' && job.extraDrop) {
+      // stacked order: first bag delivered, on to the second drop-off (paid together at the end)
+      this.ev.toast(`Order 1 of 2 delivered at ${job.b.name}. Next: ${job.extraDrop.name}`);
+      job.b = job.extraDrop;
+      job.extraDrop = undefined;
+      this.showMarker(job.b, false);
+      this.ev.stage(job);
+      this.computeRoute();
     } else if (job.stage === 'dropoff') {
       job.stage = 'done';
       this.marker.visible = false;

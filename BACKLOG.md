@@ -19,8 +19,7 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
-  - airport queue;
-  - stacked / batched food orders;
+  - airport queue (needs an airport destination on the map first; could come with the ring road/highway);
 - Dynamic time/weather in Unreal (needs Unreal time of day + weather first, see port list).
 - **More complicated roads** (David, 2026-10-28). Part 1+2 built on branch `feature/roads` (not live until David
   says): four mini roundabouts (islands, traffic circles them and gives way, GPS "take the 2nd exit") and two
@@ -52,6 +51,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-30: stacked food orders: about 1 in 5 standard deliveries has a second drop-off nearby (shown on the
+  offer, paid together at the end).
 - 2026-10-30: waiting-time fee: 1 in 4 riders/kitchens keep you waiting 8-30 s at pickup; after 8 s you earn
   $0.20/s, shown live on the boarding ring and paid at drop-off.
 - 2026-10-30: "Dynamic" time of day + weather in Settings (web): day → golden hour → night → dawn over ~15 min,

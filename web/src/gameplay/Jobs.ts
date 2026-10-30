@@ -32,6 +32,8 @@ export interface Job {
   warned?: boolean;
   /** Seconds the rider (or the kitchen) keeps you waiting at pickup; paid after a short grace period. */
   lateBy?: number;
+  /** Stacked food order: a second drop-off after `b` (the fare already includes it). */
+  extraDrop?: Destination;
   /** Time the passenger/order came on board (CityMode clock). */
   pickedAt?: number;
   log: RideLog;
@@ -66,7 +68,13 @@ export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }, 
   while (b === a) b = pick(DESTINATIONS);
   // long haul: the farthest destination from the pickup
   if (variant === 'long') b = [...DESTINATIONS].sort((p, q) => dist(a, q) - dist(a, p))[0];
-  const d = dist(a, b);
+  // stacked order: some deliveries come with a second drop-off near the first
+  let extraDrop: Destination | undefined;
+  if (food && variant === 'standard' && Math.random() < 0.22) {
+    const near = DESTINATIONS.filter((x) => x !== a && x !== b).sort((p, q) => dist(b, p) - dist(b, q));
+    extraDrop = near[Math.floor(Math.random() * Math.min(3, near.length))];
+  }
+  const d = dist(a, b) + (extraDrop ? dist(b, extraDrop) * 0.85 : 0);
   const surge = variant === 'surge' ? rollSurge() : undefined;
   let fare = jobFare(d, vehicle, premium) + Math.round(Math.random() * 500) / 100;
   if (surge) fare *= surge;
@@ -81,6 +89,7 @@ export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }, 
     limit: variant === 'express' || variant === 'hot' ? timeLimit(d) : undefined,
     log: newLog(),
     // sometimes the rider is still on their way out, or the kitchen is finishing the order
+    extraDrop,
     lateBy: Math.random() < 0.25 ? Math.round((food ? 8 : 12) + Math.random() * (food ? 12 : 18)) : undefined,
   };
 }
