@@ -98,9 +98,12 @@ passengers/pedestrians → port the web's original car designs.
 ## Decisions
 - One monorepo (`web/` + `unreal/`), David's call. Push to `main` (he pulls with GitHub Desktop).
 - Traffic dots hidden on the minimap (clean GPS look).
-- Assets: Poly Haven CC0 first; Sketchfab CC-BY cars later (credit screen). No NonCommercial assets.
+- Assets: Poly Haven CC0 first. No NonCommercial assets. Cars: keep our own designs (David, 2026-10-30: no Sketchfab);
+  real models only if they ever look bad.
 - Cars are original procedural designs (web `src/vehicles/designs.ts`, lofted bodies in `CarBody.ts`, preview at
   `web/dev/cars.html`). The Ferrari placeholder is gone; vehicle ids stay stable for saves.
+  2026-10-30: Classic (now lofted, round lamps), Kite Pico and Lumen reshaped; David happy, leave them be. In Unreal
+  the Vehicle template's sports car is the Furia V12 (David likes it); every other car + traffic = our designs.
 - Ship the web version first (Vercel site + itch.io + CrazyGames; Poki undecided), Unreal continues in parallel.
 - Story v1.1 (after launch): FT "Uber Game"-style week (comic-panel cutscenes, evening choices, stats that
   change the driving, several endings). Tone: upbeat with real stakes, more good endings than bad, no
