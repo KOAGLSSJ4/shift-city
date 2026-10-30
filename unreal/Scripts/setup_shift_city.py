@@ -342,6 +342,24 @@ def fix_foliage(asset_id, files, meshes):
         unreal.log_warning("[ShiftCity] leaf fix failed for %s: %s" % (asset_id, e))
 
 
+def set_prop_usage(meshes):
+    """The city draws props as Nanite instanced meshes. In the editor Unreal sets those material usage flags by
+    itself, but a standalone game (and the build robot) swaps in the blank default material instead: bare trees."""
+    done = set()
+    for mesh in meshes:
+        for slot in mesh.get_editor_property("static_materials"):
+            mi = slot.get_editor_property("material_interface")
+            base = mi.get_base_material() if mi else None
+            if not base or base.get_path_name() in done:
+                continue
+            done.add(base.get_path_name())
+            setp(base, "used_with_nanite", True)
+            setp(base, "used_with_instanced_static_meshes", True)
+            MEL.recompile_material(base)
+            EAL.save_loaded_asset(base)
+    log("usage flags set on %d prop material(s)" % len(done))
+
+
 def polyhaven_mesh(asset_id):
     """Downloads a Poly Haven model (1k textures), imports it and returns all its static meshes (Nanite on)."""
     try:
@@ -374,6 +392,10 @@ def polyhaven_mesh(asset_id):
                 log("Nanite not enabled for %s (%s)" % (asset_id, e))
             EAL.save_loaded_asset(mesh)
         fix_foliage(asset_id, files, meshes)
+        try:
+            set_prop_usage(meshes)
+        except Exception as e:
+            unreal.log_warning("[ShiftCity] usage flags not set for %s: %s" % (asset_id, e))
         log("imported %s (%d mesh parts)" % (asset_id, len(meshes)))
         return meshes
     except Exception as e:

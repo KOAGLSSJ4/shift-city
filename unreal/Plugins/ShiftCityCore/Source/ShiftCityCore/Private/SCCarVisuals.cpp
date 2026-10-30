@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Dom/JsonObject.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Interfaces/IPluginManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -137,6 +138,9 @@ namespace
 			UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] cars: %s is damaged"), *File);
 			return nullptr;
 		}
+		float Top = 0.f;
+		for (const FSCCarSection& Sec : Model->Sections) if (Sec.Part == 0) for (const FVector& P : Sec.Positions) Top = FMath::Max(Top, float(P.Z));
+		Model->Height = Top;
 		return Model;
 	}
 
@@ -198,7 +202,7 @@ UProceduralMeshComponent* SCCars::Build(const FSCCarModel& Model, uint32 Part, U
 			UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Base, Mesh);
 			Mid->SetVectorParameterValue(TEXT("Color"), (S.Flags & Paint) ? PaintColor : S.Color);
 			Mid->SetScalarParameterValue(TEXT("Metallic"), S.Metallic);
-			Mid->SetScalarParameterValue(TEXT("Roughness"), S.Roughness);
+			Mid->SetScalarParameterValue(TEXT("Roughness"), (S.Flags & Paint) ? FMath::Min(S.Roughness, 0.18f) : S.Roughness); // glossy paint under the clear coat
 			Mid->SetScalarParameterValue(TEXT("ClearCoat"), (S.Flags & Paint) ? 1.f : S.ClearCoat);
 			Mid->SetScalarParameterValue(TEXT("Opacity"), S.Opacity);
 			Mid->SetVectorParameterValue(TEXT("Emissive"), S.Emissive);
@@ -251,6 +255,7 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 	// the Vehicle template's own sports car stays in the game as the Furia V12 (David's pick, 2026-10-30)
 	if (Car.Id == TEXT("apex_v12"))
 	{
+		SetCameraFor(nullptr);
 		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (the template sports car)"), *Car.Name);
 		return;
 	}
@@ -318,7 +323,19 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 		Spinners.Add(Spinner);
 		Meshes.Add(WheelMesh);
 	}
+	SetCameraFor(Model);
 	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (%s), physics wheel radius %.0f, %d template parts hidden"), *Car.Name, *Car.Body, Radius, HiddenParts.Num());
+}
+
+void USCCarVisuals::SetCameraFor(const FSCCarModel* Model)
+{
+	APawn* Pawn = Cast<APawn>(GetOwner());
+	USpringArmComponent* Arm = Pawn ? Pawn->FindComponentByClass<USpringArmComponent>() : nullptr;
+	if (!Arm) return;
+	if (BaseArmLength < 0.f) { BaseArmLength = Arm->TargetArmLength; BaseSocketZ = Arm->SocketOffset.Z; }
+	// the template's chase camera is set for its low sports car: pull back for longer cars and up for taller ones
+	Arm->TargetArmLength = Model ? BaseArmLength * FMath::Clamp(Model->Length / 440.f, 1.f, 1.3f) * 1.12f : BaseArmLength;
+	Arm->SocketOffset.Z = Model ? BaseSocketZ + FMath::Max(0.f, Model->Height - 125.f) * 1.5f : BaseSocketZ;
 }
 
 void USCCarVisuals::SetHandling(const FSCVehicleDef& Car, const FSCUpgrades& Upgrades)

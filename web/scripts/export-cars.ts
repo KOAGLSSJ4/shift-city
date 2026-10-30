@@ -65,6 +65,9 @@ function exportBody(body: BodyType, color: number, detail: boolean) {
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh) return;
     for (let a = mesh.parent; a; a = a.parent) if (pivots.has(a)) return; // wheels are exported once below
+    // the inside lining of the roof and pillars sits exactly on the paint: Unreal's two-sided car material would
+    // show both and they flicker through each other (no cockpit camera in Unreal yet, so it isn't needed)
+    if ((mesh.material as THREE.Material).side === THREE.BackSide) return;
     addMesh(sections, 0, mesh, identity);
   });
   // one wheel (front left in three = front left in Unreal), in its own space

@@ -23,7 +23,7 @@ struct FSCCarModel
 {
 	TArray<FSCCarSection> Sections;
 	// centimetres; the body is centred between the axles with the ground at Z 0
-	float WheelBase = 260.f, Track = 150.f, WheelRadius = 33.f, Length = 450.f;
+	float WheelBase = 260.f, Track = 150.f, WheelRadius = 33.f, Length = 450.f, Height = 145.f;
 };
 
 namespace SCCars

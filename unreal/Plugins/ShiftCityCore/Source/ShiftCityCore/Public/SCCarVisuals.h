@@ -8,6 +8,7 @@
 #include "SCTypes.h"
 #include "SCCarVisuals.generated.h"
 
+struct FSCCarModel;
 class APawn;
 class UPrimitiveComponent;
 class UProceduralMeshComponent;
@@ -31,6 +32,7 @@ private:
 	void Rebuild(const FSCVehicleDef& Car);
 	void SetHandling(const FSCVehicleDef& Car, const FSCUpgrades& Upgrades);
 	void Clear();
+	void SetCameraFor(const FSCCarModel* Model);
 
 	FString AppliedKey;
 	UPROPERTY() TObjectPtr<USceneComponent> CarRoot;
@@ -41,6 +43,7 @@ private:
 	TArray<FVector> PivotRest;
 	TArray<int32> PhysicsWheel; // physics wheel index driving each visual wheel
 
+	float BaseArmLength = -1.f, BaseSocketZ = 0.f;
 	bool bHaveBase = false;
 	float BaseTorque = 0.f, BaseDrag = 0.f;
 	TArray<float> BaseFriction, BaseSteer, BaseBrake;
