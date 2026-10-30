@@ -2,6 +2,8 @@
 #include "SCMenu.h"
 #include "ShiftCityCore.h"
 #include "Engine/GameViewportClient.h"
+#include "GameFramework/GameUserSettings.h"
+#include "Misc/App.h"
 #include "Blueprint/UserWidget.h"
 #include "UObject/UObjectIterator.h"
 #include "SCDestination.h"
@@ -52,6 +54,7 @@ void ASCHUD::BeginPlay()
 		HudWidget = SCMenu::MakeHud(HudModel.ToSharedRef());
 		GEngine->GameViewport->AddViewportWidgetContent(HudWidget.ToSharedRef(), 10);
 	}
+	if (UGameInstance* GI = GetGameInstance()) if (USCEconomySubsystem* Ec = GI->GetSubsystem<USCEconomySubsystem>()) if (Ec->GetSave()) FApp::SetVolumeMultiplier(Ec->GetSave()->Volume);
 	ShowMenu();
 }
 
@@ -104,6 +107,174 @@ void ASCHUD::HideMenu()
 	}
 }
 
+void ASCHUD::SwapMenuWidget(TSharedRef<SWidget> Widget)
+{
+	if (!GEngine || !GEngine->GameViewport) return;
+	if (MenuWidget.IsValid()) GEngine->GameViewport->RemoveViewportWidgetContent(MenuWidget.ToSharedRef());
+	MenuWidget = Widget;
+	GEngine->GameViewport->AddViewportWidgetContent(Widget, 50);
+	if (APlayerController* PC = GetOwningPlayerController())
+	{
+		FInputModeUIOnly Mode;
+		Mode.SetWidgetToFocus(MenuWidget);
+		PC->SetInputMode(Mode);
+		PC->SetShowMouseCursor(true);
+	}
+}
+
+void ASCHUD::BackToMenu()
+{
+	if (MenuWidget.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(MenuWidget.ToSharedRef());
+	MenuWidget.Reset();
+	ShowMenu();
+}
+
+void ASCHUD::ShowScreen(uint8 Which)
+{
+	CurrentScreen = Which;
+	UGameInstance* GI = GetGameInstance();
+	USCEconomySubsystem* E = GI ? GI->GetSubsystem<USCEconomySubsystem>() : nullptr;
+	USCSaveGame* Sv = E ? E->GetSave() : nullptr;
+	if (!E || !Sv) return;
+	TWeakObjectPtr<ASCHUD> Self(this);
+	auto Act = [Self, Which](TFunction<FString()> Do) { return [Self, Which, Do]() { if (Self.IsValid()) { Self->ScreenNote = Do(); Self->ShowScreen(Which); } }; };
+	TArray<SCMenu::FRow> Rows;
+	FString Title, Sub;
+	const FString Wallet = FString::Printf(TEXT("$%.2f"), Sv->Wallet);
+
+	if (SCMenu::EChoice(Which) == SCMenu::EChoice::Garage)
+	{
+		Title = TEXT("Garage");
+		Sub = FString::Printf(TEXT("%s  -  Level %d"), *Wallet, Sv->Level);
+		SCMenu::FRow Head; Head.bHeading = true; Head.Title = TEXT("CARS"); Rows.Add(Head);
+		for (const FSCVehicleDef& V : E->GetVehicles())
+		{
+			SCMenu::FRow R;
+			const bool bOwned = Sv->Owned.Contains(V.Id), bDriving = Sv->Selected == V.Id;
+			R.Title = V.Name;
+			R.Sub = FString::Printf(TEXT("Fares x%.2f  -  top %.0f km/h  -  comfort %d/5%s"), V.Fare, V.TopSpeed * 3.6f, V.Comfort,
+				V.Premium == 2 ? TEXT("  -  VIP jobs") : V.Premium == 1 ? TEXT("  -  premium jobs") : TEXT(""));
+			R.bHighlight = bDriving;
+			if (bDriving) { R.Button = TEXT("Driving"); R.bEnabled = false; }
+			else if (bOwned)
+			{
+				R.Button = TEXT("Drive");
+				const FString Id = V.Id;
+				R.OnClick = Act([Self, Id]() { FString Msg; if (Self.IsValid()) if (UGameInstance* G = Self->GetGameInstance()) if (USCEconomySubsystem* Ec = G->GetSubsystem<USCEconomySubsystem>()) Ec->SelectVehicle(Id, Msg); return Msg; });
+			}
+			else
+			{
+				const bool bLevel = Sv->Level >= V.Level;
+				R.Button = bLevel ? FString::Printf(TEXT("Buy $%.0f"), V.Cost) : FString::Printf(TEXT("Level %d"), V.Level);
+				R.bEnabled = bLevel && Sv->Wallet >= V.Cost;
+				const FString Id = V.Id;
+				R.OnClick = Act([Self, Id]() { FString Msg; if (Self.IsValid()) if (UGameInstance* G = Self->GetGameInstance()) if (USCEconomySubsystem* Ec = G->GetSubsystem<USCEconomySubsystem>()) Ec->BuyVehicle(Id, Msg); return Msg; });
+			}
+			Rows.Add(R);
+		}
+		const FSCVehicleDef Cur = E->GetSelectedVehicle();
+		const FSCUpgrades Up = E->GetUpgrades(Cur.Id);
+		SCMenu::FRow UpHead; UpHead.bHeading = true; UpHead.Title = FString::Printf(TEXT("UPGRADES FOR THE %s"), *Cur.Name.ToUpper()); Rows.Add(UpHead);
+		const TPair<FString, int32> Tracks[] = { { TEXT("engine"), Up.Engine }, { TEXT("brakes"), Up.Brakes }, { TEXT("handling"), Up.Handling } };
+		for (const TPair<FString, int32>& Tr : Tracks)
+		{
+			SCMenu::FRow R;
+			const bool bMax = Tr.Value >= E->GetMaxUpgrade();
+			R.Title = FString::Printf(TEXT("%s%s"), *Tr.Key.Left(1).ToUpper(), *Tr.Key.Mid(1));
+			R.Sub = FString::Printf(TEXT("Level %d of %d"), Tr.Value, E->GetMaxUpgrade());
+			R.Progress = float(Tr.Value) / FMath::Max(1, E->GetMaxUpgrade());
+			const float Cost = E->UpgradeCost(Cur.Id, Tr.Value);
+			R.Button = bMax ? TEXT("Maxed") : FString::Printf(TEXT("Upgrade $%.0f"), Cost);
+			R.bEnabled = !bMax && Sv->Wallet >= Cost;
+			const FString Id = Cur.Id, Track = Tr.Key;
+			R.OnClick = Act([Self, Id, Track]() { FString Msg; if (Self.IsValid()) if (UGameInstance* G = Self->GetGameInstance()) if (USCEconomySubsystem* Ec = G->GetSubsystem<USCEconomySubsystem>()) Ec->BuyUpgrade(Id, Track, Msg); return Msg; });
+			Rows.Add(R);
+		}
+	}
+	else if (SCMenu::EChoice(Which) == SCMenu::EChoice::Goals)
+	{
+		Title = TEXT("Goals");
+		Sub = FString::Printf(TEXT("%s  -  %d ready to claim"), *Wallet, E->ClaimableGoals());
+		for (const FSCGoalDef& Gd : E->GetGoals())
+		{
+			SCMenu::FRow R;
+			const float P = FMath::Min(Gd.Goal, E->GoalProgress(Gd));
+			const bool bClaimed = Sv->ClaimedGoals.Contains(Gd.Id), bReady = !bClaimed && P >= Gd.Goal;
+			R.Title = Gd.Name;
+			R.Sub = FString::Printf(TEXT("%s / %s  -  $%.0f + %d XP"), *FString::SanitizeFloat(FMath::RoundToFloat(P * 10.f) / 10.f), *FString::SanitizeFloat(Gd.Goal), Gd.Reward, Gd.Xp);
+			R.Progress = Gd.Goal > 0.f ? P / Gd.Goal : 0.f;
+			R.bHighlight = bReady;
+			R.Button = bClaimed ? TEXT("Claimed") : TEXT("Claim");
+			R.bEnabled = bReady;
+			const FString Id = Gd.Id;
+			R.OnClick = Act([Self, Id]() { FString Msg; if (Self.IsValid()) if (UGameInstance* G = Self->GetGameInstance()) if (USCEconomySubsystem* Ec = G->GetSubsystem<USCEconomySubsystem>()) Ec->ClaimGoal(Id, Msg); return Msg; });
+			Rows.Add(R);
+		}
+	}
+	else
+	{
+		Title = TEXT("Settings");
+		Sub = TEXT("Saved automatically");
+		UGameUserSettings* Gus = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+		{
+			SCMenu::FRow R;
+			R.Title = TEXT("Volume");
+			R.Sub = FString::Printf(TEXT("%d%%"), FMath::RoundToInt(Sv->Volume * 100.f));
+			R.Progress = Sv->Volume;
+			R.Button = TEXT("Change");
+			R.OnClick = Act([Self]() -> FString
+			{
+				if (!Self.IsValid()) return FString();
+				UGameInstance* G = Self->GetGameInstance(); USCEconomySubsystem* Ec = G ? G->GetSubsystem<USCEconomySubsystem>() : nullptr;
+				if (!Ec || !Ec->GetSave()) return FString();
+				float& Vol = Ec->GetSave()->Volume;
+				Vol = Vol <= 0.01f ? 1.f : FMath::Max(0.f, Vol - 0.25f);
+				FApp::SetVolumeMultiplier(Vol);
+				Ec->SaveNow();
+				return FString::Printf(TEXT("Volume %d%%"), FMath::RoundToInt(Vol * 100.f));
+			});
+			Rows.Add(R);
+		}
+		if (Gus)
+		{
+			static const TCHAR* Names[] = { TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Epic") };
+			const int32 Lv = FMath::Clamp(Gus->GetOverallScalabilityLevel(), 0, 3);
+			SCMenu::FRow R;
+			R.Title = TEXT("Graphics quality");
+			R.Sub = FString::Printf(TEXT("%s  (Low/Medium suit a 4 GB laptop GPU)"), Names[Lv]);
+			R.Button = TEXT("Change");
+			R.OnClick = Act([]() -> FString
+			{
+				UGameUserSettings* S2 = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+				if (!S2) return FString();
+				const int32 Next = (FMath::Clamp(S2->GetOverallScalabilityLevel(), 0, 3) + 1) % 4;
+				S2->SetOverallScalabilityLevel(Next);
+				S2->ApplySettings(false);
+				S2->SaveSettings();
+				static const TCHAR* N2[] = { TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Epic") };
+				return FString::Printf(TEXT("Graphics: %s"), N2[Next]);
+			});
+			Rows.Add(R);
+		}
+		{
+			SCMenu::FRow R;
+			R.Title = TEXT("Show FPS");
+			R.Sub = bShowFps ? TEXT("On") : TEXT("Off");
+			R.Button = bShowFps ? TEXT("Turn off") : TEXT("Turn on");
+			R.OnClick = Act([Self]() -> FString
+			{
+				if (!Self.IsValid()) return FString();
+				Self->bShowFps = !Self->bShowFps;
+				if (GEngine) GEngine->Exec(Self->GetWorld(), TEXT("stat fps"));
+				return Self->bShowFps ? TEXT("FPS counter on") : TEXT("FPS counter off");
+			});
+			Rows.Add(R);
+		}
+	}
+	if (!ScreenNote.IsEmpty()) Sub = ScreenNote + TEXT("   |   ") + Sub;
+	SwapMenuWidget(SCMenu::MakeListScreen(Title, Sub, Rows, [Self]() { if (Self.IsValid()) Self->BackToMenu(); }));
+}
+
 void ASCHUD::OnMenuChoice(uint8 Choice)
 {
 	switch (SCMenu::EChoice(Choice))
@@ -113,6 +284,12 @@ void ASCHUD::OnMenuChoice(uint8 Choice)
 		break;
 	case SCMenu::EChoice::Arcade:
 		break; // not ported yet (button is disabled)
+	case SCMenu::EChoice::Garage:
+	case SCMenu::EChoice::Goals:
+	case SCMenu::EChoice::Settings:
+		ScreenNote.Reset();
+		ShowScreen(Choice);
+		break;
 	default:
 		HideMenu();
 		if (!Director.IsValid()) for (TActorIterator<ASCJobDirector> It(GetWorld()); It; ++It) { Director = *It; break; }

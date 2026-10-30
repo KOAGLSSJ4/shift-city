@@ -33,4 +33,6 @@ public:
 	UPROPERTY(SaveGame) TArray<FString> PaidJobs;
 	UPROPERTY(SaveGame) TArray<FString> ClaimedGoals;
 	UPROPERTY(SaveGame) bool TutorialDone = false;
+	/** Settings screen: master volume 0..1. */
+	UPROPERTY(SaveGame) float Volume = 1.f;
 };

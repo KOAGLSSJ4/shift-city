@@ -62,6 +62,14 @@ private:
 	float TemplateUiTimer = 0.f; // throttles the search for the Vehicle template's speed widget
 	TSharedPtr<FSCHudModel> HudModel;
 	void OnMenuChoice(uint8 Choice);
+	/** Garage / Goals / Settings screens (Slate list screens over the menu). */
+	void ShowScreen(uint8 Which);
+	void BackToMenu();
+	void SwapMenuWidget(TSharedRef<SWidget> Widget);
+	uint8 CurrentScreen = 0;
+	/** Last message from a screen action (shown under the screen title). */
+	FString ScreenNote;
+	bool bShowFps = false;
 	int32 RobotShot = 0; // screenshots taken so far for the build robot (-SCShots)
 	UPROPERTY() TObjectPtr<ACameraActor> RobotCam; // build robot: chase camera on a traffic car for the last shot
 };

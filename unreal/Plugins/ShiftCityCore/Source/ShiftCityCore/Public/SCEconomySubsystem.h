@@ -40,6 +40,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Shift City") bool BuyVehicle(const FString& Id, FString& OutMessage);
 	UFUNCTION(BlueprintCallable, Category = "Shift City") bool SelectVehicle(const FString& Id, FString& OutMessage);
 	UFUNCTION(BlueprintPure, Category = "Shift City") FSCUpgrades GetUpgrades(const FString& Id) const;
+	int32 GetMaxUpgrade() const { return MaxUpgrade; }
 	UFUNCTION(BlueprintPure, Category = "Shift City") float UpgradeCost(const FString& Id, int32 CurrentLevel) const;
 	/** Track: "engine" | "brakes" | "handling". */
 	UFUNCTION(BlueprintCallable, Category = "Shift City") bool BuyUpgrade(const FString& Id, const FString& Track, FString& OutMessage);

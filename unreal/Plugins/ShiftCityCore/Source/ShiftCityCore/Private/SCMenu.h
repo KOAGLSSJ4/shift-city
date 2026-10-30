@@ -44,7 +44,24 @@ namespace SCMenu
 		int32 Level = 1;
 	};
 
-	enum class EChoice : uint8 { Story, FreeRide, Arcade, Quit };
+	enum class EChoice : uint8 { Story, FreeRide, Arcade, Quit, Garage, Goals, Settings };
+
+	/** One row of a list screen (garage car, goal, setting): text on the left, an action button on the right. */
+	struct FRow
+	{
+		FString Title, Sub, Button;
+		bool bEnabled = true;
+		/** Highlight the row (the car you're driving, a goal ready to claim). */
+		bool bHighlight = false;
+		/** 0..1 progress bar under the text, or < 0 for none. */
+		float Progress = -1.f;
+		TFunction<void()> OnClick;
+		/** A section heading instead of a normal row. */
+		bool bHeading = false;
+	};
+
+	/** Full-screen list (Garage, Goals, Settings) in the menu's style, with a Back button. */
+	TSharedRef<SWidget> MakeListScreen(const FString& Title, const FString& Subtitle, const TArray<FRow>& Rows, TFunction<void()> OnBack);
 
 	/** Full-screen main menu. OnChoose is called with the button the player clicked. */
 	TSharedRef<SWidget> MakeMainMenu(const FMenuInfo& Info, TFunction<void(EChoice)> OnChoose);

@@ -8,6 +8,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/Layout/SScrollBox.h"
 #include "Layout/Visibility.h"
 #include "Widgets/Layout/SDPIScaler.h"
 
@@ -103,6 +104,13 @@ TSharedRef<SWidget> SCMenu::MakeMainMenu(const FMenuInfo& Info, TFunction<void(E
 					[ MakeButton(EChoice::FreeRide, TEXT("Free Ride"), TEXT("Take any ride or delivery and build your career"), bStoryDone, true) ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
 					[ MakeButton(EChoice::Arcade, TEXT("Arcade Rush"), TEXT("Coming soon to this version"), false, false) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 5.f, 0.f)[ MakeButton(EChoice::Garage, TEXT("Garage"), TEXT("Cars + upgrades"), false, true) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(5.f, 0.f, 5.f, 0.f)[ MakeButton(EChoice::Goals, TEXT("Goals"), TEXT("Claim rewards"), false, true) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(5.f, 0.f, 0.f, 0.f)[ MakeButton(EChoice::Settings, TEXT("Settings"), TEXT("Sound, graphics"), false, true) ]
+					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 18.f)
 					[ MakeButton(EChoice::Quit, TEXT("Quit"), TEXT("See you next shift"), false, true) ]
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
@@ -306,5 +314,93 @@ TSharedRef<SWidget> SCMenu::MakeHud(TSharedRef<FSCHudModel> Model)
 				]
 			]
 		]
+		];
+}
+
+TSharedRef<SWidget> SCMenu::MakeListScreen(const FString& Title, const FString& Subtitle, const TArray<FRow>& Rows, TFunction<void()> OnBack)
+{
+	static const FSlateRoundedBoxBrush RowBrush(FLinearColor(0.08f, 0.12f, 0.17f, 0.9f), 12.f, FLinearColor(1.f, 1.f, 1.f, 0.06f), 1.f);
+	static const FSlateRoundedBoxBrush RowHot(FLinearColor(0.08f, 0.2f, 0.16f, 0.95f), 12.f, MenuAccent, 1.5f);
+	static const FSlateRoundedBoxBrush BarBg(FLinearColor(1.f, 1.f, 1.f, 0.12f), 3.f);
+	static const FSlateRoundedBoxBrush BarFill(MenuAccent, 3.f);
+
+	TSharedRef<SScrollBox> List = SNew(SScrollBox);
+	for (const FRow& R : Rows)
+	{
+		if (R.bHeading)
+		{
+			List->AddSlot().Padding(FMargin(4.f, 12.f, 4.f, 6.f))
+			[ SNew(STextBlock).Text(FText::FromString(R.Title)).Font(MenuFont("Bold", 13)).ColorAndOpacity(FSlateColor(MenuAccent)) ];
+			continue;
+		}
+		TSharedRef<SVerticalBox> Text = SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[ SNew(STextBlock).Text(FText::FromString(R.Title)).Font(MenuFont("Bold", 16)).ColorAndOpacity(FSlateColor(FLinearColor::White)) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)
+			[ SNew(STextBlock).Text(FText::FromString(R.Sub)).Font(MenuFont("Regular", 12)).AutoWrapText(true).ColorAndOpacity(FSlateColor(MenuMuted)) ];
+		if (R.Progress >= 0.f)
+		{
+			const float P = FMath::Clamp(R.Progress, 0.f, 1.f);
+			Text->AddSlot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
+			[
+				SNew(SBox).HeightOverride(6.f)
+				[
+					SNew(SOverlay)
+					+ SOverlay::Slot()[ SNew(SBorder).BorderImage(&BarBg) ]
+					+ SOverlay::Slot().HAlign(HAlign_Left)
+					[ SNew(SBox).WidthOverride(260.f * P)[ SNew(SBorder).BorderImage(&BarFill) ] ]
+				]
+			];
+		}
+		TFunction<void()> Click = R.OnClick;
+		List->AddSlot().Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+		[
+			SNew(SBorder).BorderImage(R.bHighlight ? &RowHot : &RowBrush).Padding(FMargin(16.f, 10.f))
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ Text ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)
+				[
+					SNew(SButton)
+					.ButtonStyle(MenuButtonStyle(R.bEnabled && R.bHighlight))
+					.IsEnabled(R.bEnabled && !R.Button.IsEmpty())
+					.Visibility(R.Button.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible)
+					.ContentPadding(FMargin(16.f, 8.f))
+					.OnClicked_Lambda([Click]() { if (Click) Click(); return FReply::Handled(); })
+					[ SNew(STextBlock).Text(FText::FromString(R.Button)).Font(MenuFont("Bold", 13)).ColorAndOpacity(FSlateColor(FLinearColor::White)) ]
+				]
+			]
+		];
+	}
+
+	return SNew(SOverlay)
+		+ SOverlay::Slot()
+		[ SNew(SBorder).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush")).BorderBackgroundColor(FLinearColor(0.01f, 0.02f, 0.04f, 0.6f)) ]
+		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(20.f)
+		[
+			SNew(SBox).WidthOverride(640.f).MaxDesiredHeight(620.f)
+			[
+				SNew(SBorder).BorderImage(PanelBrush()).Padding(FMargin(28.f, 22.f))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Text(FText::FromString(Title)).Font(MenuFont("Bold", 30)).ColorAndOpacity(FSlateColor(MenuAccent)) ]
+							+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Text(FText::FromString(Subtitle)).Font(MenuFont("Regular", 13)).ColorAndOpacity(FSlateColor(MenuMuted)) ]
+						]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+						[
+							SNew(SButton).ButtonStyle(MenuButtonStyle(false)).ContentPadding(FMargin(16.f, 8.f))
+							.OnClicked_Lambda([OnBack]() { if (OnBack) OnBack(); return FReply::Handled(); })
+							[ SNew(STextBlock).Text(FText::FromString(TEXT("Back"))).Font(MenuFont("Bold", 14)).ColorAndOpacity(FSlateColor(FLinearColor::White)) ]
+						]
+					]
+					+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 14.f, 0.f, 0.f)[ List ]
+				]
+			]
 		];
 }
