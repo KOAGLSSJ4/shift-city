@@ -434,7 +434,7 @@ void USCCarVisuals::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 {
 	static TWeakObjectPtr<AActor> Studio;
-	const FVector Origin(0.f, 0.f, 6000.f); // high above the city, so nothing is in the way
+	const FVector Origin(0.f, 0.f, 100000.f); // 1 km up (Unreal units are cm): far above the tallest towers
 	const float Spacing = 700.f, RowGap = 1100.f;
 	if (!World) return Origin;
 	if (!Studio.IsValid())

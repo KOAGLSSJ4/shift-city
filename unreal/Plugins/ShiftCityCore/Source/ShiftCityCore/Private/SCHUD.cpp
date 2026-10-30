@@ -474,7 +474,7 @@ void ASCHUD::DrawHUD()
 	// build robot: with -SCShots on the command line, save a few screenshots so visuals can be checked remotely
 	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
 	// shots: 1 = main menu, 2 = garage screen, 3 = gameplay with GPS, 4 = traffic car close-up, 5-6 = Fab vehicle line-up
-	static const float RobotShotTimes[] = { 12.f, 17.f, 25.f, 33.f, 41.f, 47.f };
+	static const float RobotShotTimes[] = { 12.f, 17.f, 25.f, 33.f, 60.f, 70.f }; // line-up shots late: first-time shader preparation
 	const float RobotNow = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
 	if (bRobotShots && RobotShot < 6 && RobotNow > RobotShotTimes[RobotShot])
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
