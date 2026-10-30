@@ -16,10 +16,6 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Features (next up)
 
-- **Surge zone easier to see on the minimap** (David, 2026-10-29). Today it's only a faint orange glow, and it isn't
-  shown at all when the zone is off the edge of the map, so in practice you mostly see the pop-up note. Make it
-  obvious: stronger orange patch with the multiplier ("×1.6") written on it, a pulsing outline, an arrow on the
-  minimap rim pointing to it when it's off-map, and maybe a small "SURGE ×1.6 · 400 m" chip under the minimap.
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
@@ -38,6 +34,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
   5 days of comic-panel intros, story jobs with city characters, evening choices, energy that makes the car
   sluggish when low, 4 endings (3 good, 1 bad). Next: David plays it; then the Unreal port (data in
   `web/src/data/week.ts`).
+  Later (David, 2026-10-30): flesh out the stories and the endings more (longer scenes, more characters' arcs,
+  ending cutscenes), after launch feedback.
 - itch.io and CrazyGames uploads: steps in `web/LAUNCH.md`. (Vercel site is live: shift-city-theta.vercel.app)
 - Poki: undecided (exclusive vs non-exclusive, maybe after Steam).
 
@@ -58,6 +56,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-30: surge zone obvious on the minimap: stronger orange patch, pulsing outline, "SURGE ×1.6" label,
+  and a "×1.6" chip on the rim pointing to it when it's off the map.
 - 2026-10-29: driver app merged: 15 s offers, acceptance rate, offline after 3 declines, Blue/Gold/Platinum/Diamond tiers.
 - 2026-10-29: GPS said "turn right" when you had to turn left first at the junction you're waiting at (web + Unreal):
   the first leg is now compared with where the car faces ("Turn left now").
