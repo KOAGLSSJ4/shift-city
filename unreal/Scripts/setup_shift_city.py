@@ -409,6 +409,53 @@ def make_signal_materials():
     return lamp, pole
 
 
+def make_car_materials():
+    """Parameter materials for the Shift City car designs (C++ builds the cars and sets Color etc. per part)."""
+    P = unreal.MaterialProperty
+
+    def vec(mat, name, value, x, y):
+        n = MEL.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, x, y)
+        n.set_editor_property("parameter_name", name)
+        n.set_editor_property("default_value", unreal.LinearColor(value[0], value[1], value[2], 1))
+        return n
+
+    def scalar(mat, name, value, x, y):
+        n = MEL.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, x, y)
+        n.set_editor_property("parameter_name", name)
+        n.set_editor_property("default_value", value)
+        return n
+
+    # paint, trim, chrome, tyres, lights: one opaque material; clear coat only where the part asks for it
+    surf = new_material("M_CarSurface")
+    surf.set_editor_property("two_sided", True)
+    if not setp(surf, "shading_model", unreal.MaterialShadingModel.MSM_CLEAR_COAT):
+        log("clear coat not available: car paint uses the default shading")
+    MEL.connect_material_property(vec(surf, "Color", (0.5, 0.5, 0.5), -600, -300), "", P.MP_BASE_COLOR)
+    MEL.connect_material_property(scalar(surf, "Metallic", 0.0, -600, -100), "", P.MP_METALLIC)
+    MEL.connect_material_property(scalar(surf, "Roughness", 0.5, -600, 0), "", P.MP_ROUGHNESS)
+    MEL.connect_material_property(vec(surf, "Emissive", (0, 0, 0), -600, 150), "", P.MP_EMISSIVE_COLOR)
+    try:
+        MEL.connect_material_property(scalar(surf, "ClearCoat", 0.0, -600, 350), "", P.MP_CUSTOM_DATA0)
+        MEL.connect_material_property(const(surf, 0.04, -600, 450), "", P.MP_CUSTOM_DATA1)
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] car clear coat inputs not connected: %s" % e)
+    MEL.recompile_material(surf)
+    EAL.save_loaded_asset(surf)
+
+    # windows: tinted, see-through, glossy
+    glass = new_material("M_CarGlass")
+    glass.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    glass.set_editor_property("two_sided", True)
+    setp(glass, "translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    MEL.connect_material_property(vec(glass, "Color", (0.01, 0.015, 0.02), -600, -300), "", P.MP_BASE_COLOR)
+    MEL.connect_material_property(scalar(glass, "Metallic", 0.2, -600, -100), "", P.MP_METALLIC)
+    MEL.connect_material_property(scalar(glass, "Roughness", 0.05, -600, 0), "", P.MP_ROUGHNESS)
+    MEL.connect_material_property(scalar(glass, "Opacity", 0.8, -600, 150), "", P.MP_OPACITY)
+    MEL.recompile_material(glass)
+    EAL.save_loaded_asset(glass)
+    log("car materials ready")
+
+
 def find_car_meshes():
     """Vehicle template cars for traffic: the skeletal rig plus the static body/glass/wheel meshes next to it.
 
@@ -496,6 +543,10 @@ def setup_level(mats, lamp, tree):
     setp(gen, "tree_meshes", tree)
     gen.generate()
 
+    try:
+        make_car_materials()
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] car materials not made (cars will be grey): %s" % e)
     try:
         sig_lamp, sig_pole = make_signal_materials()
         traffic = eas.spawn_actor_from_class(unreal.load_class(None, "/Script/ShiftCityCore.SCTraffic"), unreal.Vector(0, 0, 0))

@@ -1,10 +1,12 @@
 #include "SCTraffic.h"
+#include "SCCarData.h"
 #include "SCCityLayout.h"
 #include "ShiftCityCore.h"
 #include "Components/BoxComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -28,6 +30,11 @@ namespace
 		if (J < SC::Grid) Out.Add(NodeId(I, J + 1));
 	}
 	constexpr float SignalCycle = 22.f;
+	// everyday cars most of the time, the odd supercar; colours of real city traffic
+	const TCHAR* const TrafficBodies[] = { TEXT("hatch"), TEXT("sedan"), TEXT("suv"), TEXT("classic"), TEXT("hatch"), TEXT("sedan"), TEXT("gt"),
+		TEXT("suv"), TEXT("royal"), TEXT("classic"), TEXT("sedan"), TEXT("sedan"), TEXT("hatch"), TEXT("hybrid"), TEXT("gtv12"), TEXT("hyper") };
+	const TCHAR* const TrafficColours[] = { TEXT("#e8e8e6"), TEXT("#141518"), TEXT("#9ca1a7"), TEXT("#5b6168"), TEXT("#1f3a64"), TEXT("#8c1c1c"),
+		TEXT("#e8e8e6"), TEXT("#2b2d31"), TEXT("#c9c3b6"), TEXT("#2f5d46"), TEXT("#b8bcc2"), TEXT("#d9a21b"), TEXT("#3d6fb6") };
 }
 
 ASCTraffic::ASCTraffic()
@@ -161,7 +168,30 @@ void ASCTraffic::SpawnCars()
 		Box->SetMobility(EComponentMobility::Movable);
 		Box->SetupAttachment(Root);
 		Box->RegisterComponent();
-		if (CarMeshes.Num() > 0 && CarMeshes[k % CarMeshes.Num()])
+		const FSCCarModel* Design = SCCars::Get(TrafficBodies[k % int32(UE_ARRAY_COUNT(TrafficBodies))], false);
+		if (Design)
+		{
+			// a Shift City design (same models as the garage cars, lower detail)
+			Box->SetBoxExtent(FVector(Design->Length * 0.5f, 92.f, 70.f));
+			USceneComponent* CarRoot = NewObject<USceneComponent>(this);
+			CarRoot->SetupAttachment(Box);
+			CarRoot->SetRelativeLocation(FVector(0.f, 0.f, -70.f));
+			CarRoot->RegisterComponent();
+			const FLinearColor Colour = SCCars::ParseColor(TrafficColours[Rng.RandRange(0, int32(UE_ARRAY_COUNT(TrafficColours)) - 1)]);
+			SCCars::Build(*Design, 0, CarRoot, Colour, true);
+			for (int32 Corner = 0; Corner < 4; ++Corner)
+			{
+				const bool bFront = Corner < 2, bRight = (Corner % 2) == 1;
+				USceneComponent* Spinner = NewObject<USceneComponent>(this);
+				Spinner->SetupAttachment(CarRoot);
+				Spinner->SetRelativeLocation(FVector(bFront ? Design->WheelBase * 0.5f : -Design->WheelBase * 0.5f, bRight ? Design->Track * 0.5f : -Design->Track * 0.5f, Design->WheelRadius));
+				Spinner->RegisterComponent();
+				if (UProceduralMeshComponent* WheelMesh = SCCars::Build(*Design, 1, Spinner, Colour, false))
+					if (bRight) WheelMesh->SetRelativeScale3D(FVector(1.f, -1.f, 1.f));
+				C.Wheels.Add(Spinner);
+			}
+		}
+		else if (CarMeshes.Num() > 0 && CarMeshes[k % CarMeshes.Num()])
 		{
 			USkeletalMeshComponent* Sk = NewObject<USkeletalMeshComponent>(this);
 			Sk->SetSkeletalMeshAsset(CarMeshes[k % CarMeshes.Num()]);
@@ -324,7 +354,7 @@ void ASCTraffic::Tick(float Dt)
 		if (C.Wheels.Num() > 0)
 		{
 			const float Deg = FMath::RadiansToDegrees(C.Speed * Dt / 35.f);
-			for (UStaticMeshComponent* WheelComp : C.Wheels) if (WheelComp) WheelComp->AddLocalRotation(FRotator(-Deg, 0.f, 0.f));
+			for (USceneComponent* WheelComp : C.Wheels) if (WheelComp) WheelComp->AddLocalRotation(FRotator(-Deg, 0.f, 0.f));
 		}
 	}
 }

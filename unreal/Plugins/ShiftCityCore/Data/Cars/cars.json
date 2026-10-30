@@ -1,0 +1,94 @@
+{
+  "cars": {
+    "classic": {
+      "hi": "classic_hi.bin",
+      "lo": "classic_lo.bin",
+      "wheelBase": 248,
+      "track": 148,
+      "wheelRadius": 31.5,
+      "length": 390,
+      "width": 174
+    },
+    "hatch": {
+      "hi": "hatch_hi.bin",
+      "lo": "hatch_lo.bin",
+      "wheelBase": 254.99999999999997,
+      "track": 150,
+      "wheelRadius": 31.5,
+      "length": 400,
+      "width": 176
+    },
+    "sedan": {
+      "hi": "sedan_hi.bin",
+      "lo": "sedan_lo.bin",
+      "wheelBase": 280,
+      "track": 153,
+      "wheelRadius": 33,
+      "length": 475,
+      "width": 183
+    },
+    "suv": {
+      "hi": "suv_hi.bin",
+      "lo": "suv_lo.bin",
+      "wheelBase": 295,
+      "track": 166,
+      "wheelRadius": 39,
+      "length": 495,
+      "width": 198
+    },
+    "gt": {
+      "hi": "gt_hi.bin",
+      "lo": "gt_lo.bin",
+      "wheelBase": 295,
+      "track": 164,
+      "wheelRadius": 36,
+      "length": 495,
+      "width": 195
+    },
+    "super": {
+      "hi": "super_hi.bin",
+      "lo": "super_lo.bin",
+      "wheelBase": 270,
+      "track": 164,
+      "wheelRadius": 35,
+      "length": 459.99999999999994,
+      "width": 200
+    },
+    "hybrid": {
+      "hi": "hybrid_hi.bin",
+      "lo": "hybrid_lo.bin",
+      "wheelBase": 265,
+      "track": 160,
+      "wheelRadius": 35,
+      "length": 455,
+      "width": 195
+    },
+    "gtv12": {
+      "hi": "gtv12_hi.bin",
+      "lo": "gtv12_lo.bin",
+      "wheelBase": 272,
+      "track": 162,
+      "wheelRadius": 36,
+      "length": 470,
+      "width": 197
+    },
+    "royal": {
+      "hi": "royal_hi.bin",
+      "lo": "royal_lo.bin",
+      "wheelBase": 350,
+      "track": 168,
+      "wheelRadius": 41,
+      "length": 560,
+      "width": 200
+    },
+    "hyper": {
+      "hi": "hyper_hi.bin",
+      "lo": "hyper_lo.bin",
+      "wheelBase": 272,
+      "track": 166,
+      "wheelRadius": 36,
+      "length": 455,
+      "width": 204
+    }
+  }
+}

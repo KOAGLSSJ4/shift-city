@@ -1,4 +1,5 @@
 #include "SCHUD.h"
+#include "SCCarVisuals.h"
 #include "SCMenu.h"
 #include "ShiftCityCore.h"
 #include "Engine/GameViewportClient.h"
@@ -656,6 +657,13 @@ void ASCHUD::DrawHUD()
 			TemplateUiTimer = 1.f;
 			for (TObjectIterator<UUserWidget> It; It; ++It)
 				if (It->GetWorld() == GetWorld() && It->IsInViewport() && It->GetClass()->GetName().StartsWith(TEXT("BP_VehicleAdvUI"))) It->RemoveFromParent();
+			// the garage car: body, wheels and handling (the robot can force one with -SCCar=<id>)
+			if (E)
+			{
+				FString CarId = E->GetSelectedVehicle().Id;
+				FParse::Value(FCommandLine::Get(), TEXT("SCCar="), CarId);
+				USCCarVisuals::Apply(Pawn, E->GetVehicle(CarId), E->GetUpgrades(CarId));
+			}
 		}
 	}
 	if (bShowSpeed && Pawn)
