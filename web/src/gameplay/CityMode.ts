@@ -1,3 +1,4 @@
+import { RAIN_FARE_BONUS } from './DayCycle';
 import type { StationId } from '../data/radio';
 // Story / Free Ride: the player drives the city, takes jobs, follows GPS and earns money.
 import * as THREE from 'three';
@@ -12,7 +13,7 @@ import { VehiclePhysics, type DriveInput } from '../vehicles/VehiclePhysics';
 import type { CarRig } from '../vehicles/CarFactory';
 import type { SaveData } from '../core/Save';
 import { payJob, upgradesOf, type JobPayment } from './Economy';
-import { CANCEL_FEE, applySurgeZone, headsTowards, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
+import { CANCEL_FEE, WAIT_GRACE, waitingFee, applySurgeZone, headsTowards, randomJob, riderPatience, rollSurgeZone, starsFor, storyJob, type Job, type SurgeZone } from './Jobs';
 import { DECLINE_LIMIT, OFFER_SECONDS, driverTier, offlineLeft, recordAccept, recordDecline } from './Driver';
 import { line, logBump, logHarsh, missionResult, personaHappy, musicTaste, complimentFor, COMPLIMENTS, type Moment } from './Missions';
 
@@ -39,6 +40,8 @@ export class CityMode {
   route: Route | null = null;
   mode: 'story' | 'free' = 'free';
   holdTime = 0;
+  /** Seconds to stay stopped at the target: boarding, plus any wait for a late rider at pickup. */
+  get holdNeeded() { return BALANCE.boardTime + (this.job?.stage === 'pickup' ? this.job.lateBy ?? 0 : 0); }
   /** Current surge zone (free ride only), shown on the minimap. */
   surgeZone: SurgeZone | null = null;
   private lastStation: StationId | null = null;
@@ -160,6 +163,8 @@ export class CityMode {
       const want = this.save.driver.filter ? DESTINATIONS.find((d) => d.name === this.save.driver.filter) : undefined;
       for (let i = 0; want && i < 6 && !headsTowards(this.job, want); i++) this.job = randomJob(def, this.physics.pos, driverTier(this.save).premiumBoost);
       if (z) applySurgeZone(this.job, z);
+      // rides pay more in the rain
+      if (this.save.settings.weather === 'rain') this.job.fare = Math.round(this.job.fare * RAIN_FARE_BONUS * 100) / 100;
       // like the real app: accept within 15 s or it goes to someone else (not while learning in the tutorial)
       if (this.save.tutorialDone) this.job.expires = OFFER_SECONDS;
     }
@@ -283,8 +288,11 @@ export class CityMode {
     if (t && this.job) {
       const d = Math.hypot(ph.pos.x - t.x, ph.pos.z - t.z);
       if (d < BALANCE.pickupRadius && ph.speed < BALANCE.stopSpeed) {
+        const was = this.holdTime;
         this.holdTime += dt;
-        if (this.holdTime >= BALANCE.boardTime) { this.holdTime = 0; this.arrive(); }
+        if (this.job.stage === 'pickup' && this.job.lateBy && was < BALANCE.boardTime && this.holdTime >= BALANCE.boardTime)
+          this.ev.toast(this.job.food ? `${this.job.restaurant} is finishing the order (~${this.job.lateBy} s). Waiting fee after ${WAIT_GRACE} s` : `${this.job.customer} is on their way out (~${this.job.lateBy} s). Waiting fee after ${WAIT_GRACE} s`);
+        if (this.holdTime >= this.holdNeeded) { this.holdTime = 0; this.arrive(); }
       } else this.holdTime = 0;
       if ((this.routeTimer -= dt) <= 0) { this.routeTimer = 0.35; this.computeRoute(); }
     }
@@ -353,6 +361,14 @@ export class CityMode {
       this.showMarker(job.b, false);
       this.ev.stage(job);
       this.computeRoute();
+    } else if (job.stage === 'dropoff' && job.extraDrop) {
+      // stacked order: first bag delivered, on to the second drop-off (paid together at the end)
+      this.ev.toast(`Order 1 of 2 delivered at ${job.b.name}. Next: ${job.extraDrop.name}`);
+      job.b = job.extraDrop;
+      job.extraDrop = undefined;
+      this.showMarker(job.b, false);
+      this.ev.stage(job);
+      this.computeRoute();
     } else if (job.stage === 'dropoff') {
       job.stage = 'done';
       this.marker.visible = false;
@@ -363,7 +379,9 @@ export class CityMode {
       const onBoard = this.time - (job.pickedAt ?? job.startedAt);
       const mission = missionResult(job.variant, job.persona, job.fare * def.fare, onBoard, job.limit, job.log);
       const stars = Math.max(1, Math.round((starsFor(job, def) - mission.starPenalty) * 10) / 10);
-      const bonusTip = (job.bonusTime && elapsed < job.bonusTime ? Math.round(job.fare * 0.25) : 0) + mission.tip;
+      const waitFee = job.lateBy ? waitingFee(job.lateBy) : 0;
+      if (waitFee) mission.note = [mission.note, `waiting fee $${waitFee.toFixed(2)}`].filter(Boolean).join(' · ');
+      const bonusTip = (job.bonusTime && elapsed < job.bonusTime ? Math.round(job.fare * 0.25) : 0) + mission.tip + waitFee;
       const pay = payJob(this.save, job.id, job.fare, def, { food: job.food, stars, story: job.chapter !== null, bonusTip, bonusXp: mission.xp });
       if (job.persona) {
         const text = line(job.persona, personaHappy(job.persona, onBoard, job.limit, job.log) >= 0.5 ? 'good' : 'bad');

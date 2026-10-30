@@ -59,6 +59,7 @@ private:
 	TSharedPtr<SWidget> MenuWidget;
 	/** Slate HUD panels (career, job card, story card, toasts) and the data they show. */
 	TSharedPtr<SWidget> HudWidget;
+	float TemplateUiTimer = 0.f; // throttles the search for the Vehicle template's speed widget
 	TSharedPtr<FSCHudModel> HudModel;
 	void OnMenuChoice(uint8 Choice);
 	int32 RobotShot = 0; // screenshots taken so far for the build robot (-SCShots)

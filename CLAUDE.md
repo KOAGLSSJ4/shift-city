@@ -64,6 +64,8 @@ passengers/pedestrians → port the web's original car designs.
   arcade points), car radio (`data/radio.ts`: B / 📻, stations, passenger music taste, creator songs = MP3 in
   `public/music` + one line), trip streak + earnings card, surge zones on the minimap, rider cancellations
   ($3 fee), rider compliments/badges, late-dodge near misses (12 m), garage hides HUD, phone toolbar fix.
+- Branches waiting for David's OK to merge: `feature/story-week` (Story v1.1 "The Week": `data/week.ts`,
+  `gameplay/Week.ts`, comic overlay in Game.ts) and `feature/roads` (roundabouts + one-way streets).
 - Arcade rate stays 100 points = $8 (David still deciding if it's too generous).
 - Pushing to `main` deploys to the live site: David approved merges/pushes for backlog work on 2026-10-29.
 - Not verified on real devices: phone touch play, real ad fill on portals.

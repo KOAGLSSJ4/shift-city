@@ -12,36 +12,27 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 - **Arcade balance:** David thinks money/XP feel right but hasn't tested it hard. Revisit if launch
   feedback says Arcade out-earns the city modes ($8 per 100 points, 1 XP per 1,000 points, no cap).
-- **Cockpit view** of the new lofted cars is functional but plain (dash, pillars); could use more detail.
+- **Cockpit view:** the Shift Classic's cabin now has a proper dashboard and dark pillars, but a strip of body paint
+  still shows at the very top and bottom of the screen (its body is built from solid blocks); the lofted cars'
+  cockpits could use more detail (vents, console, door cards).
 
 ## Features (next up)
 
-- **Declines that matter, like the real Uber app** (David, 2026-10-28). Being built on branch
-  `feature/driver-app`, not on `main` until David says. Ideas:
-  - acceptance rate shown on the driver card; declining (or letting a request time out) lowers it;
-  - offers expire after ~15 s like the real app;
-  - decline 3 in a row and you're taken offline for a short cool-down;
-  - driver tiers (like Uber Pro: Blue, Gold, Platinum, Diamond) from trips, acceptance rate and rating,
-    giving fare bonuses and access to premium and VIP passengers.
 - **Radio later:** a private upload page on the Vercel site for creator songs (needs file storage, e.g. Vercel Blob);
   a Talk/News station (needs voice recordings). For now, add songs via `web/src/data/radio.ts`.
 - **More Uber-app features** (David, 2026-10-28), candidates:
-  - waiting-time fee at pickup;
-  - airport queue;
-  - stacked / batched food orders;
-- **Dynamic time of day + weather** (David, 2026-10-29): a "Dynamic" choice in Settings next to the fixed
-  Day/Sunset/Night and Dry/Wet/Rain. Sky moves day → sunset → night over a session; showers roll in now and
-  then, roads stay wet for a while and dry out. Fixed settings stay for players who prefer one look. Ideas: rain
-  surge pricing, more food orders at night. Unreal needs time of day + weather first (see port list).
-- **More complicated roads** (David, 2026-10-28): curves, roundabouts, a highway or ring road, one-way
-  streets, bridges, junctions that aren't all right angles. Needs the road network, GPS routing, traffic
-  AI and the city generator (web and Unreal) to support non-grid roads.
-- **Story v1.1, "The Week":** FT Uber Game-style story. Comic-panel cutscenes, evening choices, stats
-  (money, rating, energy) that change the driving, about 4 endings (more good than bad), city characters,
-  no personal/family storyline. Start after launch feedback. (Agreed 2026-10-27)
-
-## Launch / business
-
+  - airport queue (needs an airport destination on the map first; could come with the ring road/highway);
+- Dynamic time/weather in Unreal (needs Unreal time of day + weather first, see port list).
+- **More complicated roads** (David, 2026-10-28). Part 1+2 built on branch `feature/roads` (not live until David
+  says): four mini roundabouts (islands, traffic circles them and gives way, GPS "take the 2nd exit") and two
+  one-way streets (arrows, traffic + GPS obey them). Still to do: curves, a ring road/highway, bridges,
+  non-right-angle junctions (needs the road graph to support curved roads), and the Unreal port.
+- **Story v1.1, "The Week"**: built on branch `feature/story-week` (not live until David says). New menu mode:
+  5 days of comic-panel intros, story jobs with city characters, evening choices, energy that makes the car
+  sluggish when low, 4 endings (3 good, 1 bad). Next: David plays it; then the Unreal port (data in
+  `web/src/data/week.ts`).
+  Later (David, 2026-10-30): flesh out the stories and the endings more (longer scenes, more characters' arcs,
+  ending cutscenes), after launch feedback.
 - itch.io and CrazyGames uploads: steps in `web/LAUNCH.md`. (Vercel site is live: shift-city-theta.vercel.app)
 - Poki: undecided (exclusive vs non-exclusive, maybe after Steam).
 
@@ -54,14 +45,25 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 - **HUD design pass, part 2** (David, 2026-10-28). Done: money/level panel, job card, story card and toasts
   are rounded Slate panels like the menu. Still to do:
-  - minimap: rounded rim with a soft shadow, a car arrow instead of a triangle, coloured route line;
-  - speed/gear readout comes from the Vehicle template and doesn't match: replace with our own;
   - animations: cards slide/fade in, money counts up when paid.
 - Trees have no leaves in the build robot's screenshots (they do on David's screen): robot-only, low priority.
 - Next batch: garage + goals + settings screens (same Slate style as the main menu, `Private/SCMenu.*`).
 
 ## Done
 
+- 2026-10-30: Shift Classic cockpit: full-width dashboard that hides the bonnet, screens raised, dark windscreen
+  pillars and headliner (it showed bright body paint everywhere before).
+- 2026-10-30: Unreal HUD part 2a: our own Slate speedometer (km/h + D/R/N; the template's widget is hidden),
+  minimap rim with a soft shadow, solid car arrow, brighter route line.
+- 2026-10-30: stacked food orders: about 1 in 5 standard deliveries has a second drop-off nearby (shown on the
+  offer, paid together at the end).
+- 2026-10-30: waiting-time fee: 1 in 4 riders/kitchens keep you waiting 8-30 s at pickup; after 8 s you earn
+  $0.20/s, shown live on the boarding ring and paid at drop-off.
+- 2026-10-30: "Dynamic" time of day + weather in Settings (web): day → golden hour → night → dawn over ~15 min,
+  showers in about a third of 10-min slots then wet roads, rides pay 20% more in the rain, a note on each change.
+- 2026-10-30: surge zone obvious on the minimap: stronger orange patch, pulsing outline, "SURGE ×1.6" label,
+  and a "×1.6" chip on the rim pointing to it when it's off the map.
+- 2026-10-29: driver app merged: 15 s offers, acceptance rate, offline after 3 declines, Blue/Gold/Platinum/Diamond tiers.
 - 2026-10-29: GPS said "turn right" when you had to turn left first at the junction you're waiting at (web + Unreal):
   the first leg is now compared with where the car faces ("Turn left now").
 - 2026-10-29: Unreal HUD part 1: career panel, job card, story card, toasts, GPS banner and boarding bar in

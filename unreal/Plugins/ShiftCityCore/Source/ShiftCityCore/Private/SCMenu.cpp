@@ -268,6 +268,28 @@ TSharedRef<SWidget> SCMenu::MakeHud(TSharedRef<FSCHudModel> Model)
 				]
 			]
 		]
+		// speedometer (bottom-right)
+		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(20.f)
+		[
+			SNew(SBox).MinDesiredWidth(150.f)
+			.Visibility(ShownIf([M]() { return M->bSpeed; }))
+			[
+				SNew(SBorder).BorderImage(HudPanelBrush()).Padding(FMargin(18.f, 8.f, 18.f, 10.f))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
+					[ SNew(STextBlock).Font(MenuFont("Bold", 40)).ColorAndOpacity(FSlateColor(FLinearColor::White)).Text(Text(&FSCHudModel::Speed)) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 8.f)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
+						[ SNew(STextBlock).Font(MenuFont("Bold", 14)).ColorAndOpacity(FSlateColor(MenuAccent)).Text(Text(&FSCHudModel::Gear)) ]
+						+ SVerticalBox::Slot().AutoHeight()
+						[ SNew(STextBlock).Font(MenuFont("Regular", 12)).ColorAndOpacity(FSlateColor(MenuMuted)).Text(FText::FromString(TEXT("km/h"))) ]
+					]
+				]
+			]
+		]
 		// toasts (top-centre, under the GPS banner)
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Top).Padding(FMargin(0.f, 128.f, 0.f, 0.f))
 		[ ToastBox ]

@@ -2,6 +2,8 @@
 #include "SCMenu.h"
 #include "ShiftCityCore.h"
 #include "Engine/GameViewportClient.h"
+#include "Blueprint/UserWidget.h"
+#include "UObject/UObjectIterator.h"
 #include "SCDestination.h"
 #include "SCEconomySubsystem.h"
 #include "SCJobDirector.h"
@@ -231,7 +233,7 @@ void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool
 		Line(FVector(C, Lo, 0), FVector(C, Hi, 0), RoadC, FMath::Max(2.f, SC::RoadW * Scale));
 	}
 	if (bHasRoute && Target)
-		for (int32 i = 1; i < Route.Points.Num(); ++i) Line(Route.Points[i - 1], Route.Points[i], FLinearColor(0.3f, 0.76f, 1.f), 5.f * S);
+		for (int32 i = 1; i < Route.Points.Num(); ++i) Line(Route.Points[i - 1], Route.Points[i], FLinearColor(0.35f, 0.82f, 1.f), 6.f * S);
 	if (ASCTraffic* Tr = bShowTrafficOnMinimap ? Traffic.Get() : nullptr)
 	{
 		TArray<FVector> Cars;
@@ -250,13 +252,33 @@ void ASCHUD::DrawMinimap(APawn* Pawn, float CamYaw, ASCDestination* Target, bool
 		const FLinearColor C = bDropoff ? FLinearColor(1.f, 0.7f, 0.28f) : FLinearColor(0.33f, 1.f, 0.82f);
 		DrawRect(C, P.X - 7 * S, P.Y - 7 * S, 14 * S, 14 * S);
 	}
-	for (int32 i = 0; i < 48; ++i)
+	// rim: a soft dark shadow outside, then a crisp light edge
+	for (int32 i = 0; i < 64; ++i)
 	{
-		const float A0 = 2.f * PI * i / 48, A1 = 2.f * PI * (i + 1) / 48;
-		const FVector2D P = Centre + FVector2D(FMath::Cos(A0), FMath::Sin(A0)) * Radius, Q = Centre + FVector2D(FMath::Cos(A1), FMath::Sin(A1)) * Radius;
-		DrawLine(P.X, P.Y, Q.X, Q.Y, FLinearColor(1.f, 1.f, 1.f, 0.35f), 2.f * S);
+		const float A0 = 2.f * PI * i / 64, A1 = 2.f * PI * (i + 1) / 64;
+		const FVector2D D0(FMath::Cos(A0), FMath::Sin(A0)), D1(FMath::Cos(A1), FMath::Sin(A1));
+		for (int32 k = 0; k < 3; ++k)
+		{
+			const float Rr = Radius + (3.f + 3.f * k) * S;
+			DrawLine(Centre.X + D0.X * Rr, Centre.Y + D0.Y * Rr, Centre.X + D1.X * Rr, Centre.Y + D1.Y * Rr, FLinearColor(0.f, 0.f, 0.f, 0.22f - 0.06f * k), 3.f * S);
+		}
+		DrawLine(Centre.X + D0.X * Radius, Centre.Y + D0.Y * Radius, Centre.X + D1.X * Radius, Centre.Y + D1.Y * Radius, FLinearColor(1.f, 1.f, 1.f, 0.6f), 2.5f * S);
 	}
-	Arrow(Centre.X, Centre.Y, FRotator::NormalizeAxis(Pawn->GetActorRotation().Yaw - CamYaw), 12 * S, FLinearColor(0.3f, 0.94f, 0.69f));
+	// the car: a solid arrow with a dark outline
+	{
+		const float A = FMath::DegreesToRadians(FRotator::NormalizeAxis(Pawn->GetActorRotation().Yaw - CamYaw)), Sz = 13.f * S;
+		const FVector2D Fwd(FMath::Sin(A), -FMath::Cos(A)), Side(FMath::Cos(A), FMath::Sin(A));
+		const FVector2D Tip = Centre + Fwd * Sz, Lp = Centre - Fwd * Sz * 0.7f - Side * Sz * 0.75f, Rp = Centre - Fwd * Sz * 0.7f + Side * Sz * 0.75f, Notch = Centre - Fwd * Sz * 0.3f;
+		TArray<FCanvasUVTri> ArrowTris;
+		FCanvasUVTri T1; T1.V0_Pos = Tip; T1.V1_Pos = Lp; T1.V2_Pos = Notch;
+		FCanvasUVTri T2; T2.V0_Pos = Tip; T2.V1_Pos = Notch; T2.V2_Pos = Rp;
+		for (FCanvasUVTri* Tri : { &T1, &T2 }) { Tri->V0_Color = Tri->V1_Color = Tri->V2_Color = FLinearColor(0.3f, 0.94f, 0.69f); ArrowTris.Add(*Tri); }
+		FCanvasTriangleItem ArrowItem(ArrowTris, GWhiteTexture);
+		Canvas->DrawItem(ArrowItem);
+		const FLinearColor Ink(0.02f, 0.08f, 0.05f);
+		DrawLine(Tip.X, Tip.Y, Lp.X, Lp.Y, Ink, 1.5f * S); DrawLine(Lp.X, Lp.Y, Notch.X, Notch.Y, Ink, 1.5f * S);
+		DrawLine(Notch.X, Notch.Y, Rp.X, Rp.Y, Ink, 1.5f * S); DrawLine(Rp.X, Rp.Y, Tip.X, Tip.Y, Ink, 1.5f * S);
+	}
 }
 
 void ASCHUD::DrawHUD()
@@ -301,7 +323,7 @@ void ASCHUD::DrawHUD()
 	FSCHudModel Dummy;
 	FSCHudModel& Hm = HudModel.IsValid() ? *HudModel : Dummy;
 	Hm.bVisible = !MenuWidget.IsValid();
-	Hm.bCareer = Hm.bCard = Hm.bGps = Hm.bBoard = false;
+	Hm.bCareer = Hm.bCard = Hm.bGps = Hm.bBoard = Hm.bSpeed = false;
 	Hm.Story.Reset();
 	for (FString& ToastText : Hm.Toast) ToastText.Reset();
 	if (MenuWidget.IsValid()) return; // the menu covers the screen: no HUD under it
@@ -439,7 +461,21 @@ void ASCHUD::DrawHUD()
 	// ---- minimap (bottom-left), heading-up
 	if (Pawn && PC && PC->PlayerCameraManager) DrawMinimap(Pawn, PC->PlayerCameraManager->GetCameraRotation().Yaw, D ? D->GetTarget() : nullptr, D && D->HasJob() && D->GetJob().Stage == ESCJobStage::Dropoff);
 
-	// ---- speed (bottom-right)
+	// ---- speed (bottom-right): our own Slate readout; hide the Vehicle template's widget so there's only one
+	if (Pawn)
+	{
+		const FVector V = Pawn->GetVelocity();
+		const float Along = FVector::DotProduct(V, Pawn->GetActorForwardVector());
+		Hm.bSpeed = true;
+		Hm.Speed = FString::Printf(TEXT("%d"), FMath::RoundToInt(V.Size2D() * 0.036f));
+		Hm.Gear = Along < -50.f ? TEXT("R") : V.Size2D() < 50.f ? TEXT("N") : TEXT("D");
+		if ((TemplateUiTimer -= GetWorld()->GetDeltaSeconds()) <= 0.f)
+		{
+			TemplateUiTimer = 1.f;
+			for (TObjectIterator<UUserWidget> It; It; ++It)
+				if (It->GetWorld() == GetWorld() && It->IsInViewport() && It->GetClass()->GetName().StartsWith(TEXT("BP_VehicleAdvUI"))) It->RemoveFromParent();
+		}
+	}
 	if (bShowSpeed && Pawn)
 	{
 		const float Kmh = Pawn->GetVelocity().Size() * 0.036f;

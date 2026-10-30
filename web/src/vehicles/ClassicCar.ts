@@ -11,6 +11,9 @@ interface Profile {
 }
 
 /** The original hatch profile, unchanged. */
+/** Fabric headliner and pillar trim (a little lighter than the dash so the cabin reads). */
+const headliner = new THREE.MeshStandardMaterial({ color: 0x4a4744, roughness: 0.95 });
+
 const P: Profile = { L: 3.9, W: 1.75, H: 1.5, wb: 2.45, wr: 0.31, clear: 0.16, belt: 0.92, hood: 0.84, tail: 0.98, cowl: 0.72, roofF: 0.1, roofR: -1.62, glassTail: -1.86 };
 
 function bodyShape(p: Profile) {
@@ -159,8 +162,9 @@ export function buildClassicCar(color: number, opts: { detail: boolean; photorea
       bodyG.add(mirror);
     }
     // interior
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(p.W * 0.84, 0.22, 0.62), interiorMat);
-    dash.position.set(0, p.belt - 0.02, p.cowl - 0.22);
+    // a full-width dash whose top sits just above the bonnet line, so from the seat you see dashboard, not paint
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(p.W * 0.9, 0.42, 0.68), interiorMat);
+    dash.position.set(0, p.belt - 0.1, p.cowl - 0.29);
     // cabin floor/door cards hide the body's top deck when viewed from the driver's seat
     const tub = new THREE.Mesh(new THREE.BoxGeometry(p.W * 0.86, 0.02, Math.abs(p.cowl - p.glassTail)), interiorMat);
     tub.position.set(0, p.belt + 0.012, (p.cowl + p.glassTail) / 2);
@@ -187,9 +191,9 @@ export function buildClassicCar(color: number, opts: { detail: boolean; photorea
       return { canvas, tex, mesh };
     };
     const cluster = mkScreen(256, 96, 0.3, 0.11);
-    cluster.mesh.position.set(driverX, p.belt + 0.1, p.cowl - 0.54); cluster.mesh.rotation.x = -0.3;
+    cluster.mesh.position.set(driverX, p.belt + 0.15, p.cowl - 0.6); cluster.mesh.rotation.x = -0.3;
     const nav = mkScreen(256, 160, 0.3, 0.19);
-    nav.mesh.position.set(0, p.belt + 0.14, p.cowl - 0.55); nav.mesh.rotation.x = -0.25; nav.mesh.rotation.y = Math.PI - 0.25;
+    nav.mesh.position.set(0, p.belt + 0.2, p.cowl - 0.6); nav.mesh.rotation.x = -0.25; nav.mesh.rotation.y = Math.PI - 0.25;
     const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.21, 0.015), blackTrim);
     bezel.position.copy(nav.mesh.position).add(new THREE.Vector3(0, 0, 0.012)); bezel.rotation.copy(nav.mesh.rotation);
     // rear-view mirror
@@ -204,10 +208,23 @@ export function buildClassicCar(color: number, opts: { detail: boolean; photorea
       seat.rotation.x = -0.15;
       bodyG.add(seat);
     }
-    const liner = new THREE.Mesh(new THREE.PlaneGeometry(p.W * 0.8, Math.abs(p.roofF - p.roofR)), interiorMat);
+    const liner = new THREE.Mesh(new THREE.PlaneGeometry(p.W * 0.9, Math.abs(p.roofF - p.roofR) + 0.2), headliner);
     liner.rotation.x = Math.PI / 2;
     liner.position.set(0, p.H - 0.07, (p.roofF + p.roofR) / 2);
     bodyG.add(liner);
+    // the body is built as solid blocks, so from the driver's seat you'd see the painted top of the lower body:
+    // cover it with dark door/dash tops, and trim the windscreen pillars
+    const sill = new THREE.Mesh(new THREE.BoxGeometry(p.W * 0.94, 0.02, Math.abs(p.cowl - p.glassTail)), interiorMat);
+    sill.position.set(0, p.belt + 0.03, (p.cowl + p.glassTail) / 2);
+    bodyG.add(sill);
+    for (const sx of [-1, 1]) {
+      const a = new THREE.Vector3(sx * (p.W * 0.46 - 0.04), p.belt + 0.04, p.cowl - 0.02), b = new THREE.Vector3(sx * (p.W * 0.44 - 0.04), p.H - 0.06, p.roofF + 0.02);
+      const dir = b.clone().sub(a), len = dir.length();
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, len), headliner);
+      pillar.position.copy(a).addScaledVector(dir, 0.5);
+      pillar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize());
+      bodyG.add(pillar);
+    }
   }
   bodyG.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = opts.detail; } });
 

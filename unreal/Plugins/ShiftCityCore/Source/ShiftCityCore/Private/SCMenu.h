@@ -24,6 +24,9 @@ struct FSCHudModel
 	bool bBoard = false;
 	FString BoardText;
 	float BoardProgress = 0.f;
+	/** Our own speedometer (bottom-right), replacing the Vehicle template's. */
+	bool bSpeed = false;
+	FString Speed, Gear;
 	/** Story intro card (first line = title); empty = hidden. */
 	FString Story;
 	static constexpr int32 MaxToasts = 3;

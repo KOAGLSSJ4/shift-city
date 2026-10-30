@@ -18,6 +18,7 @@ import { STORY } from '../data/story';
 import { GOALS } from '../data/goals';
 import { MAX_UPGRADE, UPGRADE_TRACKS, VEHICLES, effectiveStats, vehicleById, type VehicleDef } from '../data/vehicles';
 import { nextStation, stationName } from '../data/radio';
+import { CHANGE_TOAST, timeAt, weatherAt } from '../gameplay/DayCycle';
 import { DESTINATIONS } from '../data/world';
 import { CHALLENGE_REWARD, claimChallenge, claimDailyReward, dailyChallenge } from '../gameplay/Daily';
 import { buyPowerUpgrade, MAX_POWER_LEVEL, powerUpgradeCost, buyUpgrade, buyVehicle, claimGoal, claimableGoals, convertArcadePoints, goalProgress, recordArcadeRun, arcadeXp, selectVehicle, upgradeCost, upgradesOf, xpToNext, type JobPayment } from '../gameplay/Economy';
@@ -25,7 +26,7 @@ import { COMPLIMENTS, PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
 import { OFFER_SECONDS, acceptanceRate, driverTier, earnings, nextTier } from '../gameplay/Driver';
-import type { Job } from '../gameplay/Jobs';
+import { waitingFee, type Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
 import { carThumbs } from '../ui/CarThumbs';
@@ -243,6 +244,7 @@ export class Game {
     this.handleKeys();
     if (this.state === 'city' && !this.paused) {
       this.cityMode.update(dt, { throttle: inp.throttle, brake: inp.brake, steer: inp.steer, handbrake: inp.handbrake });
+      this.updateEnvironment(dt);
     }
     if (this.state === 'city' || this.state === 'menu') {
       this.traffic.update(this.paused ? 0 : dt, this.time, { pos: this.cityMode.physics.pos, heading: this.cityMode.physics.heading });
@@ -396,6 +398,24 @@ export class Game {
     await this.gfx.configure(mode, time, weather);
   }
 
+  /** "Dynamic" time/weather: every couple of seconds, move to whatever the cycle says (one change at a time). */
+  private envClock = 0;
+  private readonly envSeed = Math.floor(Math.random() * 1000);
+  private envCheck = 0;
+  private envBusy = false;
+  private updateEnvironment(dt: number) {
+    const st = this.save.settings;
+    this.envClock += dt;
+    if ((this.envCheck -= dt) > 0 || this.envBusy || (!st.autoTime && !st.autoWeather)) return;
+    this.envCheck = 2;
+    const time = st.autoTime ? timeAt(this.envClock) : st.time, weather = st.autoWeather ? weatherAt(this.envClock, this.envSeed) : st.weather;
+    if (time === st.time && weather === st.weather) return;
+    const msg = time !== st.time ? CHANGE_TOAST[`time:${time}`] : CHANGE_TOAST[`weather:${weather}`];
+    this.envBusy = true;
+    this.applyGraphics(undefined, time, weather).finally(() => { this.envBusy = false; });
+    if (msg) this.toast(msg, weather === 'rain' && weather !== st.weather ? 'good' : undefined);
+  }
+
   private applyLampGlass() {
     const t = this.save.settings.time;
     for (const m of this.city.lampGlass) { m.emissiveIntensity = t === 'night' ? 5 : t === 'sunset' ? 1.5 : 0; m.needsUpdate = true; }
@@ -510,7 +530,7 @@ export class Game {
       tag.textContent = (job.chapter !== null ? STORY[job.chapter].title + ' · ' : 'NEW ') + kind;
       title.textContent = job.food ? `${job.restaurant} → ${job.b.name}` : `${job.customer}`;
       const who = job.persona ? ` · ${PERSONAS[job.persona].label}` : '';
-      det.innerHTML = `Pickup: <b>${job.food ? job.restaurant + ' @ ' : ''}${job.a.name}</b><br>Drop-off: <b>${job.b.name}</b><br>~${(this.estimateDistance(job) / 1000).toFixed(1)} km${who}${v.blurb ? `<br><span class="hint">${v.blurb}${job.limit ? ` (${job.limit}s)` : ''}</span>` : ''}`;
+      det.innerHTML = `Pickup: <b>${job.food ? job.restaurant + ' @ ' : ''}${job.a.name}</b><br>Drop-off: <b>${job.b.name}</b>${job.extraDrop ? ` then <b>${job.extraDrop.name}</b> <span class="hint">(2 orders)</span>` : ''}<br>~${(this.estimateDistance(job) / 1000).toFixed(1)} km${who}${v.blurb ? `<br><span class="hint">${v.blurb}${job.limit ? ` (${job.limit}s)` : ''}</span>` : ''}`;
       fare.textContent = money(Math.round(job.fare * def.fare * 100) / 100);
       btns.hidden = false;
       $<HTMLButtonElement>('decline').disabled = job.chapter !== null;
@@ -592,8 +612,11 @@ export class Game {
       if (d < BALANCE.pickupRadius + 2) {
         hold.hidden = false;
         const slow = ph.speed < BALANCE.stopSpeed;
-        $('hold-text').textContent = slow ? (job.stage === 'pickup' ? (job.food ? 'Collecting order…' : 'Passenger boarding…') : 'Arriving…') : 'Stop in the ring';
-        $('hold-ring').style.strokeDashoffset = String(106.8 * (1 - this.cityMode.holdTime / BALANCE.boardTime));
+        const waiting = slow && job.stage === 'pickup' && !!job.lateBy && this.cityMode.holdTime > BALANCE.boardTime;
+        const fee = waiting ? waitingFee(this.cityMode.holdTime - BALANCE.boardTime) : 0;
+        $('hold-text').textContent = waiting ? `Waiting for ${job.food ? 'the order' : job.customer}…${fee ? ` +$${fee.toFixed(2)}` : ''}`
+          : slow ? (job.stage === 'pickup' ? (job.food ? 'Collecting order…' : 'Passenger boarding…') : 'Arriving…') : 'Stop in the ring';
+        $('hold-ring').style.strokeDashoffset = String(106.8 * (1 - this.cityMode.holdTime / this.cityMode.holdNeeded));
       } else hold.hidden = true;
       this.edgeArrow(new THREE.Vector3(t.x, 2, t.z), job.stage === 'pickup' ? '#54ffd0' : '#ffb347');
     } else { $('hold').hidden = true; $('edge-arrow').hidden = true; }
@@ -974,8 +997,8 @@ export class Game {
       $(`vol-${k}-v`).textContent = st.audio ? `${Math.round(st.volume[k] * 100)}` : 'off';
     }
     $('s-mute').textContent = st.audio ? 'Mute all' : 'Unmute';
-    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.classList.toggle('on', b.dataset.time === st.time));
-    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.classList.toggle('on', b.dataset.weather === st.weather));
+    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.classList.toggle('on', st.autoTime ? b.dataset.time === 'auto' : b.dataset.time === st.time));
+    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.classList.toggle('on', st.autoWeather ? b.dataset.weather === 'auto' : b.dataset.weather === st.weather));
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.classList.toggle('on', b.dataset.gfx === st.graphics));
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === st.camera));
     $<HTMLInputElement>('s-fps').checked = st.showFps;
@@ -1013,8 +1036,16 @@ export class Game {
     on('menu-credits', () => { this.closeModals(); $('credits').hidden = false; });
     on('c-close', () => this.closeModals());
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(b.dataset.gfx as GraphicsMode)));
-    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, b.dataset.time as TimeOfDay)));
-    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.addEventListener('click', () => this.applyGraphics(undefined, undefined, b.dataset.weather as Weather)));
+    document.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.addEventListener('click', () => {
+      const auto = b.dataset.time === 'auto';
+      this.save.settings.autoTime = auto;
+      this.applyGraphics(undefined, auto ? timeAt(this.envClock) : b.dataset.time as TimeOfDay);
+    }));
+    document.querySelectorAll<HTMLElement>('[data-weather]').forEach((b) => b.addEventListener('click', () => {
+      const auto = b.dataset.weather === 'auto';
+      this.save.settings.autoWeather = auto;
+      this.applyGraphics(undefined, undefined, auto ? weatherAt(this.envClock, this.envSeed) : b.dataset.weather as Weather);
+    }));
     for (const k of ['master', 'music', 'engine', 'sfx'] as const) {
       const el = $<HTMLInputElement>(`vol-${k}`);
       el.addEventListener('input', () => {
