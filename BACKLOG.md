@@ -55,6 +55,9 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-30: Realism pass: Unreal photo look (TSR anti-aliasing, sharpen, Lumen reflection/GI quality, bloom,
+  vignette, AO); every car gets wheel nuts + centre caps, "SHIFT CITY" tyre lettering, wipers, exhaust tips (everyday
+  cars), side repeaters, rear badge, "SC 207" plates, chrome-reflector headlights; Unreal brake lights glow when braking.
 - 2026-10-30: Car detail pass: door/bonnet/tailgate shut lines and fuel flaps on every car, tyre tread grooves,
   projector/LED headlights on the Kite Pico and Lumen, clean lower intakes, pristine gloss paint (no flake, David's call).
 - 2026-10-30: Unreal trees have leaves in the game (material usage flags), traffic lights keep their colours, no

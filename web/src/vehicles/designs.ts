@@ -1,7 +1,7 @@
 // Original Shift City car designs (fictional; not based on any real model). Each body type is a
 // set of curves plus a details pass that draws its lights, grille, intakes and aero.
 import type { BodyType } from '../data/vehicles';
-import type { CarDesign, Kit, Pts, RimStyle } from './CarBody';
+import { pixelText, type CarDesign, type Kit, type Pts, type RimStyle } from './CarBody';
 
 const TAU = Math.PI * 2;
 const spokes = (n: number, width: number, offset = 0, hub?: number): RimStyle =>
@@ -12,6 +12,9 @@ const pairs = (n: number, gap: number, width: number): RimStyle =>
 /** Rear number plate + reversing lens, shared by most designs. */
 function plate(k: Kit, y: number) {
   k.rrect('rear', -0.26, y, 0.26, y + 0.12, 0.015, 'plate');
+  // registration characters (seen from behind, the car's +x is on the viewer's left, so text runs toward -x)
+  const cw = 0.016, ch = 0.016, text = 'SC 207', x0 = (text.length * 4 - 1) * cw / 2, y0 = y + 0.02;
+  for (const [a, b, c, d] of pixelText(text)) k.rrect('rear', x0 - c * cw, y0 + b * ch, x0 - a * cw, y0 + d * ch, 0.001, 'decal', { lift: 0.009 });
 }
 
 /** Body types drawn with the lofted builder (all of them, the Classic included). */
@@ -39,7 +42,7 @@ export const DESIGNS: Record<DesignBody, CarDesign> = {
       k.rrect('rear', 0.5, 0.82, 0.76, 0.97, 0.04, 'tail', { mirror: true });
       plate(k, 0.5);
       k.rrect('rear', -0.6, 0.44, 0.6, 0.49, 0.025, 'decal');
-      k.ribbon('side', [[-1.25, 0.45], [1.2, 0.45]], 0.035, 'chrome');
+      k.ribbon('side', [[-0.84, 0.45], [0.83, 0.45]], 0.035, 'chrome');
       k.rrect('side', 0.05, 0.9, 0.2, 0.93, 0.01, 'chrome');
     },
   },
@@ -66,7 +69,7 @@ export const DESIGNS: Record<DesignBody, CarDesign> = {
       k.ribbon('rear', [[-0.48, 0.9], [0.48, 0.9]], 0.02, 'decal');
       plate(k, 0.5);
       k.rrect('rear', -0.62, 0.44, 0.62, 0.49, 0.025, 'decal');
-      k.ribbon('side', [[-1.3, 0.44], [1.25, 0.44]], 0.04, 'trim');
+      k.ribbon('side', [[-0.86, 0.44], [0.84, 0.44]], 0.04, 'trim');
       k.rrect('side', 0.1, 0.9, 0.25, 0.93, 0.01, 'chrome');
       k.rrect('side', -0.95, 0.91, -0.8, 0.94, 0.01, 'chrome');
     },
@@ -312,8 +315,12 @@ export function panelLines(k: Kit) {
   const hz = b.gz1 + 0.07, hx = b.section(hz).hw * 0.78;
   k.ribbon('top', [[-hx, hz], [hx, hz]], gap, 'decal', o);
   k.ribbon('top', [[hx, hz], [hx * 0.9, b.zMax - 0.14]], gap, 'decal', { ...o, mirror: true });
+  // side repeater on each front wing, just above the arch
+  const rz = d.wb / 2 - ra * 0.55, ry = d.wr + ra + 0.09;
+  k.rrect('side', rz - 0.035, ry - 0.011, rz + 0.035, ry + 0.011, 0.008, 'lens', { lift: 0.003 });
   // tailgate / boot lid on the rear face
   const ty = b.top(b.zMin + 0.12) - 0.05, tx = b.section(b.zMin + 0.12).hw * 0.7;
   k.ribbon('rear', [[-tx, ty], [tx, ty]], gap, 'decal', { ...o, depth: 0.3 });
+  k.ellipse('rear', 0, ty - 0.07, 0.045, 0.028, 'chrome', { lift: 0.006, depth: 0.3 }); // badge
 }
 

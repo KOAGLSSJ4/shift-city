@@ -12,6 +12,7 @@ struct FSCCarModel;
 class APawn;
 class UPrimitiveComponent;
 class UProceduralMeshComponent;
+class UMaterialInstanceDynamic;
 class USceneComponent;
 
 UCLASS()
@@ -40,6 +41,9 @@ private:
 	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Spinners;
 	UPROPERTY() TArray<TObjectPtr<UProceduralMeshComponent>> Meshes;
 	UPROPERTY() TArray<TObjectPtr<UPrimitiveComponent>> HiddenParts;
+	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> TailLights; // glow brighter while braking
+	TArray<FLinearColor> TailGlow;
+	bool bBrakeLit = false;
 	TArray<FVector> PivotRest;
 	TArray<int32> PhysicsWheel; // physics wheel index driving each visual wheel
 

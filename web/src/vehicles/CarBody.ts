@@ -626,3 +626,30 @@ export function tireGeometry(r: number, rr: number, w: number, seg: number) {
   g.rotateZ(-Math.PI / 2); // axis → x
   return g;
 }
+
+/** 3x5 pixel font for number plates and tyre lettering (only the characters we use). */
+const FONT: Record<string, string[]> = {
+  S: ['111', '100', '111', '001', '111'], C: ['111', '100', '100', '100', '111'], H: ['101', '101', '111', '101', '101'],
+  I: ['111', '010', '010', '010', '111'], F: ['111', '100', '111', '100', '100'], T: ['111', '010', '010', '010', '010'],
+  Y: ['101', '101', '010', '010', '010'], K: ['101', '110', '100', '110', '101'], '0': ['111', '101', '101', '101', '111'],
+  '1': ['010', '110', '010', '010', '111'], '2': ['111', '001', '111', '100', '111'], '7': ['111', '001', '001', '001', '001'],
+  '5': ['111', '100', '111', '001', '111'], ' ': ['000', '000', '000', '000', '000'],
+};
+/** Filled cells of `text` as rectangles [x0, y0, x1, y1]; x runs left to right from 0, y up from 0 (cell units). */
+export function pixelText(text: string): [number, number, number, number][] {
+  const out: [number, number, number, number][] = [];
+  [...text.toUpperCase()].forEach((ch, i) => {
+    const rows = FONT[ch] ?? FONT[' '];
+    rows.forEach((row, r) => {
+      // merge each row's run of filled cells into one rectangle
+      let start = -1;
+      for (let c = 0; c <= 3; c++) {
+        const on = c < 3 && row[c] === '1';
+        if (on && start < 0) start = c;
+        if (!on && start >= 0) { out.push([i * 4 + start, 4 - r, i * 4 + c, 5 - r]); start = -1; }
+      }
+    });
+  });
+  return out;
+}
+

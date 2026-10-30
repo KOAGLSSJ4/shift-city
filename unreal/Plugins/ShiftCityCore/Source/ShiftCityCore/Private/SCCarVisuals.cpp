@@ -246,6 +246,7 @@ void USCCarVisuals::Clear()
 	if (CarRoot) CarRoot->DestroyComponent();
 	for (UPrimitiveComponent* Part : HiddenParts) if (Part) Part->SetVisibility(true);
 	Meshes.Reset(); Spinners.Reset(); Pivots.Reset(); HiddenParts.Reset(); PivotRest.Reset(); PhysicsWheel.Reset();
+	TailLights.Reset(); TailGlow.Reset();
 	CarRoot = nullptr;
 }
 
@@ -294,7 +295,22 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 	CarRoot->RegisterComponent();
 	CarRoot->SetWorldTransform(FTransform(ActorTm.GetRotation(), ActorTm.TransformPosition(FVector(Centre.X, Centre.Y, Centre.Z - Radius))));
 	const FLinearColor PaintColor = SCCars::ParseColor(Car.Color);
-	Meshes.Add(SCCars::Build(*Model, 0, CarRoot, PaintColor, true));
+	UProceduralMeshComponent* BodyMesh = SCCars::Build(*Model, 0, CarRoot, PaintColor, true);
+	Meshes.Add(BodyMesh);
+	// remember the tail-light materials (body sections are numbered in model order) so braking can light them up
+	int32 BodySection = 0;
+	for (const FSCCarSection& Sec : Model->Sections)
+	{
+		if (Sec.Part != 0) continue;
+		if ((Sec.Flags & SCCars::TailLight) && BodyMesh)
+			if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(BodyMesh->GetMaterial(BodySection)))
+			{
+				TailLights.Add(Mid);
+				TailGlow.Add(Sec.Emissive);
+			}
+		++BodySection;
+	}
+	bBrakeLit = false;
 
 	// wheels where the design has them, each driven by the physics wheel on the same corner
 	for (int32 Corner = 0; Corner < 4; ++Corner)
@@ -379,6 +395,14 @@ void USCCarVisuals::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 	APawn* Pawn = Cast<APawn>(GetOwner());
 	UChaosWheeledVehicleMovementComponent* Mv = Pawn ? Pawn->FindComponentByClass<UChaosWheeledVehicleMovementComponent>() : nullptr;
 	if (!Mv) return;
+	// brake lights: much brighter while the brake (or handbrake) is held
+	const bBraking = Mv->GetBrakeInput() > 0.1f || Mv->GetHandbrakeInput();
+	if (bBraking != bBrakeLit)
+	{
+		bBrakeLit = bBraking;
+		for (int32 L = 0; L < TailLights.Num(); ++L)
+			if (TailLights[L]) TailLights[L]->SetVectorParameterValue(TEXT("Emissive"), TailGlow[L] * (bBraking ? 8.f : 1.f));
+	}
 	for (int32 Corner = 0; Corner < 4; ++Corner)
 	{
 		UChaosVehicleWheel* Wheel = Mv->Wheels.IsValidIndex(PhysicsWheel[Corner]) ? Mv->Wheels[PhysicsWheel[Corner]].Get() : nullptr;

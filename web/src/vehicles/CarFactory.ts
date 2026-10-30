@@ -6,7 +6,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import type { BodyType, VehicleDef } from '../data/vehicles';
 import { binaryUrl } from '../core/AssetUrl';
-import { BodyShape, Kit, mergeParts, rimGeometry, tireGeometry, type PartKey } from './CarBody';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { BodyShape, Kit, mergeParts, pixelText, rimGeometry, tireGeometry, type PartKey } from './CarBody';
 import { DESIGNS, panelLines, type DesignBody } from './designs';
 
 export interface CarRig {
@@ -43,7 +44,9 @@ const DECAL = { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits
 const satinBlack = new THREE.MeshStandardMaterial({ color: 0x101113, roughness: 0.6, metalness: 0.1, ...DECAL });
 const glossBlack = new THREE.MeshPhysicalMaterial({ color: 0x060708, roughness: 0.15, metalness: 0.3, clearcoat: 1 });
 const decalMat = new THREE.MeshStandardMaterial({ color: 0x08090a, roughness: 0.45, metalness: 0.2, ...DECAL });
-const lensMat = new THREE.MeshPhysicalMaterial({ color: 0x15181c, roughness: 0.05, metalness: 0.6, clearcoat: 1, ...DECAL });
+// headlight units: a clear cover over a chrome reflector, like a real lamp
+const lensMat = new THREE.MeshPhysicalMaterial({ color: 0xaeb6bf, roughness: 0.1, metalness: 1, clearcoat: 1, ...DECAL });
+const letterMat = new THREE.MeshStandardMaterial({ color: 0x3b3b3d, roughness: 0.75 });
 const carbonMat = new THREE.MeshPhysicalMaterial({ color: 0x15161a, roughness: 0.35, metalness: 0.4, clearcoat: 0.8, ...DECAL });
 const interiorBack = new THREE.MeshStandardMaterial({ color: 0x6b6862, roughness: 0.9, side: THREE.BackSide });
 const dashMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2d, roughness: 0.7 });
@@ -169,6 +172,7 @@ export function buildProceduralCar(kind: BodyType, color: number, opts: { detail
     pivot.position.set(x, d.wr, z);
     const spin = new THREE.Group(), fixed = new THREE.Group();
     spin.add(new THREE.Mesh(wg.tire, tireMat), new THREE.Mesh(wg.rim, rimM), new THREE.Mesh(wg.barrel, barrelMat));
+    if (wg.letters.attributes.position) spin.add(new THREE.Mesh(wg.letters, letterMat));
     if (opts.detail) {
       fixed.add(new THREE.Mesh(wg.disc, discMat));
       const cal = new THREE.Mesh(wg.caliper, caliperM);
@@ -306,6 +310,7 @@ function carParts(body: DesignBody, lod: 0 | 1) {
     add(lod === 0 ? b.greenhouseParts(80, 32) : b.greenhouseParts(26, 12));
     DESIGNS[body].details(kit);
     panelLines(kit);
+    realDetails(kit, body);
     if (kit.skipped && import.meta.env?.DEV) console.warn(`car design ${body}: ${kit.skipped} decal triangles fell off the body`);
     const merged = mergeParts(kit.parts);
     Object.values(merged).forEach((g) => { g.userData.shared = true; });
@@ -314,7 +319,7 @@ function carParts(body: DesignBody, lod: 0 | 1) {
   return partCache.get(key)!;
 }
 
-const wheelCache = new Map<string, Record<'tire' | 'rim' | 'barrel' | 'disc' | 'caliper', THREE.BufferGeometry>>();
+const wheelCache = new Map<string, Record<'tire' | 'rim' | 'barrel' | 'disc' | 'caliper' | 'letters', THREE.BufferGeometry>>();
 function wheelGeometry(body: DesignBody, lod: 0 | 1) {
   const key = `${body}:${lod}`;
   if (!wheelCache.has(key)) {
@@ -327,7 +332,30 @@ function wheelGeometry(body: DesignBody, lod: 0 | 1) {
     disc.rotateZ(Math.PI / 2); disc.translate(w / 2 - 0.11, 0, 0);
     const caliper = new THREE.BoxGeometry(0.05, rr * 0.42, rr * 0.3);
     caliper.translate(w / 2 - 0.085, 0, 0);
-    const g = { tire: tireGeometry(d.wr, rr, w, lod === 0 ? 40 : 16), rim, barrel, disc, caliper };
+    // five wheel nuts and a centre cap on the hub (grey metal, merged into the barrel)
+    const hub: THREE.BufferGeometry[] = [barrel];
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2, nut = new THREE.CylinderGeometry(0.011, 0.011, 0.022, 6);
+      nut.rotateZ(Math.PI / 2); nut.translate(w / 2 - 0.035, Math.cos(a) * rr * 0.22, Math.sin(a) * rr * 0.22);
+      hub.push(nut);
+    }
+    const cap = new THREE.CylinderGeometry(rr * 0.11, rr * 0.11, 0.02, 20);
+    cap.rotateZ(Math.PI / 2); cap.translate(w / 2 - 0.035, 0, 0);
+    hub.push(cap);
+    // raised lettering round the outer sidewall (detailed cars only)
+    const letters: THREE.BufferGeometry[] = [];
+    if (lod === 0) {
+      const Rm = (d.wr + rr) / 2, cell = Math.min(0.009, (d.wr - rr) / 7), text = 'SHIFT CITY', len = (text.length * 4 - 1) * cell;
+      for (const base of [Math.PI / 2, -Math.PI / 2]) for (const [a, b, c, e] of pixelText(text)) {
+        const u = ((a + c) / 2) * cell - len / 2, v = ((b + e) / 2 - 2.5) * cell, th = base - u / Rm;
+        const box = new THREE.BoxGeometry(0.003, (e - b) * cell, (c - a) * cell);
+        box.rotateX(th); // glyph height along the radius, width along the tyre
+        box.translate(w / 2 + 0.0015, Math.cos(th) * (Rm + v), Math.sin(th) * (Rm + v));
+        letters.push(box);
+      }
+    }
+    const g = { tire: tireGeometry(d.wr, rr, w, lod === 0 ? 40 : 16), rim, barrel: mergeGeometries(hub), disc, caliper,
+      letters: letters.length ? mergeGeometries(letters) : new THREE.BufferGeometry() };
     Object.values(g).forEach((x) => { x.userData.shared = true; });
     wheelCache.set(key, g);
   }
@@ -363,3 +391,29 @@ function trafficParts(body: DesignBody) {
   }
   return trafficCache.get(body)!;
 }
+
+/** Small parts every real car has: exhaust tips (everyday cars; the EV has none, sports cars draw their own) and wipers. */
+function realDetails(kit: Kit, body: DesignBody) {
+  const b = kit.b;
+  if (['classic', 'hatch', 'sedan', 'suv', 'royal'].includes(body)) {
+    const y = b.bot(b.zMin + 0.15) + 0.1;
+    for (const x of [0.38, -0.38]) {
+      const z = b.endZ(x, y, false);
+      if (z > b.zMin + 0.5) continue; // no rear face at that height
+      const tip = new THREE.CylinderGeometry(0.034, 0.034, 0.08, 16, 1, true); // 3 cm proud of the bumper
+      tip.rotateX(Math.PI / 2); tip.translate(x, y, z + 0.01);
+      kit.add('chrome', tip);
+      const inside = new THREE.CircleGeometry(0.034, 16);
+      inside.rotateY(Math.PI); inside.translate(x, y, z - 0.015);
+      kit.add('black', inside);
+    }
+  }
+  // wipers resting along the bottom of the windscreen
+  const wz = b.gz1 - 0.07, wy = b.roof(wz) + 0.012, half = b.glassHalfWidth(wz);
+  for (const [cx, len] of [[half * 0.3, half * 0.9], [-half * 0.42, half * 0.75]] as const) {
+    const arm = new THREE.BoxGeometry(len, 0.012, 0.018);
+    arm.rotateZ(cx > 0 ? -0.06 : 0.06); arm.translate(cx, wy, wz);
+    kit.add('black', arm);
+  }
+}
+
