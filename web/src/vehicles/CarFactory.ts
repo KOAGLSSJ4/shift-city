@@ -165,7 +165,7 @@ export function buildProceduralCar(kind: BodyType, color: number, opts: { detail
   const rimM = new THREE.MeshStandardMaterial({ color: d.rimColor, metalness: 1, roughness: 0.3 });
   const caliperM = new THREE.MeshStandardMaterial({ color: d.accent, metalness: 0.3, roughness: 0.4 });
   const wg = wheelGeometry(body, opts.detail ? 0 : 1);
-  const tw = d.W / 2 - 0.05 - (d.tireW ?? 0.24) / 2;
+  const tw = d.W / 2 - 0.03 - (d.tireW ?? 0.24) / 2; // tyres close to flush with the body side, like a real car
   for (const [x, z, front] of [[tw, d.wb / 2, true], [-tw, d.wb / 2, true], [tw, -d.wb / 2, false], [-tw, -d.wb / 2, false]] as const) {
     const pivot = new THREE.Group();
     pivot.position.set(x, d.wr, z);

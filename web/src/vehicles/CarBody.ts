@@ -96,7 +96,7 @@ export class BodyShape {
     this.top = curve(d.top); this.bot = curve(d.bottom); this.hwC = curve(d.hw); this.roof = curve(d.roof);
     this.zMin = -d.L / 2; this.zMax = d.L / 2;
     this.gz0 = d.roof[0][0]; this.gz1 = d.roof[d.roof.length - 1][0];
-    this.xIn = d.W / 2 - 0.08 - (d.tireW ?? 0.24);
+    this.xIn = d.W / 2 - 0.06 - (d.tireW ?? 0.24);
     const ra = d.wr + 0.06;
     for (const a of [d.wb / 2, -d.wb / 2]) {
       const s = this.section(a), x = this.xIn + 0.12;
@@ -243,7 +243,7 @@ export class BodyShape {
     }
     const parts = splitByFace(g, (cx, cy, cz, a, b, c) => {
       const nc = clamped[a] + clamped[b] + clamped[c];
-      if (nc >= 2 || (nc && cy < d.wr + 0.12)) return 'liner';
+      if (nc === 3 || (nc && cy < d.wr + 0.12)) return 'liner'; // flat-sided bodies: faces half over the arch stay paint
       if (cy < this.bot(cz) + 0.03 && Math.abs(cx) < this.xIn + 0.05) return 'black';
       if (d.cladY !== undefined && cy < d.cladY) return 'trim';
       // the deck under the glasshouse is the cabin floor, seen through the windows
