@@ -12,7 +12,9 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 - **Arcade balance:** David thinks money/XP feel right but hasn't tested it hard. Revisit if launch
   feedback says Arcade out-earns the city modes ($8 per 100 points, 1 XP per 1,000 points, no cap).
-- **Cockpit view** of the new lofted cars is functional but plain (dash, pillars); could use more detail.
+- **Cockpit view:** the Shift Classic's cabin now has a proper dashboard and dark pillars, but a strip of body paint
+  still shows at the very top and bottom of the screen (its body is built from solid blocks); the lofted cars'
+  cockpits could use more detail (vents, console, door cards).
 
 ## Features (next up)
 
@@ -49,6 +51,8 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-10-30: Shift Classic cockpit: full-width dashboard that hides the bonnet, screens raised, dark windscreen
+  pillars and headliner (it showed bright body paint everywhere before).
 - 2026-10-30: Unreal HUD part 2a: our own Slate speedometer (km/h + D/R/N; the template's widget is hidden),
   minimap rim with a soft shadow, solid car arrow, brighter route line.
 - 2026-10-30: stacked food orders: about 1 in 5 standard deliveries has a second drop-off nearby (shown on the
