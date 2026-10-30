@@ -434,6 +434,7 @@ void USCCarVisuals::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 {
 	static TWeakObjectPtr<AActor> Studio;
+	static TArray<TWeakObjectPtr<AActor>> Lineup;
 	const FVector Origin(0.f, 0.f, 100000.f); // 1 km up (Unreal units are cm): far above the tallest towers
 	const float Spacing = 700.f, RowGap = 1100.f;
 	if (!World) return Origin;
@@ -466,6 +467,13 @@ FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 			++Slot;
 			AActor* Vehicle = VehicleClass ? World->SpawnActor<AActor>(VehicleClass, FTransform(FRotator(0.f, 90.f, 0.f), At)) : nullptr;
 			if (!Vehicle) { UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] FABCAR %s: could not spawn"), *AssetName); continue; }
+			// a parked display: no physics, so nothing drops or rolls away before the photo
+			if (UPrimitiveComponent* Body = Cast<UPrimitiveComponent>(Vehicle->GetRootComponent()))
+			{
+				Body->SetSimulatePhysics(false);
+				Body->SetWorldLocationAndRotation(At, FRotator(0.f, 90.f, 0.f));
+			}
+			Lineup.Add(Vehicle);
 			// every visible part: the skeletal mesh is only the rig, the body/glass/wheels are separate meshes
 			TArray<UMeshComponent*> Parts;
 			Vehicle->GetComponents<UMeshComponent>(Parts);
@@ -507,6 +515,12 @@ FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 			}
 		}
 		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR line-up: %d vehicles"), Slot);
+	}
+	static int32 LoggedRow = -1;
+	if (Row != LoggedRow && Lineup.Num() > 0 && Lineup[0].IsValid())
+	{
+		LoggedRow = Row;
+		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR row %d: first vehicle now at %s (placed at %s)"), Row, *Lineup[0]->GetActorLocation().ToString(), *(Origin + FVector(0.f, 0.f, 120.f)).ToString());
 	}
 	return Origin + FVector(3.f * Spacing, Row * RowGap, 100.f);
 }
