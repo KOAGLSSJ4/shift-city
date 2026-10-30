@@ -396,7 +396,7 @@ void USCCarVisuals::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 	UChaosWheeledVehicleMovementComponent* Mv = Pawn ? Pawn->FindComponentByClass<UChaosWheeledVehicleMovementComponent>() : nullptr;
 	if (!Mv) return;
 	// brake lights: much brighter while the brake (or handbrake) is held
-	const bBraking = Mv->GetBrakeInput() > 0.1f || Mv->GetHandbrakeInput();
+	const bool bBraking = Mv->GetBrakeInput() > 0.1f || Mv->GetHandbrakeInput();
 	if (bBraking != bBrakeLit)
 	{
 		bBrakeLit = bBraking;
