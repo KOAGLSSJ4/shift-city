@@ -358,7 +358,7 @@ void USCCarVisuals::SetCameraFor(const FSCCarModel* Model)
 		if (!BaseArms.Contains(Key)) BaseArms.Add(Key, FVector(Arm->TargetArmLength, Arm->SocketOffset.Z, 0.f));
 		const FVector Base = BaseArms[Key];
 		// the template's chase camera is set for its low sports car: pull back for longer cars and up for taller ones
-		Arm->TargetArmLength = float(Model ? Base.X * FMath::Clamp(Model->Length / 440.f, 1.f, 1.3f) * 1.15f : Base.X);
+		Arm->TargetArmLength = float(Model ? Base.X * FMath::Clamp(Model->Length / 440.f, 1.f, 1.3f) * 1.5f : Base.X); // the template arm is short (380): about 5.7 m for most cars
 		Arm->SocketOffset.Z = Model ? Base.Y + FMath::Max(0.f, Model->Height - 125.f) * 1.5 : Base.Y;
 		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: camera arm %s length %.0f -> %.0f"), *ArmName, float(Base.X), Arm->TargetArmLength);
 	}
