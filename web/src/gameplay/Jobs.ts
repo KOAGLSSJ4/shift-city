@@ -121,6 +121,21 @@ export const WAIT_GRACE = 8;
 export const WAIT_RATE = 0.2;
 export const waitingFee = (lateBy: number) => Math.round(Math.max(0, lateBy - WAIT_GRACE) * WAIT_RATE * 100) / 100;
 
+/** Airport queue: a traveller who just landed, heading somewhere far into the city (pays 40% more). */
+export const AIRPORT_QUEUE_SECONDS = 15;
+export function airportJob(vehicle: VehicleDef, rnd = Math.random): Job {
+  const airport = destinationByName('Airport');
+  const far = DESTINATIONS.filter((d) => d !== airport).sort((p, q) => dist(airport, q) - dist(airport, p)).slice(0, 5);
+  const b = far[Math.floor(rnd() * far.length)];
+  const traveller = ['Mr. Haddad', 'Ms. Ferreira', 'Dr. Okonkwo', 'Ms. Lindqvist', 'Mr. Tanaka', 'Ms. Moreau'][Math.floor(rnd() * 6)];
+  return {
+    id: newId(), food: false, a: airport, b, customer: `${traveller}, just landed`,
+    fare: Math.round(jobFare(dist(airport, b), vehicle, false) * 1.4 * 100) / 100,
+    premium: false, chapter: null, stage: 'offer', startedAt: 0, bumps: 0,
+    variant: 'long', persona: rollPersona(rnd), log: newLog(),
+  };
+}
+
 /** Rider cancellation fee paid to the driver when a rider gives up waiting. */
 export const CANCEL_FEE = 3;
 /** How long a rider waits: about the drive at a relaxed 8 m/s, plus 45 s. */

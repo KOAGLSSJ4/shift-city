@@ -1,6 +1,6 @@
 // Heading-up circular minimap with roads, route, destinations and traffic.
-import { DESTINATIONS, GRID, ROAD_W, roadCoord } from '../data/world';
-import type { Pt } from '../world/RoadNetwork';
+import { DESTINATIONS, GRID, ISLAND_R, ROAD_W, ROUNDABOUTS, roadCoord } from '../data/world';
+import { RING_NODES, edgePath, neighbours, type Pt } from '../world/RoadNetwork';
 
 export class Minimap {
   private g: CanvasRenderingContext2D;
@@ -26,6 +26,19 @@ export class Minimap {
     g.beginPath();
     for (let k = 0; k <= GRID; k++) { const r = roadCoord(k); g.moveTo(lo, r); g.lineTo(hi, r); g.moveTo(r, lo); g.lineTo(r, hi); }
     g.stroke();
+    // ring road and link roads
+    g.strokeStyle = '#5f7486'; g.lineWidth = ROAD_W; g.lineJoin = 'round'; g.lineCap = 'butt';
+    g.beginPath();
+    for (let k = 0; k < 4; k++) {
+      for (const path of [edgePath(RING_NODES[k], RING_NODES[(k + 1) % 4]), edgePath(neighbours(RING_NODES[k])[2], RING_NODES[k])]) {
+        g.moveTo(path[0].x, path[0].z);
+        for (const q of path) g.lineTo(q.x, q.z);
+      }
+    }
+    g.stroke();
+    // roundabout islands
+    g.fillStyle = '#2f5a3a';
+    for (const [i, j] of ROUNDABOUTS) { g.beginPath(); g.arc(roadCoord(i), roadCoord(j), ISLAND_R + 1.5, 0, 7); g.fill(); }
     // surge zone: a glowing orange patch, like the real app's heat map
     if (surge) {
       const grad = g.createRadialGradient(surge.x, surge.z, 0, surge.x, surge.z, surge.r);

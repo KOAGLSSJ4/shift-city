@@ -1,10 +1,10 @@
 // Procedural city built on the road grid. Geometry is merged per material to keep draw calls low.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DESTINATIONS, GRID, HALF, PITCH, ROAD_W, WALK_W, roadCoord, type Destination } from '../data/world';
+import { DESTINATIONS, GRID, HALF, ISLAND_R, ONE_WAY, PITCH, RING_D, ROAD_W, ROUNDABOUTS, WALK_W, roadCoord, type Destination } from '../data/world';
 import type { Materials } from '../graphics/Materials';
 import type { GraphicsMode } from '../core/Save';
-import { neighbours, nodeId, nodePos } from './RoadNetwork';
+import { RING_NODES, edgePath, isRoundabout, neighbours, nodeId, nodePos, type Pt } from './RoadNetwork';
 import { instanceProp, treeImpostors, TREE_IMPOSTORS, type Placement } from './Props';
 
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
@@ -31,6 +31,41 @@ function geom(arr: number[][]) {
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
 /** Horizontal rectangle with planar world UVs (scale = metres per texture tile). */
+/** A strip along a polyline between lateral offsets o0..o1 (right of travel is +), lying flat at height y. */
+function ribbon(out: number[][], path: Pt[], o0: number, o1: number, y: number, scale: number) {
+  let along = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i], L = Math.hypot(b.x - a.x, b.z - a.z);
+    if (L < 1e-3) continue;
+    const dx = (b.x - a.x) / L, dz = (b.z - a.z) / L, rx = -dz, rz = dx; // right of travel
+    const A0 = V(a.x + rx * o0, y, a.z + rz * o0), A1 = V(a.x + rx * o1, y, a.z + rz * o1);
+    const B0 = V(b.x + rx * o0, y, b.z + rz * o0), B1 = V(b.x + rx * o1, y, b.z + rz * o1);
+    const u0 = along / scale, u1 = (along + L) / scale, v0 = o0 / scale, v1 = o1 / scale;
+    const up = new THREE.Vector3().subVectors(B0, A0).cross(new THREE.Vector3().subVectors(A1, A0)).y > 0;
+    if (up) quad(out, A0, B0, B1, A1, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]]);
+    else quad(out, A0, A1, B1, B0, [[u0, v0], [u0, v1], [u1, v1], [u1, v0]]);
+    along += L;
+  }
+}
+/** The pieces of a polyline between `from` and `to` metres along it. */
+function slice(path: Pt[], from: number, to: number): Pt[] {
+  const out: Pt[] = [];
+  let acc = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i], L = Math.hypot(b.x - a.x, b.z - a.z);
+    const s0 = Math.max(from, acc), s1 = Math.min(to, acc + L);
+    if (s1 > s0 && L > 0) {
+      const p0 = { x: a.x + ((b.x - a.x) * (s0 - acc)) / L, z: a.z + ((b.z - a.z) * (s0 - acc)) / L };
+      const p1 = { x: a.x + ((b.x - a.x) * (s1 - acc)) / L, z: a.z + ((b.z - a.z) * (s1 - acc)) / L };
+      if (!out.length) out.push(p0);
+      out.push(p1);
+    }
+    acc += L;
+  }
+  return out;
+}
+const pathLength = (p: Pt[]) => p.reduce((a, q, i) => (i ? a + Math.hypot(q.x - p[i - 1].x, q.z - p[i - 1].z) : 0), 0);
+
 function flat(out: number[][], x0: number, z0: number, x1: number, z1: number, y: number, scale: number) {
   quad(out, V(x0, y, z1), V(x1, y, z1), V(x1, y, z0), V(x0, y, z0), [[x0 / scale, z1 / scale], [x1 / scale, z1 / scale], [x1 / scale, z0 / scale], [x0 / scale, z0 / scale]]);
 }
@@ -75,6 +110,7 @@ export class City {
   private landmarkBlocks() {
     const m = new Map<string, Destination>();
     for (const d of DESTINATIONS) {
+      if (d.edge) continue; // the airport isn't on a city block
       let bi: number, bj: number;
       if (d.axis === 'x') { bi = d.i; bj = d.side > 0 ? d.j : d.j - 1; }
       else { bi = d.side > 0 ? d.j : d.j - 1; bj = d.i; }
@@ -117,8 +153,9 @@ export class City {
       for (let s = 0; s < GRID; s++) {
         const a = roadCoord(s) + hw + 4, b = roadCoord(s + 1) - hw - 4;
         for (const axis of ['x', 'z'] as const) {
-          strip(yellow, axis, c, -0.18, a, b, 0.12);
-          strip(yellow, axis, c, 0.18, a, b, 0.12);
+          // one-way streets: a white dashed centre line instead of the double yellow (arrows added below)
+          if (ONE_WAY.some((w) => w.axis === axis && w.k === k)) { for (let d = a + 2; d < b - 3; d += 9) strip(white, axis, c, 0, d, d + 3, 0.13); }
+          else { strip(yellow, axis, c, -0.18, a, b, 0.12); strip(yellow, axis, c, 0.18, a, b, 0.12); }
           strip(white, axis, c, -hw + 0.35, a, b, 0.15);
           strip(white, axis, c, hw - 0.35, a, b, 0.15);
           for (let d = a + 2; d < b - 3; d += 9) { strip(white, axis, c, -3.5, d, d + 3, 0.13); strip(white, axis, c, 3.5, d, d + 3, 0.13); }
@@ -132,6 +169,34 @@ export class City {
           }
         }
       }
+    }
+
+    // ring road round the city and the four link roads that join it, with lane markings
+    for (let k = 0; k < 4; k++) {
+      const ring = edgePath(RING_NODES[k], RING_NODES[(k + 1) % 4]);
+      const link = edgePath(neighbours(RING_NODES[k])[2], RING_NODES[k]);
+      for (const [path, trim] of [[ring, 0], [link, hw + 1]] as const) {
+        const len = pathLength(path), body = slice(path, trim, len);
+        ribbon(road, body, -hw, hw, 0.004, 8);
+        ribbon(yellow, slice(path, trim + 4, len - 6), -0.3, -0.06, 0.024, 1);
+        ribbon(yellow, slice(path, trim + 4, len - 6), 0.06, 0.3, 0.024, 1);
+        for (const e of [-hw + 0.35, hw - 0.35]) ribbon(white, slice(path, trim + 4, len - 6), e - 0.075, e + 0.075, 0.024, 1);
+        for (let d = trim + 6; d < len - 10; d += 9) for (const e of [-3.5, 3.5]) ribbon(white, slice(path, d, d + 3), e - 0.065, e + 0.065, 0.024, 1);
+      }
+    }
+    // the airport: a glass terminal and a control tower beside the ring road's east side
+    {
+      const ax = RING_D + ROAD_W / 2, z0 = 140, z1 = 240;
+      flat(road, ax, z0, ax + 26, z1, 0.004, 8); // drop-off apron
+      flat(walk, ax + 26, z0, ax + 32, z1, 0.15, 3);
+      walls(facades[0], ax + 32, z0 + 5, ax + 62, z1 - 5, 0, 15, 0);
+      flat(roof, ax + 32, z0 + 5, ax + 62, z1 - 5, 15, 6);
+      this.blocks.push({ x0: ax + 26, z0, x1: ax + 62, z1 });
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 38, 16), M.curb);
+      tower.position.set(ax + 75, 19, z0 + 20);
+      const cab = new THREE.Mesh(new THREE.CylinderGeometry(6, 4.5, 6, 16), new THREE.MeshStandardMaterial({ color: 0x1b2a3a, metalness: 0.6, roughness: 0.15 }));
+      cab.position.set(ax + 75, 40, z0 + 20);
+      this.group.add(tower, cab);
     }
 
     // blocks: sidewalks, kerbs, buildings / parks
@@ -213,6 +278,43 @@ export class City {
     facades.forEach((f, i) => add(f, M.facades[i], true));
     shops.forEach((f, i) => add(f, M.shopfronts[i], true));
 
+    // one-way arrows painted in every lane, twice per block
+    {
+      const shape = new THREE.Shape();
+      shape.moveTo(-0.25, -2.2); shape.lineTo(0.25, -2.2); shape.lineTo(0.25, 0.4); shape.lineTo(0.75, 0.4);
+      shape.lineTo(0, 1.8); shape.lineTo(-0.75, 0.4); shape.lineTo(-0.25, 0.4); shape.closePath();
+      const arrowGeo = new THREE.ShapeGeometry(shape);
+      arrowGeo.rotateX(-Math.PI / 2); // lie flat, pointing along -z before rotation below
+      const spots: THREE.Matrix4[] = [];
+      for (const w of ONE_WAY) {
+        const c = roadCoord(w.k);
+        for (let s = 0; s < GRID; s++) for (const t of [0.33, 0.67]) for (const lane of [-5.25, -1.75, 1.75, 5.25]) {
+          const along = roadCoord(s) + PITCH * t;
+          const pos = w.axis === 'x' ? V(along, 0.025, c + lane) : V(c + lane, 0.025, along);
+          // arrow points along -z after rotateX; turn it to face the traffic direction
+          const yaw = w.axis === 'x' ? (w.dir > 0 ? -Math.PI / 2 : Math.PI / 2) : (w.dir > 0 ? Math.PI : 0);
+          spots.push(new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), yaw), V(1, 1, 1)));
+        }
+      }
+      const arrows = new THREE.InstancedMesh(arrowGeo, M.paintWhite, spots.length);
+      spots.forEach((m, i) => arrows.setMatrixAt(i, m));
+      arrows.receiveShadow = true;
+      this.group.add(arrows);
+    }
+    // roundabouts: a raised, planted island with a white ring, and a tree in the middle
+    for (const [i, j] of ROUNDABOUTS) {
+      const c = nodePos(nodeId(i, j));
+      const kerb = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R, ISLAND_R + 0.15, 0.3, 40), M.curb);
+      kerb.position.set(c.x, 0.15, c.z);
+      const top = new THREE.Mesh(new THREE.CircleGeometry(ISLAND_R - 0.25, 40), M.grass);
+      top.rotation.x = -Math.PI / 2; top.position.set(c.x, 0.31, c.z);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(ISLAND_R + 0.35, ISLAND_R + 0.5, 48), M.paintWhite);
+      ring.rotation.x = -Math.PI / 2; ring.position.set(c.x, 0.03, c.z);
+      kerb.castShadow = kerb.receiveShadow = top.receiveShadow = true;
+      this.group.add(kerb, top, ring);
+      this.islands.push({ x: c.x, z: c.z });
+      treeSpots.push(V(c.x, 0.3, c.z));
+    }
     this.addTrees(treeSpots);
     this.addLamps(lampSpots);
     this.treeSpots = treeSpots;
@@ -227,6 +329,8 @@ export class City {
   private cardTrees: THREE.Object3D[] = [];
   private procLamps: THREE.Object3D[] = [];
   private treeSpots: THREE.Vector3[] = [];
+  /** Roundabout island centres (solid for the player). */
+  readonly islands: { x: number; z: number }[] = [];
   private lampSpots: { p: THREE.Vector3; rot: number }[] = [];
   private roofSpots: Placement[] = [];
   /** Poly Haven props + photographic tree impostors (Photoreal / Hyper-real only). */
@@ -311,7 +415,11 @@ export class City {
     for (let placed = 0; placed < 140;) {
       const t = rand() * Math.PI * 2, r = HALF + 30 + rand() * 140;
       const x = Math.cos(t) * r, z = Math.sin(t) * r;
-      if (Math.max(Math.abs(x), Math.abs(z)) < HALF + 25) continue;
+      const m = Math.max(Math.abs(x), Math.abs(z));
+      if (m < HALF + 25) continue;
+      // keep trees off the ring road, the link roads and the airport
+      if (Math.abs(m - RING_D) < 16 || (Math.abs(x) < 14 && Math.abs(z) < RING_D) || (Math.abs(z) < 14 && Math.abs(x) < RING_D)) continue;
+      if (x > RING_D - 10 && z > 120 && z < 260) continue;
       spots.push(V(x, 0, z)); placed++;
     }
     const trunk = new THREE.CylinderGeometry(0.12, 0.2, 3, 6); trunk.translate(0, 1.5, 0);
@@ -399,7 +507,7 @@ export class City {
     const up = V(0, 1, 0);
     for (let j = 0; j <= GRID; j++) for (let i = 0; i <= GRID; i++) {
       const id = nodeId(i, j), c = nodePos(id), nb = neighbours(id);
-      if (nb.length < 3) continue;
+      if (nb.length < 3 || isRoundabout(id)) continue; // roundabouts have no lights
       for (const n of nb) {
         const np = nodePos(n);
         // approach direction d: from neighbour toward this node
@@ -461,6 +569,10 @@ export class City {
 
   /** Pushes a set of points (car corners) out of block rectangles. Returns the correction applied. */
   collide(px: number, pz: number, radius: number): { x: number; z: number } | null {
+    for (const c of this.islands) {
+      const dx = px - c.x, dz = pz - c.z, d = Math.hypot(dx, dz), min = ISLAND_R + 0.15 + radius;
+      if (d < min && d > 1e-4) return { x: (dx / d) * (min - d), z: (dz / d) * (min - d) };
+    }
     for (const b of this.blocks) {
       if (px < b.x0 - radius || px > b.x1 + radius || pz < b.z0 - radius || pz > b.z1 + radius) continue;
       const cx = Math.max(b.x0, Math.min(b.x1, px)), cz = Math.max(b.z0, Math.min(b.z1, pz));

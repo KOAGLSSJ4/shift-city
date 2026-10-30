@@ -6,7 +6,7 @@ import { VEHICLES, UPGRADE_TRACKS, MAX_UPGRADE } from '../src/data/vehicles';
 import { STORY } from '../src/data/story';
 import { GOALS } from '../src/data/goals';
 import { BALANCE } from '../src/data/balancing';
-import { DESTINATIONS, RESTAURANTS } from '../src/data/world';
+import { GRID_DESTINATIONS, RESTAURANTS } from '../src/data/world';
 
 const out = process.argv[2] ?? 'export';
 mkdirSync(out, { recursive: true });
@@ -22,5 +22,5 @@ write('vehicles.json', { maxUpgrade: MAX_UPGRADE, upgradeTracks: UPGRADE_TRACKS,
 write('story.json', { chapters: STORY.map((c) => ({ ...c, bonusTime: c.bonusTime ?? 0 })) });
 write('goals.json', { goals: GOALS });
 write('balancing.json', { ...BALANCE, pickupRadius: BALANCE.pickupRadius * 100, xpPerLevel: 100 });
-write('destinations.json', { restaurants: RESTAURANTS, destinations: DESTINATIONS.map((d) => ({ name: d.name, landmark: d.landmark })) });
+write('destinations.json', { restaurants: RESTAURANTS, destinations: GRID_DESTINATIONS().map((d) => ({ name: d.name, landmark: d.landmark })) });
 console.log('exported to', out);

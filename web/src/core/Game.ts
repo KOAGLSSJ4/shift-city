@@ -683,10 +683,12 @@ export class Game {
     } else if (!job && $('job-tag').textContent === 'OFFLINE') this.renderJob(null);
     if (r && t && job) {
       const nt = r.nextTurn;
-      const rot = { left: 180, right: 0, straight: -90, arrive: -90, uturn: 90 }[nt.dir];
+      const rot = { left: 180, right: 0, straight: -90, arrive: -90, uturn: 90, roundabout: -135 }[nt.dir];
       $('nav-arrow').style.transform = `rotate(${rot}deg)`;
       const dist = (m: number) => (m > 950 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
-      $('nav-text').textContent = nt.dir === 'arrive' ? `Arrive at ${t.name}` : nt.dir === 'uturn' ? 'Make a U-turn' : nt.dist < 15 ? `Turn ${nt.dir} now` : `Turn ${nt.dir} in ${dist(nt.dist)}`;
+      const ord = (n: number) => ['1st', '2nd', '3rd', '4th'][n - 1] ?? `${n}th`;
+      $('nav-text').textContent = nt.dir === 'arrive' ? `Arrive at ${t.name}` : nt.dir === 'uturn' ? 'Make a U-turn'
+        : nt.dir === 'roundabout' ? `${nt.dist < 15 ? 'At' : `In ${dist(nt.dist)}, at`} the roundabout take the ${ord(nt.exit ?? 1)} exit` : nt.dist < 15 ? `Turn ${nt.dir} now` : `Turn ${nt.dir} in ${dist(nt.dist)}`;
       $('nav-dist').textContent = `${dist(r.length)} to ${job.stage === 'pickup' ? 'pickup' : 'drop-off'}`;
       const d = Math.hypot(ph.pos.x - t.x, ph.pos.z - t.z);
       const hold = $('hold');
