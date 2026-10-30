@@ -30,6 +30,8 @@ export interface Job {
   /** Seconds the rider waits for pickup before cancelling (free ride, after the tutorial). */
   patience?: number;
   warned?: boolean;
+  /** Seconds the rider (or the kitchen) keeps you waiting at pickup; paid after a short grace period. */
+  lateBy?: number;
   /** Time the passenger/order came on board (CityMode clock). */
   pickedAt?: number;
   log: RideLog;
@@ -78,6 +80,8 @@ export function randomJob(vehicle: VehicleDef, near?: { x: number; z: number }, 
     variant, persona: food ? undefined : rollPersona(), surge,
     limit: variant === 'express' || variant === 'hot' ? timeLimit(d) : undefined,
     log: newLog(),
+    // sometimes the rider is still on their way out, or the kitchen is finishing the order
+    lateBy: Math.random() < 0.25 ? Math.round((food ? 8 : 12) + Math.random() * (food ? 12 : 18)) : undefined,
   };
 }
 
@@ -86,6 +90,11 @@ export function headsTowards(job: Job, place: { x: number; z: number }): boolean
   const d = (p: { x: number; z: number }) => Math.abs(p.x - place.x) + Math.abs(p.z - place.z);
   return d(job.b) < d(job.a);
 }
+
+/** Waiting-time fee, like the real apps: free for the first few seconds, then paid per second. */
+export const WAIT_GRACE = 8;
+export const WAIT_RATE = 0.2;
+export const waitingFee = (lateBy: number) => Math.round(Math.max(0, lateBy - WAIT_GRACE) * WAIT_RATE * 100) / 100;
 
 /** Rider cancellation fee paid to the driver when a rider gives up waiting. */
 export const CANCEL_FEE = 3;

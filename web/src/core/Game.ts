@@ -26,7 +26,7 @@ import { COMPLIMENTS, PERSONAS, VARIANTS } from '../gameplay/Missions';
 import { fetchWorldTop, leaderboardEnabled, submitWorldScore } from './Leaderboard';
 import { platform } from './Platform';
 import { OFFER_SECONDS, acceptanceRate, driverTier, earnings, nextTier } from '../gameplay/Driver';
-import type { Job } from '../gameplay/Jobs';
+import { waitingFee, type Job } from '../gameplay/Jobs';
 import { Tutorial } from '../ui/Tutorial';
 import { Minimap } from '../ui/Minimap';
 import { carThumbs } from '../ui/CarThumbs';
@@ -610,8 +610,11 @@ export class Game {
       if (d < BALANCE.pickupRadius + 2) {
         hold.hidden = false;
         const slow = ph.speed < BALANCE.stopSpeed;
-        $('hold-text').textContent = slow ? (job.stage === 'pickup' ? (job.food ? 'Collecting order…' : 'Passenger boarding…') : 'Arriving…') : 'Stop in the ring';
-        $('hold-ring').style.strokeDashoffset = String(106.8 * (1 - this.cityMode.holdTime / BALANCE.boardTime));
+        const waiting = slow && job.stage === 'pickup' && !!job.lateBy && this.cityMode.holdTime > BALANCE.boardTime;
+        const fee = waiting ? waitingFee(this.cityMode.holdTime - BALANCE.boardTime) : 0;
+        $('hold-text').textContent = waiting ? `Waiting for ${job.food ? 'the order' : job.customer}…${fee ? ` +$${fee.toFixed(2)}` : ''}`
+          : slow ? (job.stage === 'pickup' ? (job.food ? 'Collecting order…' : 'Passenger boarding…') : 'Arriving…') : 'Stop in the ring';
+        $('hold-ring').style.strokeDashoffset = String(106.8 * (1 - this.cityMode.holdTime / this.cityMode.holdNeeded));
       } else hold.hidden = true;
       this.edgeArrow(new THREE.Vector3(t.x, 2, t.z), job.stage === 'pickup' ? '#54ffd0' : '#ffb347');
     } else { $('hold').hidden = true; $('edge-arrow').hidden = true; }

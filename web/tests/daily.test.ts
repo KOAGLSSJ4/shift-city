@@ -122,3 +122,17 @@ describe('GPS first turn', () => {
     expect(['left', 'right']).toContain(r.nextTurn.dir);
   });
 });
+
+import { WAIT_GRACE, waitingFee } from '../src/gameplay/Jobs';
+describe('waiting-time fee', () => {
+  it('is free during the grace period, then paid per second', () => {
+    expect(waitingFee(WAIT_GRACE)).toBe(0);
+    expect(waitingFee(WAIT_GRACE + 10)).toBeCloseTo(2, 2);
+  });
+  it('only some rides keep you waiting', () => {
+    const car = vehicleById('classic');
+    let late = 0;
+    for (let i = 0; i < 400; i++) if (randomJob(car).lateBy) late++;
+    expect(late).toBeGreaterThan(50); expect(late).toBeLessThan(160);
+  });
+});
