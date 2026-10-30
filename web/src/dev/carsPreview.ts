@@ -26,7 +26,7 @@ ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
 
 const make = (i: number) => {
   const v = VEHICLES[i];
-  if (traffic) return buildTrafficCar(v.body === 'classic' ? 'hatch' : v.body, v.color);
+  if (traffic) return buildTrafficCar(v.body, v.color);
   const r = buildProceduralCar(v.body, v.color, { detail: true, photoreal: true });
   return Object.assign(r.root, { userData: { rig: r } });
 };

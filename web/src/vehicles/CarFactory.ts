@@ -8,7 +8,6 @@ import type { BodyType, VehicleDef } from '../data/vehicles';
 import { binaryUrl } from '../core/AssetUrl';
 import { BodyShape, Kit, mergeParts, rimGeometry, tireGeometry, type PartKey } from './CarBody';
 import { DESIGNS, type DesignBody } from './designs';
-import { buildClassicCar } from './ClassicCar';
 
 export interface CarRig {
   root: THREE.Group;          // positioned/rotated by gameplay
@@ -76,7 +75,6 @@ export function makePaint(color: number, photoreal: boolean) {
 
 /** Procedural car. `detail` adds interior, mirrors and spoked rims (player car). */
 export function buildProceduralCar(kind: BodyType, color: number, opts: { detail: boolean; photoreal: boolean }): CarRig {
-  if (kind === 'classic') return buildClassicCar(color, opts);
   const body = kind;
   const d = DESIGNS[body], shape = bodyShape(body), p = cabin(body);
   const root = new THREE.Group();
@@ -165,7 +163,7 @@ export function buildProceduralCar(kind: BodyType, color: number, opts: { detail
   const rimM = new THREE.MeshStandardMaterial({ color: d.rimColor, metalness: 1, roughness: 0.3 });
   const caliperM = new THREE.MeshStandardMaterial({ color: d.accent, metalness: 0.3, roughness: 0.4 });
   const wg = wheelGeometry(body, opts.detail ? 0 : 1);
-  const tw = d.W / 2 - 0.05 - (d.tireW ?? 0.24) / 2;
+  const tw = d.W / 2 - 0.03 - (d.tireW ?? 0.24) / 2; // tyres close to flush with the body side, like a real car
   for (const [x, z, front] of [[tw, d.wb / 2, true], [-tw, d.wb / 2, true], [tw, -d.wb / 2, false], [-tw, -d.wb / 2, false]] as const) {
     const pivot = new THREE.Group();
     pivot.position.set(x, d.wr, z);

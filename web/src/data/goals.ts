@@ -9,7 +9,7 @@ export const GOALS: GoalDef[] = [
   { id: 'distance', name: 'Explorer: drive 10 km', goal: 10, reward: 160, xp: 120, kind: 'distance' },
   { id: 'arcade', name: 'Rush hour: score 500', goal: 500, reward: 140, xp: 100, kind: 'arcade' },
   { id: 'streak', name: 'Arcade pro: score 2,000', goal: 2000, reward: 400, xp: 260, kind: 'arcade' },
-  { id: 'story', name: 'Rising star: finish 3 chapters', goal: 3, reward: 350, xp: 200, kind: 'story' },
+  { id: 'story', name: 'Rising star: get through 3 days of the Story', goal: 3, reward: 350, xp: 200, kind: 'story' },
   { id: 'garage', name: 'Upgrade: own 2 vehicles', goal: 2, reward: 150, xp: 120, kind: 'cars' },
   { id: 'nearmiss', name: 'Thread the needle: 25 near misses', goal: 25, reward: 200, xp: 150, kind: 'nearmiss' },
 ];

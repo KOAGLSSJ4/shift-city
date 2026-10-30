@@ -14,56 +14,84 @@ function plate(k: Kit, y: number) {
   k.rrect('rear', -0.26, y, 0.26, y + 0.12, 0.015, 'plate');
 }
 
-/** Body types drawn with the lofted builder (the Classic has its own builder in ClassicCar.ts). */
-export type DesignBody = Exclude<BodyType, 'classic'>;
+/** Body types drawn with the lofted builder (all of them, the Classic included). */
+export type DesignBody = BodyType;
 
 export const DESIGNS: Record<DesignBody, CarDesign> = {
-  // Kite Pico: friendly city hatch with round eyes and a contrast roof
-  hatch: {
-    L: 3.9, W: 1.75, H: 1.5, wb: 2.45, wr: 0.31, rim: 0.66, tireW: 0.2,
-    rimStyle: { spokes: spokes(6, 0.05).spokes, width: 0.05, hub: 0.3 }, rimColor: 0xd9dde2, accent: 0x2a2a2a,
-    top: [[-1.95, 0.88], [-1.88, 0.97], [-1.6, 0.99], [-0.6, 0.96], [0.6, 0.93], [1.2, 0.87], [1.6, 0.78], [1.85, 0.66], [1.95, 0.52]],
-    bottom: [[-1.95, 0.4], [-1.75, 0.22], [-1.3, 0.17], [1.35, 0.17], [1.8, 0.24], [1.95, 0.36]],
-    hw: [[-1.95, 0.76], [-1.75, 0.85], [-1.0, 0.875], [1.0, 0.875], [1.65, 0.84], [1.95, 0.74]],
-    waist: 0.5, nTop: 3.6, nBot: 7, tumble: 0.08, fender: 0.015, cladY: 0.3,
-    roof: [[-1.9, 0.98], [-1.86, 1.2], [-1.75, 1.42], [-1.5, 1.49], [-0.2, 1.5], [0.15, 1.46], [0.55, 1.17], [0.85, 0.9]],
-    gw: 0.94, gTumble: 0.18, roofF: 0.1, roofR: -1.55, roofStyle: 'black', bPillar: -0.4, cPillar: -1.42,
+  // Shift Classic: the starter. A compact, friendly hatch with a retro face (round lamps, chrome bar)
+  classic: {
+    L: 3.9, W: 1.74, H: 1.48, wb: 2.48, wr: 0.315, rim: 0.66, tireW: 0.2,
+    rimStyle: spokes(8, 0.04, 0, 0.28), rimColor: 0xc9cdd2, accent: 0x2a2a2a,
+    top: [[-1.95, 0.9], [-1.9, 1.0], [-1.78, 1.03], [-1.0, 1.01], [0.3, 0.97], [0.95, 0.94], [1.35, 0.9], [1.7, 0.85], [1.87, 0.78], [1.95, 0.68]],
+    bottom: [[-1.95, 0.42], [-1.8, 0.26], [-1.45, 0.19], [1.4, 0.19], [1.8, 0.27], [1.95, 0.42]],
+    hw: [[-1.95, 0.78], [-1.8, 0.85], [-1.2, 0.87], [1.0, 0.87], [1.6, 0.86], [1.85, 0.81], [1.95, 0.72]],
+    waist: 0.62, nTop: 5, nBot: 9, tumble: 0.1, fender: 0.03,
+    roof: [[-1.82, 1.02], [-1.74, 1.2], [-1.58, 1.4], [-1.35, 1.47], [-0.3, 1.48], [0.15, 1.46], [0.5, 1.26], [0.95, 0.95]],
+    gw: 0.99, gTumble: 0.22, gn: 5, roofF: 0.15, roofR: -1.3, roofStyle: 'paint', bPillar: -0.3, cPillar: -1.3, chromeTrim: true,
     details(k) {
-      k.ellipse('front', 0.56, 0.66, 0.15, 0.1, 'lens', { mirror: true });
-      k.ellipse('front', 0.56, 0.66, 0.1, 0.065, 'head', { mirror: true, lift: 0.01 });
-      k.rrect('front', -0.42, 0.29, 0.42, 0.45, 0.07, 'decal');
-      k.ribbon('front', [[-0.3, 0.52], [0.3, 0.52]], 0.025, 'chrome');
-      k.rrect('rear', 0.5, 0.66, 0.72, 0.86, 0.04, 'tail', { mirror: true });
-      plate(k, 0.46);
-      k.rrect('rear', -0.6, 0.27, 0.6, 0.36, 0.04, 'decal');
-      k.ribbon('side', [[-1.25, 0.47], [1.15, 0.47]], 0.05, 'trim');
-      k.rrect('side', 0.05, 0.84, 0.2, 0.87, 0.01, 'chrome');
-      k.rrect('side', -0.95, 0.84, -0.8, 0.87, 0.01, 'chrome');
+      // round lamps in chrome rings, a chrome grille bar and a black lower intake
+      k.ellipse('front', 0.6, 0.74, 0.11, 0.1, 'chrome', { mirror: true });
+      k.ellipse('front', 0.6, 0.74, 0.09, 0.08, 'lens', { mirror: true, lift: 0.006 });
+      k.ellipse('front', 0.6, 0.74, 0.055, 0.05, 'head', { mirror: true, lift: 0.012 });
+      k.rrect('front', -0.4, 0.68, 0.4, 0.78, 0.04, 'decal');
+      k.ribbon('front', [[-0.4, 0.73], [0.4, 0.73]], 0.02, 'chrome', { lift: 0.01 });
+      k.rrect('front', -0.5, 0.3, 0.5, 0.46, 0.05, 'decal');
+      k.rrect('rear', 0.5, 0.82, 0.76, 0.97, 0.04, 'tail', { mirror: true });
+      plate(k, 0.5);
+      k.rrect('rear', -0.6, 0.3, 0.6, 0.4, 0.04, 'decal');
+      k.ribbon('side', [[-1.25, 0.45], [1.2, 0.45]], 0.035, 'chrome');
+      k.rrect('side', 0.05, 0.9, 0.2, 0.93, 0.01, 'chrome');
     },
   },
-  // Lumen: calm, aerodynamic family saloon with slim LED eyes
-  sedan: {
-    L: 4.7, W: 1.82, H: 1.45, wb: 2.8, wr: 0.33, rim: 0.68,
-    rimStyle: spokes(10, 0.035), rimColor: 0xc8ccd2, accent: 0x303030,
-    top: [[-2.35, 0.78], [-2.3, 0.9], [-2.0, 0.97], [-1.4, 0.97], [-0.6, 0.93], [0.8, 0.9], [1.5, 0.84], [2.05, 0.74], [2.3, 0.6], [2.35, 0.52]],
-    bottom: [[-2.35, 0.38], [-2.15, 0.22], [-1.7, 0.16], [1.7, 0.16], [2.2, 0.24], [2.35, 0.34]],
-    hw: [[-2.35, 0.8], [-2.1, 0.89], [-1, 0.91], [1, 0.91], [1.9, 0.88], [2.35, 0.76]],
-    waist: 0.5, nTop: 4, nBot: 7, tumble: 0.1, fender: 0.01,
-    roof: [[-1.6, 0.97], [-1.35, 1.12], [-0.95, 1.38], [-0.55, 1.45], [0.25, 1.45], [0.6, 1.36], [1.1, 0.99], [1.2, 0.87]],
-    gw: 0.93, gTumble: 0.16, gn: 3.6, roofF: 0.35, roofR: -0.75, roofStyle: 'paint', bPillar: -0.15, cPillar: -0.95,
+  // Kite Pico: modern five-door city hatch: short bonnet, upright cabin, swept LED eyes
+  hatch: {
+    L: 4.0, W: 1.76, H: 1.47, wb: 2.55, wr: 0.315, rim: 0.68, tireW: 0.2,
+    rimStyle: spokes(5, 0.06, 0, 0.26), rimColor: 0xd9dde2, accent: 0x2a2a2a,
+    top: [[-2.0, 0.88], [-1.95, 0.99], [-1.82, 1.04], [-1.0, 1.01], [0.3, 0.96], [1.0, 0.92], [1.4, 0.86], [1.75, 0.8], [1.92, 0.73], [2.0, 0.63]],
+    bottom: [[-2.0, 0.42], [-1.85, 0.26], [-1.5, 0.19], [1.45, 0.19], [1.85, 0.27], [2.0, 0.4]],
+    hw: [[-2.0, 0.78], [-1.85, 0.855], [-1.2, 0.88], [1.0, 0.88], [1.65, 0.86], [1.9, 0.8], [2.0, 0.7]],
+    waist: 0.62, nTop: 5, nBot: 9, tumble: 0.1, fender: 0.025, cladY: 0.3,
+    roof: [[-1.86, 1.03], [-1.72, 1.2], [-1.5, 1.36], [-1.2, 1.42], [-0.3, 1.46], [0.15, 1.44], [0.55, 1.22], [1.0, 0.93]],
+    gw: 0.99, gTumble: 0.24, gn: 4.5, roofF: 0.2, roofR: -1.35, roofStyle: 'paint', bPillar: -0.35, cPillar: -1.3,
     details(k) {
-      k.poly('front', [[0.4, 0.58], [0.8, 0.58], [0.74, 0.65], [0.44, 0.645]], 'lens', { mirror: true });
-      k.ribbon('front', [[0.44, 0.62], [0.76, 0.615]], 0.022, 'head', { mirror: true, lift: 0.01 });
-      k.rrect('front', -0.36, 0.4, 0.36, 0.54, 0.04, 'decal');
-      k.ribbon('front', [[-0.36, 0.5], [0.36, 0.5]], 0.012, 'chrome', { lift: 0.01 });
-      k.rrect('front', -0.55, 0.28, 0.55, 0.38, 0.05, 'decal');
-      k.poly('rear', [[0.35, 0.74], [0.84, 0.72], [0.8, 0.8], [0.38, 0.82]], 'tail', { mirror: true });
-      k.ribbon('rear', [[-0.35, 0.78], [0.35, 0.78]], 0.02, 'tail');
-      plate(k, 0.55);
-      k.rrect('rear', -0.55, 0.28, 0.55, 0.38, 0.04, 'decal');
-      k.ribbon('side', [[-1.6, 0.85], [1.4, 0.83]], 0.015, 'chrome', { lift: 0.004 });
-      k.rrect('side', 0.05, 0.83, 0.2, 0.86, 0.01, 'chrome');
-      k.rrect('side', -1.0, 0.83, -0.85, 0.86, 0.01, 'chrome');
+      // swept headlights with an LED brow, slim grille and a wide lower intake
+      k.poly('front', [[0.36, 0.72], [0.8, 0.7], [0.76, 0.78], [0.4, 0.8]], 'lens', { mirror: true });
+      k.ribbon('front', [[0.4, 0.775], [0.74, 0.76]], 0.018, 'head', { mirror: true, lift: 0.01 });
+      k.rrect('front', -0.34, 0.66, 0.34, 0.74, 0.03, 'decal');
+      k.rrect('front', -0.52, 0.3, 0.52, 0.48, 0.05, 'decal');
+      k.ribbon('front', [[-0.34, 0.7], [0.34, 0.7]], 0.012, 'chrome', { lift: 0.01 });
+      k.poly('rear', [[0.48, 0.86], [0.8, 0.84], [0.8, 0.95], [0.52, 0.97]], 'tail', { mirror: true });
+      k.ribbon('rear', [[-0.48, 0.9], [0.48, 0.9]], 0.02, 'decal');
+      plate(k, 0.5);
+      k.rrect('rear', -0.62, 0.3, 0.62, 0.4, 0.04, 'decal');
+      k.ribbon('side', [[-1.3, 0.44], [1.25, 0.44]], 0.04, 'trim');
+      k.rrect('side', 0.1, 0.9, 0.25, 0.93, 0.01, 'chrome');
+      k.rrect('side', -0.95, 0.91, -0.8, 0.94, 0.01, 'chrome');
+    },
+  },
+  // Lumen: calm, modern family saloon with slim LED eyes and a full-width light bar
+  sedan: {
+    L: 4.75, W: 1.83, H: 1.45, wb: 2.8, wr: 0.33, rim: 0.68,
+    rimStyle: spokes(10, 0.035), rimColor: 0xc8ccd2, accent: 0x303030,
+    top: [[-2.375, 0.84], [-2.33, 0.98], [-2.15, 1.05], [-1.55, 1.06], [-1.0, 1.03], [0.3, 0.98], [1.15, 0.95], [1.65, 0.9], [2.05, 0.83], [2.27, 0.74], [2.375, 0.63]],
+    bottom: [[-2.375, 0.42], [-2.2, 0.26], [-1.8, 0.18], [1.8, 0.18], [2.2, 0.26], [2.375, 0.4]],
+    hw: [[-2.375, 0.8], [-2.15, 0.89], [-1.4, 0.915], [1.0, 0.915], [1.9, 0.9], [2.2, 0.84], [2.375, 0.74]],
+    waist: 0.62, nTop: 5, nBot: 9, tumble: 0.1, fender: 0.025,
+    roof: [[-1.52, 1.04], [-1.28, 1.2], [-0.98, 1.37], [-0.62, 1.44], [0.2, 1.45], [0.55, 1.38], [0.95, 1.16], [1.18, 0.97]],
+    gw: 0.99, gTumble: 0.24, gn: 4.5, roofF: 0.3, roofR: -0.65, roofStyle: 'paint', bPillar: -0.12, cPillar: -0.85,
+    details(k) {
+      k.poly('front', [[0.4, 0.64], [0.82, 0.63], [0.77, 0.71], [0.44, 0.705]], 'lens', { mirror: true });
+      k.ribbon('front', [[0.44, 0.685], [0.78, 0.675]], 0.022, 'head', { mirror: true, lift: 0.01 });
+      k.rrect('front', -0.36, 0.5, 0.36, 0.62, 0.04, 'decal');
+      k.ribbon('front', [[-0.36, 0.585], [0.36, 0.585]], 0.012, 'chrome', { lift: 0.01 });
+      k.rrect('front', -0.58, 0.3, 0.58, 0.42, 0.05, 'decal');
+      k.poly('rear', [[0.38, 0.88], [0.86, 0.86], [0.82, 0.95], [0.4, 0.96]], 'tail', { mirror: true });
+      k.ribbon('rear', [[-0.38, 0.92], [0.38, 0.92]], 0.02, 'tail');
+      plate(k, 0.58);
+      k.rrect('rear', -0.6, 0.3, 0.6, 0.4, 0.04, 'decal');
+      k.ribbon('side', [[-1.6, 0.9], [1.4, 0.88]], 0.015, 'chrome', { lift: 0.004 });
+      k.rrect('side', 0.1, 0.89, 0.25, 0.92, 0.01, 'chrome');
+      k.rrect('side', -0.95, 0.9, -0.8, 0.93, 0.01, 'chrome');
     },
   },
   // Halden Summit: upright executive SUV, big grille, roof rails, wraparound tails

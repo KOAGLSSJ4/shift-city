@@ -150,7 +150,16 @@ export class Traffic {
         const ahead = rx * fwd.x + rz * fwd.z, lat = Math.abs(rx * fwd.z - rz * fwd.x);
         if (ahead > 0 && ahead < 30 && lat < 2.2) gap = Math.min(gap, ahead - (c.length + len) / 2);
       };
-      for (const o of this.cars) if (o !== c) probe(o.pos.x, o.pos.z, o.length);
+      const ci = this.cars.indexOf(c);
+      for (let oi = 0; oi < this.cars.length; oi++) {
+        const o = this.cars[oi];
+        if (oi === ci) continue;
+        // two cars tangled on the same spot (merging out of a junction) would wait for each other for ever:
+        // the one earlier in the list drives on and the other waits for it to clear
+        const rx = o.pos.x - c.pos.x, rz = o.pos.z - c.pos.z;
+        if (rx * rx + rz * rz < 2.5 * 2.5 && oi > ci) continue;
+        probe(o.pos.x, o.pos.z, o.length);
+      }
       const carGap = gap;
       probe(player.pos.x, player.pos.z, 4.5);
       // stuck behind a stopped player: after a few seconds, change lanes and go round (if that lane is clear)

@@ -25,7 +25,7 @@ something "for later", add it there instead of building it. When fixing an item,
 - Vite + Three.js + TS. `npm run dev`, `npm test` (vitest), `npm run release` (builds web/itch/crazygames/poki
   into `release/`, zips the portal uploads). GitHub Actions `web-release.yml` does the release on every push.
 - Targets via `VITE_TARGET`; `src/core/Platform.ts` wraps the Poki/CrazyGames SDKs (no-ops elsewhere).
-- Cars: `src/vehicles/CarBody.ts` (lofted bodies + projected decals), `designs.ts` (8 original designs),
+- Cars: `src/vehicles/CarBody.ts` (lofted bodies + projected decals), `designs.ts` (all 10 bodies incl. the Classic),
   studio at `/dev/cars.html`. Missions/personalities: `src/gameplay/Missions.ts`.
 - World leaderboard: `web/api/leaderboard.js` (Vercel + Upstash env vars), own-site build only.
 - Music: CC0 tracks in `public/music` (credits in ASSETS.md + in-game Credits).
@@ -81,7 +81,8 @@ passengers/pedestrians → port the web's original car designs.
   40 s play test with `-SCShots` (3 screenshots in `Saved/RobotShots`, uploaded as the `unreal-logs` artifact;
   download via the artifacts API with curl, no auth needed). Last shot follows traffic car 0. It only runs while
   the laptop is awake with `run.cmd` open; runs queue otherwise.
-- David's rule (2026-10-30): wait at most 20 minutes for a robot run, then stop watching and tell him.
+- David's rule (2026-10-30): if the robot hasn't picked a run up within 20 minutes (laptop asleep / runner closed), stop
+  watching and tell him. A run that is going can take as long as it needs; don't mention the 20 minutes to him.
 - Fixed via robot: crash on Play (minimap null texture), traffic invisible (template SKM is only the rig: bolt on
   SM body/glass/wheels on VisWheel bones), HUD overlaps, VSM warning (duplicate ini line), wheels spin.
 - Done + robot-tested: Slate main menu `Private/SCMenu.*` (Story / Free Ride / Arcade "coming soon" / Quit),
@@ -104,3 +105,5 @@ passengers/pedestrians → port the web's original car designs.
 - Story v1.1 (after launch): FT "Uber Game"-style week (comic-panel cutscenes, evening choices, stats that
   change the driving, several endings). Tone: upbeat with real stakes, more good endings than bad, no
   personal/family storyline for the driver. Story lives in a data file shared with Unreal.
+- The Week replaces the old 5-chapter story (David, 2026-10-30). Never announce how many endings there are or hint
+  at better ones: players discover them.
