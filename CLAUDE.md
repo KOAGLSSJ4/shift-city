@@ -104,3 +104,5 @@ passengers/pedestrians → port the web's original car designs.
 - Story v1.1 (after launch): FT "Uber Game"-style week (comic-panel cutscenes, evening choices, stats that
   change the driving, several endings). Tone: upbeat with real stakes, more good endings than bad, no
   personal/family storyline for the driver. Story lives in a data file shared with Unreal.
+- The Week replaces the old 5-chapter story (David, 2026-10-30). Never announce how many endings there are or hint
+  at better ones: players discover them.

@@ -257,6 +257,7 @@ export class Game {
     this.comic(d.title.split('·')[0] + '· EVENING', [d.evening.panel], `<p class="prompt">${d.evening.prompt}</p>${tired}<div class="week-stats">${this.weekStatsHtml()}</div>`,
       d.evening.choices.map((c) => ({ label: c.label, hint: c.hint, cls: 'action choice', on: () => {
         const cash = chooseEvening(w, c.effect);
+        this.save.story.chapter = Math.min(5, Math.max(this.save.story.chapter, w.day)); // days finished count for the Story goal
         if (cash) { this.save.wallet += cash; this.save.stats.earned += cash; }
         this.persist(); this.updateCareer(); this.updateWeekHud();
         if (!w.active) { this.showWeekEnding(); return; }
@@ -268,7 +269,7 @@ export class Game {
   private showWeekEnding() {
     const w = this.save.week, e = ENDINGS[w.ending];
     this.comic(`${WEEK_TITLE} · THE END`, [{ who: e.title, art: e.art, text: e.text, tone: e.good ? 'gold' : 'night' }],
-      `<div class="week-stats">${this.weekStatsHtml()}<span>Ending: <b>${e.title}</b>${e.good ? '' : ' (try again for a better one)'}</span></div>`,
+      `<div class="week-stats">${this.weekStatsHtml()}<span>Ending: <b>${e.title}</b></span></div>`,
       [
         { label: 'Play The Week again', on: () => { startWeek(w); this.persist(); this.cityMode.start('week'); this.renderJob(null); this.updateWeekHud(); this.showWeekMorning(); } },
         { label: 'Free Ride', cls: 'action secondary', on: () => { this.closeComic(); this.sessionMode = null; this.startCity('free'); } },
@@ -1095,9 +1096,8 @@ export class Game {
   // ---------------------------------------------------------------- menu & UI wiring
   private refreshMenu() {
     const s = this.save;
-    $('story-progress').textContent = s.story.chapter >= STORY.length ? 'Complete ✓' : `Chapter ${s.story.chapter + 1} of ${STORY.length}`;
     $('arcade-best').textContent = `Best ${s.arcade.best.toLocaleString()}`;
-    $('week-progress').textContent = s.week.active ? `${(WEEK[s.week.day]?.title.split('·')[0] ?? '').trim()} · ${money(Math.round(s.week.earned))} earned` : s.week.ending ? `Last ending: ${ENDINGS[s.week.ending]?.title ?? ''}` : 'New · 5 days, 4 endings';
+    $('week-progress').textContent = s.week.active ? `${(WEEK[s.week.day]?.title.split('·')[0] ?? '').trim()} · ${money(Math.round(s.week.earned))} earned` : s.week.ending ? 'The Week · play it again' : 'The Week · 5 days';
     document.querySelectorAll<HTMLElement>('[data-gfx]').forEach((b) => b.classList.toggle('on', b.dataset.gfx === s.settings.graphics));
     document.querySelectorAll<HTMLElement>('[data-cam]').forEach((b) => b.classList.toggle('on', b.dataset.cam === s.settings.camera));
     const nt = nextTier(s);
@@ -1108,7 +1108,6 @@ export class Game {
 
   private bindUI() {
     const on = (id: string, fn: () => void) => $(id).addEventListener('click', () => { this.audio.unlock(); fn(); (document.activeElement as HTMLElement)?.blur(); });
-    on('mode-story', () => this.startCity('story'));
     on('mode-free', () => this.startCity('free'));
     on('mode-week', () => this.startCity('week'));
     on('mode-arcade', () => this.startArcade());
