@@ -45,11 +45,15 @@ namespace
 			}
 			TSharedPtr<FJsonObject> JsonRoot;
 			if (!FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), JsonRoot) || !JsonRoot.IsValid() || !JsonRoot->HasTypedField<EJson::Object>(TEXT("cars"))) return Map;
-			for (const auto& Pair : JsonRoot->GetObjectField(TEXT("cars"))->Values)
+			// every body type in web/src/data/vehicles.ts (looked up by name: the JSON key type changed in UE 5.8)
+			const TSharedPtr<FJsonObject> CarsObj = JsonRoot->GetObjectField(TEXT("cars"));
+			const TCHAR* const BodyNames[] = { TEXT("classic"), TEXT("hatch"), TEXT("sedan"), TEXT("suv"), TEXT("gt"), TEXT("super"), TEXT("hybrid"), TEXT("gtv12"), TEXT("royal"), TEXT("hyper") };
+			for (const TCHAR* BodyName : BodyNames)
 			{
-				const TSharedPtr<FJsonObject> Obj = Pair.Value.IsValid() ? Pair.Value->AsObject() : nullptr;
+				if (!CarsObj.IsValid() || !CarsObj->HasTypedField<EJson::Object>(BodyName)) continue;
+				const TSharedPtr<FJsonObject> Obj = CarsObj->GetObjectField(BodyName);
 				if (!Obj.IsValid()) continue;
-				FCarEntry& E = Map.Add(Pair.Key);
+				FCarEntry& E = Map.Add(FString(BodyName));
 				E.HighFile = Obj->GetStringField(TEXT("hi"));
 				E.LowFile = Obj->GetStringField(TEXT("lo"));
 				E.WheelBase = Obj->GetNumberField(TEXT("wheelBase"));
