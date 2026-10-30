@@ -371,7 +371,7 @@ export class BodyShape {
       if (side && d.dPillar !== undefined) {
         if (cz < d.dPillar) return 'paint';
         if (Math.abs(cz - d.cPillar) < 0.06) return 'trim';
-      } else if (side && cz < d.cPillar) return 'paint';
+      } else if (cz < d.cPillar && th < thR + 0.3) return 'paint'; // C pillars wrap round: the rear window sits between them
       return 'glass';
     });
     return mergeParts(parts);

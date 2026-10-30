@@ -8,7 +8,6 @@ import type { BodyType, VehicleDef } from '../data/vehicles';
 import { binaryUrl } from '../core/AssetUrl';
 import { BodyShape, Kit, mergeParts, rimGeometry, tireGeometry, type PartKey } from './CarBody';
 import { DESIGNS, type DesignBody } from './designs';
-import { buildClassicCar } from './ClassicCar';
 
 export interface CarRig {
   root: THREE.Group;          // positioned/rotated by gameplay
@@ -76,7 +75,6 @@ export function makePaint(color: number, photoreal: boolean) {
 
 /** Procedural car. `detail` adds interior, mirrors and spoked rims (player car). */
 export function buildProceduralCar(kind: BodyType, color: number, opts: { detail: boolean; photoreal: boolean }): CarRig {
-  if (kind === 'classic') return buildClassicCar(color, opts);
   const body = kind;
   const d = DESIGNS[body], shape = bodyShape(body), p = cabin(body);
   const root = new THREE.Group();
