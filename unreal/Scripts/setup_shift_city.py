@@ -517,6 +517,24 @@ def find_car_meshes():
     return rigs, bodies, glass, wheels
 
 
+def report_fab_vehicles():
+    """Logs what the City Sample Vehicles pack (Fab) contains, so the cars can be wired up from the robot's log."""
+    found = {}
+    for path in EAL.list_assets("/Game", recursive=True):
+        low = path.lower()
+        if "citysample" not in low and "/fab/" not in low and "/vehicles/" not in low:
+            continue
+        if "/shiftcity/" in low:
+            continue
+        cls = str(EAL.find_asset_data(path).asset_class_path.asset_name)
+        if cls in ("Blueprint", "SkeletalMesh", "PhysicsAsset", "AnimBlueprint", "World"):
+            found.setdefault(cls, []).append(path.split(".")[0])
+    for cls, paths in sorted(found.items()):
+        log("FAB %s x%d" % (cls, len(paths)))
+        for p in paths[:80]:
+            log("FAB   %s" % p)
+
+
 def setup_level(mats, lamp, tree):
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -653,6 +671,10 @@ def main():
         log("STEP 3/4: street trees")
         task.enter_progress_frame(1, "Downloading street trees (Poly Haven)")
         tree = polyhaven_mesh("tree_small_02") if IMPORT_TREES else []
+        try:
+            report_fab_vehicles()
+        except Exception as e:
+            unreal.log_warning("[ShiftCity] could not list the Fab vehicles: %s" % e)
         log("STEP 4/4: building the city level")
         task.enter_progress_frame(1, "Building the city")
         setup_level(mats, lamp, tree)
