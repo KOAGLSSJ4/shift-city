@@ -81,7 +81,8 @@ passengers/pedestrians → port the web's original car designs.
   40 s play test with `-SCShots` (3 screenshots in `Saved/RobotShots`, uploaded as the `unreal-logs` artifact;
   download via the artifacts API with curl, no auth needed). Last shot follows traffic car 0. It only runs while
   the laptop is awake with `run.cmd` open; runs queue otherwise.
-- David's rule (2026-10-30): wait at most 20 minutes for a robot run, then stop watching and tell him.
+- David's rule (2026-10-30): if the robot hasn't picked a run up within 20 minutes (laptop asleep / runner closed), stop
+  watching and tell him. A run that is going can take as long as it needs; don't mention the 20 minutes to him.
 - Fixed via robot: crash on Play (minimap null texture), traffic invisible (template SKM is only the rig: bolt on
   SM body/glass/wheels on VisWheel bones), HUD overlaps, VSM warning (duplicate ini line), wheels spin.
 - Done + robot-tested: Slate main menu `Private/SCMenu.*` (Story / Free Ride / Arcade "coming soon" / Quit),
