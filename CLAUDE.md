@@ -78,7 +78,8 @@ passengers/pedestrians. (Car designs ported 2026-10-30: `SCCarVisuals.*` + `Data
 - Not verified on real devices: phone touch play, real ad fill on portals.
 
 ## Where we left off (Unreal, 2026-10-29)
-- Build robot works end to end (runner "MSI"): checkout with LFS + `git lfs checkout`, build, setup script,
+- Build robot (runner "MSI") runs only when started (workflow_dispatch, ref main or a branch), not on push: each run
+  leaves GBs on David's C: (2026-10-31). Its log prints "C: free after the run". Works end to end: checkout with LFS + `git lfs checkout`, build, setup script,
   40 s play test with `-SCShots` (3 screenshots in `Saved/RobotShots`, uploaded as the `unreal-logs` artifact;
   download via the artifacts API with curl, no auth needed). Last shot follows traffic car 0. It only runs while
   the laptop is awake with `run.cmd` open; runs queue otherwise.

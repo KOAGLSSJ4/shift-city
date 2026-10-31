@@ -1,12 +1,10 @@
 # The "build robot": runs on David's laptop (a self-hosted GitHub runner, see unreal/BUILD-ROBOT.md).
-# On every push that touches unreal/ it compiles the C++ and then runs the one-click setup script in the
-# editor exactly as David would, and uploads the logs (and any crash report) so Claude can read them.
-# Jobs wait in the queue until the laptop's runner is on.
+# When started by hand (Actions -> Unreal build -> Run workflow, or by Claude) it compiles the C++, runs the
+# one-click setup script in the editor exactly as David would, plays the level, and uploads the logs, screenshots
+# (and any crash report) so Claude can read them. Jobs wait in the queue until the laptop's runner is on.
+# Not run on every push any more (2026-10-31): each run leaves caches on David's small C: drive.
 name: Unreal build (David's laptop)
 on:
-  push:
-    branches: [main]
-    paths: ['unreal/**', '.github/workflows/unreal-build.yml']
   workflow_dispatch:
     inputs:
       run_script:
@@ -124,6 +122,16 @@ jobs:
               Select-Object -Last 200 | ForEach-Object { $_.Line }
           }
           if ($crashed) { "THE GAME CRASHED OR QUIT DURING PLAY (exit code $($game.ExitCode))"; exit 1 }
+
+      - name: Tidy up (stop Unreal's cache service, clear Unreal temp files on C:)
+        if: always()
+        shell: powershell
+        continue-on-error: true
+        run: |
+          Stop-Process -Name zenserver -Force -ErrorAction SilentlyContinue
+          Get-ChildItem $env:TEMP -Filter 'UnrealEngine*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          Get-ChildItem $env:TEMP -Filter 'UE*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          $c = Get-PSDrive C; "C: free after the run: {0:N1} GB" -f ($c.Free / 1GB)
 
       - name: Upload logs and crash reports
         if: always()
