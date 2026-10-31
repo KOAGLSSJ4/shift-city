@@ -39,6 +39,8 @@ private:
 	void SetHandling(const FSCVehicleDef& Car, const FSCUpgrades& Upgrades);
 	void Clear();
 	void SetCameraFor(const FSCCarModel* Model);
+	/** Builds the car from a Fab pack vehicle (see FabCars in the .cpp); false if there is none for this car or the pack is missing. */
+	bool BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims, const TArray<FVector>& WheelAt, const FVector& Centre);
 
 	FString AppliedKey;
 	UPROPERTY() TObjectPtr<USceneComponent> CarRoot;
@@ -46,6 +48,7 @@ private:
 	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Spinners;
 	UPROPERTY() TArray<TObjectPtr<UProceduralMeshComponent>> Meshes;
 	UPROPERTY() TArray<TObjectPtr<UPrimitiveComponent>> HiddenParts;
+	UPROPERTY() TArray<TObjectPtr<UPrimitiveComponent>> FabParts; // parts copied from a Fab pack vehicle
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> TailLights; // glow brighter while braking
 	TArray<FLinearColor> TailGlow;
 	bool bBrakeLit = false;

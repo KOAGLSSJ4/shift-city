@@ -219,6 +219,22 @@ UProceduralMeshComponent* SCCars::Build(const FSCCarModel& Model, uint32 Part, U
 	return Mesh;
 }
 
+// ------------------------------------------------------------------ Fab pack cars (Unreal only)
+
+namespace
+{
+	// garage car -> Fab pack vehicle (David, 2026-10-31). Cars not listed keep their Shift City design.
+	struct FFabCar { const TCHAR* Id; const TCHAR* Class; const TCHAR* Paint; };
+	const FFabCar FabCars[] = {
+		{ TEXT("classic"),  TEXT("/Game/CitySampleVehicles/vehicle06_Car/BP_vehicle06_Car.BP_vehicle06_Car_C"), nullptr }, // compact
+		{ TEXT("metro"),    TEXT("/Game/CitySampleVehicles/vehicle07_Car/BP_vehicle07_Car.BP_vehicle07_Car_C"), nullptr }, // coupe
+		{ TEXT("comfort"),  TEXT("/Game/CitySampleVehicles/vehicle03_Car/BP_vehicle03_Car.BP_vehicle03_Car_C"), nullptr }, // big saloon
+		{ TEXT("exec_suv"), TEXT("/Game/CitySampleVehicles/vehicle02_Car/BP_vehicle02_Car.BP_vehicle02_Car_C"), nullptr }, // SUV
+		{ TEXT("lux_ev"),   TEXT("/Game/CitySampleVehicles/vehicle05_Car/BP_vehicle05_Car.BP_vehicle05_Car_C"), nullptr }, // modern saloon
+		{ TEXT("vortex"),   TEXT("/Game/NO_FACE_Hypercar/Blueprints/CarBP.CarBP_C"), TEXT("#b4541f") },                  // copper, like David's photo
+	};
+}
+
 // ------------------------------------------------------------------ player car
 
 USCCarVisuals::USCCarVisuals()
@@ -251,7 +267,8 @@ void USCCarVisuals::Clear()
 	for (USceneComponent* Comp : Pivots) if (Comp) Comp->DestroyComponent();
 	if (CarRoot) CarRoot->DestroyComponent();
 	for (UPrimitiveComponent* Part : HiddenParts) if (Part) Part->SetVisibility(true);
-	Meshes.Reset(); Spinners.Reset(); Pivots.Reset(); HiddenParts.Reset(); PivotRest.Reset(); PhysicsWheel.Reset();
+	for (UPrimitiveComponent* Part : FabParts) if (Part) Part->DestroyComponent();
+	Meshes.Reset(); Spinners.Reset(); Pivots.Reset(); HiddenParts.Reset(); PivotRest.Reset(); PhysicsWheel.Reset(); FabParts.Reset();
 	TailLights.Reset(); TailGlow.Reset();
 	CarRoot = nullptr;
 }
@@ -300,6 +317,14 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 	CarRoot->SetupAttachment(Sk);
 	CarRoot->RegisterComponent();
 	CarRoot->SetWorldTransform(FTransform(ActorTm.GetRotation(), ActorTm.TransformPosition(FVector(Centre.X, Centre.Y, Centre.Z - Radius))));
+	// a realistic Fab pack car where one is set up for this garage car
+	FSCCarModel FabDims;
+	if (BuildFromFab(Car, FabDims, WheelAt, Centre))
+	{
+		SetCameraFor(&FabDims);
+		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (Fab pack car, %.0f cm long), %d template parts hidden"), *Car.Name, FabDims.Length, HiddenParts.Num());
+		return;
+	}
 	const FLinearColor PaintColor = SCCars::ParseColor(Car.Color);
 	UProceduralMeshComponent* BodyMesh = SCCars::Build(*Model, 0, CarRoot, PaintColor, true);
 	Meshes.Add(BodyMesh);
@@ -347,6 +372,167 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 	}
 	SetCameraFor(Model);
 	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (%s), physics wheel radius %.0f, %d template parts hidden"), *Car.Name, *Car.Body, Radius, HiddenParts.Num());
+}
+
+bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims, const TArray<FVector>& WheelAt, const FVector& Centre)
+{
+	const FFabCar* Entry = nullptr;
+	for (const FFabCar& F : FabCars) if (Car.Id == F.Id) { Entry = &F; break; }
+	APawn* Pawn = Cast<APawn>(GetOwner());
+	UClass* VehicleClass = Entry ? LoadClass<AActor>(nullptr, Entry->Class) : nullptr;
+	if (!VehicleClass || !Pawn || !CarRoot)
+	{
+		if (Entry) UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] cars: Fab car for %s not found (%s): using the Shift City design"), *Car.Id, Entry->Class);
+		return false;
+	}
+	// spawn the pack vehicle out of sight just long enough to copy its parts
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AActor* Temp = GetWorld()->SpawnActor<AActor>(VehicleClass, FTransform(FVector(0.f, 0.f, -200000.f)), Params);
+	USkeletalMeshComponent* TempSk = Temp ? Temp->FindComponentByClass<USkeletalMeshComponent>() : nullptr;
+	if (!TempSk)
+	{
+		if (Temp) Temp->Destroy();
+		return false;
+	}
+	if (UPrimitiveComponent* TempRoot = Cast<UPrimitiveComponent>(Temp->GetRootComponent())) TempRoot->SetSimulatePhysics(false);
+	const FTransform SkTm = TempSk->GetComponentTransform();
+
+	// wheel centres in the pack's rig: City Sample wheel sockets, or the hypercar's FL/FR/RL/RR bones
+	const TCHAR* const WheelNames[4][2] = { { TEXT("wheel_front_turn_l"), TEXT("FL") }, { TEXT("wheel_front_turn_r"), TEXT("FR") }, { TEXT("wheel_rear_l"), TEXT("RL") }, { TEXT("wheel_rear_r"), TEXT("RR") } };
+	FVector WheelPos[4];
+	for (int32 Corner = 0; Corner < 4; ++Corner)
+	{
+		const TCHAR* Found = nullptr;
+		for (const TCHAR* WheelName : WheelNames[Corner]) if (TempSk->DoesSocketExist(WheelName)) { Found = WheelName; break; }
+		if (!Found)
+		{
+			UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] cars: %s has no wheel %d"), Entry->Class, Corner);
+			Temp->Destroy();
+			return false;
+		}
+		WheelPos[Corner] = TempSk->GetSocketTransform(Found, RTS_Component).GetLocation();
+	}
+	// ground = the lowest visible point (the tyres); turn the pack so its front points along +X
+	FBox WorldBox(ForceInit);
+	TArray<UPrimitiveComponent*> Prims;
+	Temp->GetComponents<UPrimitiveComponent>(Prims);
+	for (UPrimitiveComponent* Prim : Prims)
+		if (Prim->IsVisible() && (Cast<UStaticMeshComponent>(Prim) || Cast<USkeletalMeshComponent>(Prim))) WorldBox += Prim->Bounds.GetBox();
+	const FVector Mid = (WheelPos[0] + WheelPos[1] + WheelPos[2] + WheelPos[3]) * 0.25;
+	FVector Forward = (WheelPos[0] + WheelPos[1] - WheelPos[2] - WheelPos[3]) * 0.5;
+	Forward.Z = 0.0;
+	const FQuat Turn(FRotator(0.f, -float(Forward.Rotation().Yaw), 0.f));
+	const FVector Base(Mid.X, Mid.Y, WorldBox.Min.Z - SkTm.GetLocation().Z);
+	auto ToCar = [&Base, &Turn](const FTransform& InRig)
+	{
+		FTransform Out = InRig;
+		Out.AddToTranslation(-Base);
+		return Out * FTransform(Turn);
+	};
+	const FVector Size = WorldBox.GetSize();
+	OutDims.Length = float(FMath::Max(Size.X, Size.Y));
+	OutDims.Height = float(Size.Z);
+
+	// paint: City Sample's car-paint instances take BaseColor; anything else (the hypercar's body) gets our clear-coat paint
+	const FLinearColor Paint = SCCars::ParseColor(Entry->Paint ? FString(Entry->Paint) : Car.Color);
+	auto CopyMaterials = [&Paint](UMeshComponent* Src, UMeshComponent* Dst)
+	{
+		const TArray<FName> SlotNames = Src->GetMaterialSlotNames();
+		for (int32 M = 0; M < Src->GetNumMaterials(); ++M)
+		{
+			UMaterialInterface* Mat = Src->GetMaterial(M);
+			const FString SlotName = SlotNames.IsValidIndex(M) ? SlotNames[M].ToString() : FString();
+			const FString MatName = GetNameSafe(Mat);
+			const bool bPaint = SlotName.Contains(TEXT("carPaint")) || MatName.Contains(TEXT("cover")) || MatName.Contains(TEXT("cober"));
+			if (bPaint && Cast<UMaterialInstance>(Mat))
+			{
+				UMaterialInstanceDynamic* PaintMid = UMaterialInstanceDynamic::Create(Mat, Dst);
+				PaintMid->SetVectorParameterValue(TEXT("BaseColor"), Paint);
+				Dst->SetMaterial(M, PaintMid);
+			}
+			else if (bPaint && CarMaterial(false))
+			{
+				UMaterialInstanceDynamic* PaintMid = UMaterialInstanceDynamic::Create(CarMaterial(false), Dst);
+				PaintMid->SetVectorParameterValue(TEXT("Color"), Paint);
+				PaintMid->SetScalarParameterValue(TEXT("Metallic"), 0.7f);
+				PaintMid->SetScalarParameterValue(TEXT("Roughness"), 0.12f);
+				PaintMid->SetScalarParameterValue(TEXT("ClearCoat"), 1.f);
+				Dst->SetMaterial(M, PaintMid);
+			}
+			else Dst->SetMaterial(M, Mat);
+		}
+	};
+
+	// wheel corners (FL FR RL RR), each driven by the physics wheel on the same corner
+	for (int32 Corner = 0; Corner < 4; ++Corner)
+	{
+		const bool bFront = Corner < 2, bRight = (Corner % 2) == 1;
+		int32 Best = 0;
+		float BestScore = -1e9f;
+		for (int32 W = 0; W < WheelAt.Num(); ++W)
+		{
+			const FVector Rel = WheelAt[W] - Centre;
+			const float Score = float((bFront ? Rel.X : -Rel.X) + (bRight ? Rel.Y : -Rel.Y));
+			if (Score > BestScore) { BestScore = Score; Best = W; }
+		}
+		PhysicsWheel.Add(Best);
+		USceneComponent* Pivot = NewObject<USceneComponent>(Pawn);
+		Pivot->SetupAttachment(CarRoot);
+		Pivot->RegisterComponent();
+		PivotRest.Add(ToCar(FTransform(WheelPos[Corner])).GetLocation());
+		Pivot->SetRelativeLocation(PivotRest.Last());
+		USceneComponent* Spinner = NewObject<USceneComponent>(Pawn);
+		Spinner->SetupAttachment(Pivot);
+		Spinner->RegisterComponent();
+		Pivots.Add(Pivot);
+		Spinners.Add(Spinner);
+	}
+
+	// copy every visible part: body and glass on the car, wheels on the spinners, brake parts on the steering pivots
+	int32 Copied = 0;
+	TArray<UStaticMeshComponent*> Statics;
+	Temp->GetComponents<UStaticMeshComponent>(Statics);
+	for (UStaticMeshComponent* Src : Statics)
+	{
+		if (!Src->GetStaticMesh() || !Src->IsVisible()) continue;
+		const FTransform InCar = ToCar(Src->GetComponentTransform().GetRelativeTransform(SkTm));
+		const FString Socket = Src->GetAttachSocketName().ToString().ToLower();
+		USceneComponent* Parent = CarRoot;
+		FTransform Rel = InCar;
+		if (Socket.Contains(TEXT("wheel")))
+		{
+			const int32 Corner = (Socket.Contains(TEXT("front")) ? 0 : 2) + (Socket.EndsWith(TEXT("_r")) ? 1 : 0);
+			const bool bSpins = Socket.Contains(TEXT("turn")) || Socket.Contains(TEXT("rear")); // front brake parts steer but don't spin
+			Parent = bSpins ? Spinners[Corner] : Pivots[Corner];
+			Rel = InCar.GetRelativeTransform(FTransform(PivotRest[Corner]));
+		}
+		UStaticMeshComponent* Dst = NewObject<UStaticMeshComponent>(Pawn);
+		Dst->SetStaticMesh(Src->GetStaticMesh());
+		Dst->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Dst->SetupAttachment(Parent);
+		Dst->SetRelativeTransform(Rel);
+		Dst->RegisterComponent();
+		CopyMaterials(Src, Dst);
+		FabParts.Add(Dst);
+		++Copied;
+	}
+	// one-piece cars (the hypercar): the whole body is the skeletal mesh (its wheels don't spin yet)
+	if (Copied < 2 && TempSk->GetSkeletalMeshAsset())
+	{
+		USkeletalMeshComponent* Dst = NewObject<USkeletalMeshComponent>(Pawn);
+		Dst->SetSkeletalMeshAsset(TempSk->GetSkeletalMeshAsset());
+		Dst->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Dst->SetupAttachment(CarRoot);
+		Dst->SetRelativeTransform(ToCar(FTransform::Identity));
+		Dst->RegisterComponent();
+		CopyMaterials(TempSk, Dst);
+		FabParts.Add(Dst);
+		++Copied;
+	}
+	Temp->Destroy();
+	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: built %s from %s (%d parts, wheelbase %.0f)"), *Car.Id, Entry->Class, Copied, float(FVector::Dist2D(WheelPos[0], WheelPos[2])));
+	return Copied > 0;
 }
 
 void USCCarVisuals::SetCameraFor(const FSCCarModel* Model)

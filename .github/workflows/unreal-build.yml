@@ -116,7 +116,7 @@ jobs:
             if ((Test-Path $logFile) -and (Select-String -Path $logFile -Pattern 'BeginPlay|Bringing up level for play|LogLoad: Took' -Quiet)) { break }
           }
           if (-not $crashed) {
-            Start-Sleep -Seconds 300 # long enough for first-time mesh preparation of new Fab packs; later runs use the cache
+            Start-Sleep -Seconds 120 # room for first-time preparation of new Fab parts; later runs use the cache
             if ($game.HasExited) { $crashed = $true } else { Stop-Process -Id $game.Id -Force; "Played without crashing" }
           }
           if (Test-Path $logFile) {

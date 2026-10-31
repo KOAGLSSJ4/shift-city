@@ -105,6 +105,10 @@ passengers/pedestrians. (Car designs ported 2026-10-30: `SCCarVisuals.*` + `Data
   pack later). Fab packs live only in David's project folder (every Content folder not in the repo is gitignored); the robot
   mirrors those folders from `D:\Projects\Shift City\shift-city\unreal\Content` before building. Web: no more realism needed.
   David: don't be afraid to build new things from the pack (mix bodies, wheels, colours, parts into our own cars).
+  Garage cars in Unreal (`FabCars` in SCCarVisuals.cpp): Classic=vehicle06, Kite Pico=07, Lumen=03, Halden=02,
+  Aeris=05, Vortex=NO FACE hypercar in copper (#b4541f, David's photo), Furia=template; Ardente/Stellato/Sovereign
+  wait for the Vehicle Variety Pack. Packs in: CitySampleVehicles, CitySampleBuildings, NO_FACE_Hypercar. 4 GB VRAM:
+  keep few distinct traffic models.
 - Cars are original procedural designs (web `src/vehicles/designs.ts`, lofted bodies in `CarBody.ts`, preview at
   `web/dev/cars.html`). The Ferrari placeholder is gone; vehicle ids stay stable for saves.
   2026-10-30: Classic (now lofted, round lamps), Kite Pico and Lumen reshaped; David happy, leave them be. In Unreal
