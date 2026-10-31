@@ -6,6 +6,11 @@
 
 class UProceduralMeshComponent;
 class USceneComponent;
+class UPrimitiveComponent;
+class UStaticMesh;
+class USkeletalMesh;
+class UMaterialInterface;
+class UWorld;
 
 struct FSCCarSection
 {
@@ -26,6 +31,28 @@ struct FSCCarModel
 	float WheelBase = 260.f, Track = 150.f, WheelRadius = 33.f, Length = 450.f, Height = 145.f;
 };
 
+/** A Fab pack vehicle read once into car space (X forward, Y right, ground at Z 0, centred between the axles). */
+struct FSCFabPart
+{
+	UStaticMesh* Mesh = nullptr;
+	TArray<UMaterialInterface*> Materials;
+	TArray<FName> Slots;
+	FTransform InCar;
+	int32 Corner = -1;   // 0 FL, 1 FR, 2 RL, 3 RR when the part belongs to a wheel
+	bool bSpins = false; // tyre/rim (spins) vs brake parts (steer only)
+};
+
+struct FSCFabCar
+{
+	TArray<FSCFabPart> Parts;
+	USkeletalMesh* OnePiece = nullptr; // cars that are a single skeletal mesh (the hypercar)
+	TArray<UMaterialInterface*> OnePieceMaterials;
+	TArray<FName> OnePieceSlots;
+	FTransform OnePieceInCar;
+	FVector Wheels[4];
+	float Length = 450.f, Height = 145.f; // (its meshes and materials are kept loaded for the whole game)
+};
+
 namespace SCCars
 {
 	enum EFlags : uint32 { Paint = 1, Glass = 2, TwoSided = 4, TailLight = 8, Lamp = 16 };
@@ -41,4 +68,12 @@ namespace SCCars
 
 	/** Linear colour from "#rrggbb". */
 	FLinearColor ParseColor(const FString& Hex);
+
+	/** The Fab vehicle blueprint ClassPath read into a car (cached; spawns it out of sight once). Null if missing. */
+	const FSCFabCar* GetFab(UWorld* World, const FString& ClassPath);
+
+	/** Builds a Fab car under Root in Paint. Wheel parts go on WheelParents[corner] (spinning) and brake parts on
+	 *  SteerParents[corner] (both may be Root); those parents must sit at Fab.Wheels[corner]. */
+	void BuildFab(const FSCFabCar& Fab, USceneComponent* Root, const TArray<USceneComponent*>& WheelParents, const TArray<USceneComponent*>& SteerParents,
+		const FLinearColor& PaintColor, bool bCastShadow, TArray<UPrimitiveComponent*>& OutParts);
 }

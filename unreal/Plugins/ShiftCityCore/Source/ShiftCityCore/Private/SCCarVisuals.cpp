@@ -374,26 +374,26 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (%s), physics wheel radius %.0f, %d template parts hidden"), *Car.Name, *Car.Body, Radius, HiddenParts.Num());
 }
 
-bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims, const TArray<FVector>& WheelAt, const FVector& Centre)
+const FSCFabCar* SCCars::GetFab(UWorld* World, const FString& ClassPath)
 {
-	const FFabCar* Entry = nullptr;
-	for (const FFabCar& F : FabCars) if (Car.Id == F.Id) { Entry = &F; break; }
-	APawn* Pawn = Cast<APawn>(GetOwner());
-	UClass* VehicleClass = Entry ? LoadClass<AActor>(nullptr, Entry->Class) : nullptr;
-	if (!VehicleClass || !Pawn || !CarRoot)
+	static TMap<FString, TUniquePtr<FSCFabCar>> Cache;
+	if (const TUniquePtr<FSCFabCar>* Found = Cache.Find(ClassPath)) return Found->Get();
+	TUniquePtr<FSCFabCar>& Slot = Cache.Add(ClassPath);
+	UClass* VehicleClass = World ? LoadClass<AActor>(nullptr, *ClassPath) : nullptr;
+	if (!VehicleClass)
 	{
-		if (Entry) UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] cars: Fab car for %s not found (%s): using the Shift City design"), *Car.Id, Entry->Class);
-		return false;
+		UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] cars: Fab vehicle %s not found"), *ClassPath);
+		return nullptr;
 	}
-	// spawn the pack vehicle out of sight just long enough to copy its parts
+	// spawn the pack vehicle out of sight just long enough to read its parts
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AActor* Temp = GetWorld()->SpawnActor<AActor>(VehicleClass, FTransform(FVector(0.f, 0.f, -200000.f)), Params);
+	AActor* Temp = World->SpawnActor<AActor>(VehicleClass, FTransform(FVector(0.f, 0.f, -200000.f)), Params);
 	USkeletalMeshComponent* TempSk = Temp ? Temp->FindComponentByClass<USkeletalMeshComponent>() : nullptr;
 	if (!TempSk)
 	{
 		if (Temp) Temp->Destroy();
-		return false;
+		return nullptr;
 	}
 	if (UPrimitiveComponent* TempRoot = Cast<UPrimitiveComponent>(Temp->GetRootComponent())) TempRoot->SetSimulatePhysics(false);
 	const FTransform SkTm = TempSk->GetComponentTransform();
@@ -403,15 +403,15 @@ bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims,
 	FVector WheelPos[4];
 	for (int32 Corner = 0; Corner < 4; ++Corner)
 	{
-		const TCHAR* Found = nullptr;
-		for (const TCHAR* WheelName : WheelNames[Corner]) if (TempSk->DoesSocketExist(WheelName)) { Found = WheelName; break; }
-		if (!Found)
+		const TCHAR* FoundName = nullptr;
+		for (const TCHAR* WheelName : WheelNames[Corner]) if (TempSk->DoesSocketExist(WheelName)) { FoundName = WheelName; break; }
+		if (!FoundName)
 		{
-			UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] cars: %s has no wheel %d"), Entry->Class, Corner);
+			UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] cars: %s has no wheel %d"), *ClassPath, Corner);
 			Temp->Destroy();
-			return false;
+			return nullptr;
 		}
-		WheelPos[Corner] = TempSk->GetSocketTransform(Found, RTS_Component).GetLocation();
+		WheelPos[Corner] = TempSk->GetSocketTransform(FoundName, RTS_Component).GetLocation();
 	}
 	// ground = the lowest visible point (the tyres); turn the pack so its front points along +X
 	FBox WorldBox(ForceInit);
@@ -419,47 +419,138 @@ bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims,
 	Temp->GetComponents<UPrimitiveComponent>(Prims);
 	for (UPrimitiveComponent* Prim : Prims)
 		if (Prim->IsVisible() && (Cast<UStaticMeshComponent>(Prim) || Cast<USkeletalMeshComponent>(Prim))) WorldBox += Prim->Bounds.GetBox();
-	const FVector Mid = (WheelPos[0] + WheelPos[1] + WheelPos[2] + WheelPos[3]) * 0.25;
+	const FVector Middle = (WheelPos[0] + WheelPos[1] + WheelPos[2] + WheelPos[3]) * 0.25;
 	FVector Forward = (WheelPos[0] + WheelPos[1] - WheelPos[2] - WheelPos[3]) * 0.5;
 	Forward.Z = 0.0;
 	const FQuat Turn(FRotator(0.f, -float(Forward.Rotation().Yaw), 0.f));
-	const FVector Base(Mid.X, Mid.Y, WorldBox.Min.Z - SkTm.GetLocation().Z);
+	const FVector Base(Middle.X, Middle.Y, WorldBox.Min.Z - SkTm.GetLocation().Z);
 	auto ToCar = [&Base, &Turn](const FTransform& InRig)
 	{
 		FTransform Out = InRig;
 		Out.AddToTranslation(-Base);
 		return Out * FTransform(Turn);
 	};
-	const FVector Size = WorldBox.GetSize();
-	OutDims.Length = float(FMath::Max(Size.X, Size.Y));
-	OutDims.Height = float(Size.Z);
 
-	// paint: our own clear-coat car paint on every painted panel. City Sample's paint takes its colour from its traffic
-	// system (a packed per-car parameter), so its own colour setting is ignored; ours also keeps the cars pristine.
-	const FLinearColor Paint = SCCars::ParseColor(Entry->Paint ? FString(Entry->Paint) : Car.Color);
-	auto CopyMaterials = [&Paint](UMeshComponent* Src, UMeshComponent* Dst)
+	TUniquePtr<FSCFabCar> Fab = MakeUnique<FSCFabCar>();
+	for (int32 Corner = 0; Corner < 4; ++Corner) Fab->Wheels[Corner] = ToCar(FTransform(WheelPos[Corner])).GetLocation();
+	const FVector Size = WorldBox.GetSize();
+	Fab->Length = float(FMath::Max(Size.X, Size.Y));
+	Fab->Height = float(Size.Z);
+	auto ReadMaterials = [](UMeshComponent* Src, TArray<UMaterialInterface*>& Mats, TArray<FName>& Slots)
 	{
-		const TArray<FName> SlotNames = Src->GetMaterialSlotNames();
+		Slots = Src->GetMaterialSlotNames();
 		for (int32 M = 0; M < Src->GetNumMaterials(); ++M)
 		{
-			UMaterialInterface* Mat = Src->GetMaterial(M);
-			const FString SlotName = SlotNames.IsValidIndex(M) ? SlotNames[M].ToString() : FString();
-			const FString MatName = GetNameSafe(Mat);
+			Mats.Add(Src->GetMaterial(M));
+			if (Mats.Last()) Mats.Last()->AddToRoot(); // kept loaded: the cache outlives the temporary vehicle
+		}
+	};
+	TArray<UStaticMeshComponent*> Statics;
+	Temp->GetComponents<UStaticMeshComponent>(Statics);
+	for (UStaticMeshComponent* Src : Statics)
+	{
+		if (!Src->GetStaticMesh() || !Src->IsVisible()) continue;
+		FSCFabPart& Part = Fab->Parts.AddDefaulted_GetRef();
+		Part.Mesh = Src->GetStaticMesh();
+		Part.Mesh->AddToRoot();
+		Part.InCar = ToCar(Src->GetComponentTransform().GetRelativeTransform(SkTm));
+		const FString Socket = Src->GetAttachSocketName().ToString().ToLower();
+		if (Socket.Contains(TEXT("wheel")))
+		{
+			Part.Corner = (Socket.Contains(TEXT("front")) ? 0 : 2) + (Socket.EndsWith(TEXT("_r")) ? 1 : 0);
+			Part.bSpins = Socket.Contains(TEXT("turn")) || Socket.Contains(TEXT("rear")); // front brake parts steer but don't spin
+		}
+		ReadMaterials(Src, Part.Materials, Part.Slots);
+	}
+	// one-piece cars (the hypercar): the whole body is the skeletal mesh (its wheels don't spin yet)
+	if (Fab->Parts.Num() < 2 && TempSk->GetSkeletalMeshAsset())
+	{
+		Fab->OnePiece = TempSk->GetSkeletalMeshAsset();
+		Fab->OnePiece->AddToRoot();
+		Fab->OnePieceInCar = ToCar(FTransform::Identity);
+		ReadMaterials(TempSk, Fab->OnePieceMaterials, Fab->OnePieceSlots);
+	}
+	Temp->Destroy();
+	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: read %s (%d parts%s, %.0f cm long)"), *ClassPath, Fab->Parts.Num(), Fab->OnePiece ? TEXT(" + one-piece body") : TEXT(""), Fab->Length);
+	Slot = MoveTemp(Fab);
+	return Slot.Get();
+}
+
+void SCCars::BuildFab(const FSCFabCar& Fab, USceneComponent* Root, const TArray<USceneComponent*>& WheelParents, const TArray<USceneComponent*>& SteerParents,
+	const FLinearColor& PaintColor, bool bCastShadow, TArray<UPrimitiveComponent*>& OutParts)
+{
+	if (!Root) return;
+	UObject* Outer = Root->GetOwner() ? static_cast<UObject*>(Root->GetOwner()) : static_cast<UObject*>(Root);
+	// our clear-coat paint on every painted panel: City Sample's paint takes its colour from its traffic system
+	// (a packed per-car parameter) and ignores its colour setting; ours also keeps the cars pristine
+	auto SetMaterials = [&PaintColor](UMeshComponent* Dst, const TArray<UMaterialInterface*>& Mats, const TArray<FName>& Slots)
+	{
+		for (int32 M = 0; M < Mats.Num(); ++M)
+		{
+			const FString SlotName = Slots.IsValidIndex(M) ? Slots[M].ToString() : FString();
+			const FString MatName = GetNameSafe(Mats[M]);
 			const bool bPaint = SlotName.Contains(TEXT("carPaint")) || MatName.Contains(TEXT("cover")) || MatName.Contains(TEXT("cober"));
 			if (bPaint && CarMaterial(false))
 			{
 				UMaterialInstanceDynamic* PaintMid = UMaterialInstanceDynamic::Create(CarMaterial(false), Dst);
-				PaintMid->SetVectorParameterValue(TEXT("Color"), Paint);
+				PaintMid->SetVectorParameterValue(TEXT("Color"), PaintColor);
 				PaintMid->SetScalarParameterValue(TEXT("Metallic"), 0.7f);
 				PaintMid->SetScalarParameterValue(TEXT("Roughness"), 0.12f);
 				PaintMid->SetScalarParameterValue(TEXT("ClearCoat"), 1.f);
 				Dst->SetMaterial(M, PaintMid);
 			}
-			else Dst->SetMaterial(M, Mat);
+			else Dst->SetMaterial(M, Mats[M]);
 		}
 	};
+	for (const FSCFabPart& Part : Fab.Parts)
+	{
+		USceneComponent* Parent = Root;
+		FTransform Rel = Part.InCar;
+		if (Part.Corner >= 0)
+		{
+			const TArray<USceneComponent*>& Parents = Part.bSpins ? WheelParents : SteerParents;
+			if (Parents.IsValidIndex(Part.Corner) && Parents[Part.Corner])
+			{
+				Parent = Parents[Part.Corner];
+				Rel = Part.InCar.GetRelativeTransform(FTransform(Fab.Wheels[Part.Corner]));
+			}
+		}
+		UStaticMeshComponent* Dst = NewObject<UStaticMeshComponent>(Outer);
+		Dst->SetStaticMesh(Part.Mesh);
+		Dst->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Dst->SetCastShadow(bCastShadow);
+		Dst->SetupAttachment(Parent);
+		Dst->SetRelativeTransform(Rel);
+		Dst->RegisterComponent();
+		SetMaterials(Dst, Part.Materials, Part.Slots);
+		OutParts.Add(Dst);
+	}
+	if (Fab.OnePiece)
+	{
+		USkeletalMeshComponent* Dst = NewObject<USkeletalMeshComponent>(Outer);
+		Dst->SetSkeletalMeshAsset(Fab.OnePiece);
+		Dst->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Dst->SetCastShadow(bCastShadow);
+		Dst->SetupAttachment(Root);
+		Dst->SetRelativeTransform(Fab.OnePieceInCar);
+		Dst->RegisterComponent();
+		SetMaterials(Dst, Fab.OnePieceMaterials, Fab.OnePieceSlots);
+		OutParts.Add(Dst);
+	}
+}
 
-	// wheel corners (FL FR RL RR), each driven by the physics wheel on the same corner
+bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims, const TArray<FVector>& WheelAt, const FVector& Centre)
+{
+	const FFabCar* Entry = nullptr;
+	for (const FFabCar& F : FabCars) if (Car.Id == F.Id) { Entry = &F; break; }
+	APawn* Pawn = Cast<APawn>(GetOwner());
+	const FSCFabCar* Fab = (Entry && Pawn && CarRoot) ? SCCars::GetFab(GetWorld(), Entry->Class) : nullptr;
+	if (!Fab) return false;
+	OutDims.Length = Fab->Length;
+	OutDims.Height = Fab->Height;
+
+	// wheel corners (FL FR RL RR) where the pack has them, each driven by the physics wheel on the same corner
+	TArray<USceneComponent*> SpinParents, SteerParents;
 	for (int32 Corner = 0; Corner < 4; ++Corner)
 	{
 		const bool bFront = Corner < 2, bRight = (Corner % 2) == 1;
@@ -475,59 +566,20 @@ bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims,
 		USceneComponent* Pivot = NewObject<USceneComponent>(Pawn);
 		Pivot->SetupAttachment(CarRoot);
 		Pivot->RegisterComponent();
-		PivotRest.Add(ToCar(FTransform(WheelPos[Corner])).GetLocation());
+		PivotRest.Add(Fab->Wheels[Corner]);
 		Pivot->SetRelativeLocation(PivotRest.Last());
 		USceneComponent* Spinner = NewObject<USceneComponent>(Pawn);
 		Spinner->SetupAttachment(Pivot);
 		Spinner->RegisterComponent();
 		Pivots.Add(Pivot);
 		Spinners.Add(Spinner);
+		SpinParents.Add(Spinner);
+		SteerParents.Add(Pivot);
 	}
-
-	// copy every visible part: body and glass on the car, wheels on the spinners, brake parts on the steering pivots
-	int32 Copied = 0;
-	TArray<UStaticMeshComponent*> Statics;
-	Temp->GetComponents<UStaticMeshComponent>(Statics);
-	for (UStaticMeshComponent* Src : Statics)
-	{
-		if (!Src->GetStaticMesh() || !Src->IsVisible()) continue;
-		const FTransform InCar = ToCar(Src->GetComponentTransform().GetRelativeTransform(SkTm));
-		const FString Socket = Src->GetAttachSocketName().ToString().ToLower();
-		USceneComponent* Parent = CarRoot;
-		FTransform Rel = InCar;
-		if (Socket.Contains(TEXT("wheel")))
-		{
-			const int32 Corner = (Socket.Contains(TEXT("front")) ? 0 : 2) + (Socket.EndsWith(TEXT("_r")) ? 1 : 0);
-			const bool bSpins = Socket.Contains(TEXT("turn")) || Socket.Contains(TEXT("rear")); // front brake parts steer but don't spin
-			Parent = bSpins ? Spinners[Corner] : Pivots[Corner];
-			Rel = InCar.GetRelativeTransform(FTransform(PivotRest[Corner]));
-		}
-		UStaticMeshComponent* Dst = NewObject<UStaticMeshComponent>(Pawn);
-		Dst->SetStaticMesh(Src->GetStaticMesh());
-		Dst->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		Dst->SetupAttachment(Parent);
-		Dst->SetRelativeTransform(Rel);
-		Dst->RegisterComponent();
-		CopyMaterials(Src, Dst);
-		FabParts.Add(Dst);
-		++Copied;
-	}
-	// one-piece cars (the hypercar): the whole body is the skeletal mesh (its wheels don't spin yet)
-	if (Copied < 2 && TempSk->GetSkeletalMeshAsset())
-	{
-		USkeletalMeshComponent* Dst = NewObject<USkeletalMeshComponent>(Pawn);
-		Dst->SetSkeletalMeshAsset(TempSk->GetSkeletalMeshAsset());
-		Dst->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		Dst->SetupAttachment(CarRoot);
-		Dst->SetRelativeTransform(ToCar(FTransform::Identity));
-		Dst->RegisterComponent();
-		CopyMaterials(TempSk, Dst);
-		FabParts.Add(Dst);
-		++Copied;
-	}
-	Temp->Destroy();
-	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: built %s from %s (%d parts, wheelbase %.0f)"), *Car.Id, Entry->Class, Copied, float(FVector::Dist2D(WheelPos[0], WheelPos[2])));
-	return Copied > 0;
+	TArray<UPrimitiveComponent*> Built;
+	SCCars::BuildFab(*Fab, CarRoot, SpinParents, SteerParents, SCCars::ParseColor(Entry->Paint ? FString(Entry->Paint) : Car.Color), true, Built);
+	for (UPrimitiveComponent* Part : Built) FabParts.Add(Part);
+	return Built.Num() > 0;
 }
 
 void USCCarVisuals::SetCameraFor(const FSCCarModel* Model)

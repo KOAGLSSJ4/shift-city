@@ -33,6 +33,22 @@ namespace
 	// everyday cars most of the time, the odd supercar; colours of real city traffic
 	const TCHAR* const TrafficBodies[] = { TEXT("hatch"), TEXT("sedan"), TEXT("suv"), TEXT("classic"), TEXT("hatch"), TEXT("sedan"), TEXT("gt"),
 		TEXT("suv"), TEXT("royal"), TEXT("classic"), TEXT("sedan"), TEXT("sedan"), TEXT("hatch"), TEXT("hybrid"), TEXT("gtv12"), TEXT("hyper") };
+	// realistic traffic from Epic's City Sample Vehicles (Fab); few distinct models so a 4 GB graphics card copes
+	struct FTrafficFab { const TCHAR* Class; const TCHAR* Colour; }; // Colour null = an everyday colour
+	const FTrafficFab TrafficFab[] = {
+		{ TEXT("/Game/CitySampleVehicles/vehicle03_Car/BP_vehicle03_Car.BP_vehicle03_Car_C"), nullptr },          // saloon
+		{ TEXT("/Game/CitySampleVehicles/vehicle05_Car/BP_vehicle05_Car.BP_vehicle05_Car_C"), nullptr },          // modern saloon
+		{ TEXT("/Game/CitySampleVehicles/vehicle12_Car/BP_vehicle12_Car.BP_vehicle12_Car_C"), TEXT("#f2b705") },  // taxi, taxi yellow
+		{ TEXT("/Game/CitySampleVehicles/vehicle02_Car/BP_vehicle02_Car.BP_vehicle02_Car_C"), nullptr },          // SUV
+		{ TEXT("/Game/CitySampleVehicles/vehicle03_Car/BP_vehicle03_Car.BP_vehicle03_Car_C"), nullptr },
+		{ TEXT("/Game/CitySampleVehicles/vehicle07_Car/BP_vehicle07_Car.BP_vehicle07_Car_C"), nullptr },          // coupe
+		{ TEXT("/Game/CitySampleVehicles/vehicle12_Car/BP_vehicle12_Car.BP_vehicle12_Car_C"), TEXT("#f2b705") },
+		{ TEXT("/Game/CitySampleVehicles/vehicle05_Car/BP_vehicle05_Car.BP_vehicle05_Car_C"), nullptr },
+		{ TEXT("/Game/CitySampleVehicles/vehicle09_Van/BP_vehicle09_Van.BP_vehicle09_Van_C"), TEXT("#e8e8e6") },  // delivery van, white
+		{ TEXT("/Game/CitySampleVehicles/vehicle02_Car/BP_vehicle02_Car.BP_vehicle02_Car_C"), nullptr },
+		{ TEXT("/Game/CitySampleVehicles/vehicle10_Bus/BP_vehicle10_Bus.BP_vehicle10_Bus_C"), TEXT("#e8e8e6") },  // city bus, white
+	};
+
 	const TCHAR* const TrafficColours[] = { TEXT("#e8e8e6"), TEXT("#141518"), TEXT("#9ca1a7"), TEXT("#5b6168"), TEXT("#1f3a64"), TEXT("#8c1c1c"),
 		TEXT("#e8e8e6"), TEXT("#2b2d31"), TEXT("#c9c3b6"), TEXT("#2f5d46"), TEXT("#b8bcc2"), TEXT("#d9a21b"), TEXT("#3d6fb6") };
 }
@@ -168,8 +184,32 @@ void ASCTraffic::SpawnCars()
 		Box->SetMobility(EComponentMobility::Movable);
 		Box->SetupAttachment(Root);
 		Box->RegisterComponent();
-		const FSCCarModel* Design = SCCars::Get(TrafficBodies[k % int32(UE_ARRAY_COUNT(TrafficBodies))], false);
-		if (Design)
+		const FTrafficFab& Pick = TrafficFab[k % int32(UE_ARRAY_COUNT(TrafficFab))];
+		const FSCFabCar* Fab = SCCars::GetFab(GetWorld(), Pick.Class);
+		const FSCCarModel* Design = Fab ? nullptr : SCCars::Get(TrafficBodies[k % int32(UE_ARRAY_COUNT(TrafficBodies))], false);
+		if (Fab)
+		{
+			// a City Sample car in an everyday colour (taxis yellow, vans and buses white)
+			Box->SetBoxExtent(FVector(Fab->Length * 0.5f, 95.f, 70.f));
+			USceneComponent* CarRoot = NewObject<USceneComponent>(this);
+			CarRoot->SetupAttachment(Box);
+			CarRoot->SetRelativeLocation(FVector(0.f, 0.f, -70.f));
+			CarRoot->RegisterComponent();
+			TArray<USceneComponent*> WheelSpinners;
+			for (int32 Corner = 0; Corner < 4; ++Corner)
+			{
+				USceneComponent* Spinner = NewObject<USceneComponent>(this);
+				Spinner->SetupAttachment(CarRoot);
+				Spinner->SetRelativeLocation(Fab->Wheels[Corner]);
+				Spinner->RegisterComponent();
+				WheelSpinners.Add(Spinner);
+				C.Wheels.Add(Spinner);
+			}
+			const FLinearColor Colour = SCCars::ParseColor(Pick.Colour ? Pick.Colour : TrafficColours[Rng.RandRange(0, int32(UE_ARRAY_COUNT(TrafficColours)) - 1)]);
+			TArray<UPrimitiveComponent*> Parts;
+			SCCars::BuildFab(*Fab, CarRoot, WheelSpinners, TArray<USceneComponent*>(), Colour, true, Parts);
+		}
+		else if (Design)
 		{
 			// a Shift City design (same models as the garage cars, lower detail)
 			Box->SetBoxExtent(FVector(Design->Length * 0.5f, 92.f, 70.f));
