@@ -434,7 +434,8 @@ bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims,
 	OutDims.Length = float(FMath::Max(Size.X, Size.Y));
 	OutDims.Height = float(Size.Z);
 
-	// paint: City Sample's car-paint instances take BaseColor; anything else (the hypercar's body) gets our clear-coat paint
+	// paint: our own clear-coat car paint on every painted panel. City Sample's paint takes its colour from its traffic
+	// system (a packed per-car parameter), so its own colour setting is ignored; ours also keeps the cars pristine.
 	const FLinearColor Paint = SCCars::ParseColor(Entry->Paint ? FString(Entry->Paint) : Car.Color);
 	auto CopyMaterials = [&Paint](UMeshComponent* Src, UMeshComponent* Dst)
 	{
@@ -445,13 +446,7 @@ bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims,
 			const FString SlotName = SlotNames.IsValidIndex(M) ? SlotNames[M].ToString() : FString();
 			const FString MatName = GetNameSafe(Mat);
 			const bool bPaint = SlotName.Contains(TEXT("carPaint")) || MatName.Contains(TEXT("cover")) || MatName.Contains(TEXT("cober"));
-			if (bPaint && Cast<UMaterialInstance>(Mat))
-			{
-				UMaterialInstanceDynamic* PaintMid = UMaterialInstanceDynamic::Create(Mat, Dst);
-				PaintMid->SetVectorParameterValue(TEXT("BaseColor"), Paint);
-				Dst->SetMaterial(M, PaintMid);
-			}
-			else if (bPaint && CarMaterial(false))
+			if (bPaint && CarMaterial(false))
 			{
 				UMaterialInstanceDynamic* PaintMid = UMaterialInstanceDynamic::Create(CarMaterial(false), Dst);
 				PaintMid->SetVectorParameterValue(TEXT("Color"), Paint);
