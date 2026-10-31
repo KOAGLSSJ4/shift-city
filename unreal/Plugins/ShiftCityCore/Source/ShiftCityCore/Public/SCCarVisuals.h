@@ -15,6 +15,7 @@ class UProceduralMeshComponent;
 class UMaterialInstanceDynamic;
 class USceneComponent;
 class UWorld;
+class UCameraComponent;
 
 UCLASS()
 class SHIFTCITYCORE_API USCCarVisuals : public UActorComponent
@@ -32,6 +33,9 @@ public:
 	 *  returns the centre of line-up row Row (0 or 1) for the camera. */
 	static FVector RobotLineup(UWorld* World, int32 Row);
 
+	/** Switches Pawn between the chase camera and a camera in the driver's seat. */
+	static void ToggleView(APawn* Pawn);
+
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
@@ -39,11 +43,15 @@ private:
 	void SetHandling(const FSCVehicleDef& Car, const FSCUpgrades& Upgrades);
 	void Clear();
 	void SetCameraFor(const FSCCarModel* Model);
+	void SetCockpit(bool bOn);
 	/** Builds the car from a Fab pack vehicle (see FabCars in the .cpp); false if there is none for this car or the pack is missing. */
 	bool BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims, const TArray<FVector>& WheelAt, const FVector& Centre);
 
 	FString AppliedKey;
 	UPROPERTY() TObjectPtr<USceneComponent> CarRoot;
+	UPROPERTY() TObjectPtr<UCameraComponent> CockpitCam;
+	FVector CockpitEye = FVector(-20.f, -36.f, 112.f); // driver's eye in car space (left-hand drive)
+	bool bCockpit = false;
 	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Pivots;   // FL FR RL RR
 	UPROPERTY() TArray<TObjectPtr<USceneComponent>> Spinners;
 	UPROPERTY() TArray<TObjectPtr<UProceduralMeshComponent>> Meshes;

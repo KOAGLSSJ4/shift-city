@@ -1,6 +1,7 @@
 #include "SCCarVisuals.h"
 #include "SCCarData.h"
 #include "ShiftCityCore.h"
+#include "Camera/CameraComponent.h"
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -268,6 +269,7 @@ void USCCarVisuals::Clear()
 	if (CarRoot) CarRoot->DestroyComponent();
 	for (UPrimitiveComponent* Part : HiddenParts) if (Part) Part->SetVisibility(true);
 	for (UPrimitiveComponent* Part : FabParts) if (Part) Part->DestroyComponent();
+	if (CockpitCam) { CockpitCam->DestroyComponent(); CockpitCam = nullptr; }
 	Meshes.Reset(); Spinners.Reset(); Pivots.Reset(); HiddenParts.Reset(); PivotRest.Reset(); PhysicsWheel.Reset(); FabParts.Reset();
 	TailLights.Reset(); TailGlow.Reset();
 	CarRoot = nullptr;
@@ -321,7 +323,10 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 	FSCCarModel FabDims;
 	if (BuildFromFab(Car, FabDims, WheelAt, Centre))
 	{
+		// driver's eye: a little over a metre behind the front axle, left seat, about four fifths of the roof height
+		CockpitEye = FVector(PivotRest.Num() ? PivotRest[0].X - 135.f : -20.f, -36.f, FMath::Max(85.f, FabDims.Height * 0.8f));
 		SetCameraFor(&FabDims);
+		if (bCockpit) SetCockpit(true);
 		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (Fab pack car, %.0f cm long), %d template parts hidden"), *Car.Name, FabDims.Length, HiddenParts.Num());
 		return;
 	}
@@ -370,7 +375,9 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 		Spinners.Add(Spinner);
 		Meshes.Add(WheelMesh);
 	}
+	CockpitEye = FVector(Model->WheelBase * 0.5f - 135.f, -36.f, FMath::Max(85.f, Model->Height * 0.8f));
 	SetCameraFor(Model);
+	if (bCockpit) SetCockpit(true);
 	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (%s), physics wheel radius %.0f, %d template parts hidden"), *Car.Name, *Car.Body, Radius, HiddenParts.Num());
 }
 
@@ -580,6 +587,42 @@ bool USCCarVisuals::BuildFromFab(const FSCVehicleDef& Car, FSCCarModel& OutDims,
 	SCCars::BuildFab(*Fab, CarRoot, SpinParents, SteerParents, SCCars::ParseColor(Entry->Paint ? FString(Entry->Paint) : Car.Color), true, Built);
 	for (UPrimitiveComponent* Part : Built) FabParts.Add(Part);
 	return Built.Num() > 0;
+}
+
+void USCCarVisuals::ToggleView(APawn* Pawn)
+{
+	USCCarVisuals* Visuals = Pawn ? Pawn->FindComponentByClass<USCCarVisuals>() : nullptr;
+	if (Visuals) Visuals->SetCockpit(!Visuals->bCockpit);
+}
+
+void USCCarVisuals::SetCockpit(bool bOn)
+{
+	bCockpit = bOn;
+	APawn* Pawn = Cast<APawn>(GetOwner());
+	if (!Pawn) return;
+	TArray<UCameraComponent*> Cams;
+	Pawn->GetComponents<UCameraComponent>(Cams);
+	UCameraComponent* Inside = CockpitCam;
+	if (bOn && !Inside)
+	{
+		if (CarRoot)
+		{
+			CockpitCam = NewObject<UCameraComponent>(Pawn);
+			CockpitCam->SetupAttachment(CarRoot);
+			CockpitCam->SetRelativeLocation(CockpitEye);
+			CockpitCam->SetFieldOfView(80.f);
+			CockpitCam->bUsePawnControlRotation = false;
+			CockpitCam->RegisterComponent();
+			Inside = CockpitCam;
+		}
+		else // the template sports car (Furia V12) has its own in-car camera
+			for (UCameraComponent* Cam : Cams) if (Cam->GetName().Contains(TEXT("Front"))) { Inside = Cam; break; }
+	}
+	for (UCameraComponent* Cam : Cams) if (Cam != Inside) Cam->SetActive(false);
+	if (bOn && Inside) { Inside->SetActive(true); return; }
+	if (Inside) Inside->SetActive(false);
+	for (UCameraComponent* Cam : Cams)
+		if (Cam != CockpitCam && !Cam->GetName().Contains(TEXT("Front"))) { Cam->SetActive(true); break; }
 }
 
 void USCCarVisuals::SetCameraFor(const FSCCarModel* Model)

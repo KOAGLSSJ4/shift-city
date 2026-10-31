@@ -536,70 +536,85 @@ def report_fab_vehicles():
                 log("FAB   %s %s" % (cls, p))
 
 
+def _actor_box(actor):
+    """World-space (lo, hi) of a spawned packed building, from its bounds or, when those aren't ready, its pieces."""
+    origin, extent = actor.get_actor_bounds(False)
+    if extent.x >= 150 and extent.y >= 150:
+        return [origin.x - extent.x, origin.y - extent.y, origin.z - extent.z], [origin.x + extent.x, origin.y + extent.y, origin.z + extent.z]
+    lo, hi = [1e12] * 3, [-1e12] * 3
+    comps = list(actor.get_components_by_class(unreal.InstancedStaticMeshComponent)) + list(actor.get_components_by_class(unreal.StaticMeshComponent))
+    seen = set()
+    for comp in comps:
+        if comp.get_name() in seen or not comp.static_mesh:
+            continue
+        seen.add(comp.get_name())
+        box = comp.static_mesh.get_bounding_box()
+        corners = [unreal.Vector(x, y, z) for x in (box.min.x, box.max.x) for y in (box.min.y, box.max.y) for z in (box.min.z, box.max.z)]
+        if isinstance(comp, unreal.InstancedStaticMeshComponent):
+            tms = []
+            for i in range(comp.get_instance_count()):
+                r = comp.get_instance_transform(i, True)
+                tm = r[-1] if isinstance(r, tuple) else r
+                if tm is not None:
+                    tms.append(tm)
+        else:
+            tms = [comp.get_world_transform()]
+        for tm in tms:
+            for c in corners:
+                w = tm.transform_location(c)
+                for k, v in enumerate((w.x, w.y, w.z)):
+                    lo[k] = min(lo[k], v)
+                    hi[k] = max(hi[k], v)
+    return lo, hi
+
+
 def measure_building_kits(eas):
     """Epic's City Sample Buildings (Fab, kept only on David's drive): measures each ready-made building once so the
-    city generator can stand the ones that fit on its plots. Returns (classes, sizes, offsets); empty if the pack is missing."""
-    classes, sizes, offsets = [], [], []
+    city generator can stand the ones that fit on its plots. Many come in two pieces: the ground floor ("Level01")
+    and the floors above, which must be placed together. Returns (classes, ground_floors, sizes, offsets)."""
     reg = unreal.AssetRegistryHelpers.get_asset_registry()
+    found = {}
     for data in reg.get_assets_by_path("/Game/CitySampleBuildings", recursive=True):
         name = str(data.asset_name)
-        if not name.startswith("BPP_") or str(data.asset_class_path.asset_name) != "Blueprint":
+        if name.startswith("BPP_") and str(data.asset_class_path.asset_name) == "Blueprint" and not name.startswith("BPP_Roof"):
+            found[name] = "%s.%s_C" % (data.package_name, name)
+    # ground-floor pieces, keyed by the name of the building they belong under
+    grounds = {}
+    for name, path in found.items():
+        if "_Level01" in name:
+            grounds[name.replace("_Level01", "").replace("A1l_", "A1_")] = path
+    classes, ground_floors, sizes, offsets = [], [], [], []
+    for name, path in sorted(found.items()):
+        if "_Level01" in name:
             continue
-        # whole buildings only: skip ground-floor-only slices ("Level01") and rooftop add-ons
-        if "Level01" in name or name.startswith("BPP_Roof"):
-            continue
-        cls = unreal.load_class(None, "%s.%s_C" % (data.package_name, name))
+        cls = unreal.load_class(None, path)
+        ground_cls = unreal.load_class(None, grounds[name]) if name in grounds else None
         if not cls:
             continue
-        # measured at the world origin: the packed buildings keep a part there, which skews bounds measured elsewhere
-        actor = eas.spawn_actor_from_class(cls, unreal.Vector(0, 0, 0))
-        if not actor:
-            continue
-        origin, extent = actor.get_actor_bounds(False)
-        loc = actor.get_actor_location()
-        if extent.x < 150 or extent.y < 150:
-            # the packed buildings' bounds aren't ready yet: add up their pieces (instanced meshes) instead
-            lo, hi, pieces = [1e12] * 3, [-1e12] * 3, 0
-            comps = list(actor.get_components_by_class(unreal.InstancedStaticMeshComponent)) + list(actor.get_components_by_class(unreal.StaticMeshComponent))
-            seen = set()
-            for comp in comps:
-                if comp.get_name() in seen or not comp.static_mesh:
-                    continue
-                seen.add(comp.get_name())
-                box = comp.static_mesh.get_bounding_box()
-                corners = [unreal.Vector(x, y, z) for x in (box.min.x, box.max.x) for y in (box.min.y, box.max.y) for z in (box.min.z, box.max.z)]
-                if isinstance(comp, unreal.InstancedStaticMeshComponent):
-                    tms = []
-                    for i in range(comp.get_instance_count()):
-                        r = comp.get_instance_transform(i, True)
-                        tm = r[-1] if isinstance(r, tuple) else r
-                        if tm is not None:
-                            tms.append(tm)
-                else:
-                    tms = [comp.get_world_transform()]
-                for tm in tms:
-                    pieces += 1
-                    for c in corners:
-                        w = tm.transform_location(c)
-                        for k, v in enumerate((w.x, w.y, w.z)):
-                            lo[k] = min(lo[k], v)
-                            hi[k] = max(hi[k], v)
-            if pieces:
-                origin = unreal.Vector((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2)
-                extent = unreal.Vector((hi[0] - lo[0]) / 2, (hi[1] - lo[1]) / 2, (hi[2] - lo[2]) / 2)
-            log("building %s measured from %d pieces in %d parts" % (name, pieces, len(seen)))
-        eas.destroy_actor(actor)
-        size = unreal.Vector(extent.x * 2, extent.y * 2, extent.z * 2)
-        if size.x < 300 or size.y < 300 or size.z < 300:
-            log("building %s skipped (no size: %.0f x %.0f x %.0f)" % (name, size.x, size.y, size.z))
+        # measured at the world origin (the packed buildings keep a part there, which skews bounds measured elsewhere)
+        lo, hi = [1e12] * 3, [-1e12] * 3
+        for c in (cls, ground_cls):
+            if not c:
+                continue
+            actor = eas.spawn_actor_from_class(c, unreal.Vector(0, 0, 0))
+            if not actor:
+                continue
+            a_lo, a_hi = _actor_box(actor)
+            eas.destroy_actor(actor)
+            lo = [min(x, y) for x, y in zip(lo, a_lo)]
+            hi = [max(x, y) for x, y in zip(hi, a_hi)]
+        size = unreal.Vector(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])
+        if size.x < 300 or size.y < 300 or size.z < 300 or size.x > 1e9:
+            log("building %s skipped (no size)" % name)
             continue
         classes.append(cls)
+        ground_floors.append(ground_cls)
         sizes.append(size)
-        # footprint centre and base height relative to the actor origin
-        offsets.append(unreal.Vector(origin.x - loc.x, origin.y - loc.y, (origin.z - extent.z) - loc.z))
-        log("BUILDING %s %.0f x %.0f, %.0f m tall" % (name, size.x / 100, size.y / 100, size.z / 100))
+        # footprint centre and base height relative to the actor origin (spawned at 0, 0, 0)
+        offsets.append(unreal.Vector((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2]))
+        log("BUILDING %s %.0f x %.0f, %.0f m tall%s" % (name, size.x / 100, size.y / 100, size.z / 100, " + ground floor" if ground_cls else ""))
     log("%d City Sample buildings available" % len(classes))
-    return classes, sizes, offsets
+    return classes, ground_floors, sizes, offsets
 
 
 def setup_level(mats, lamp, tree):
@@ -661,8 +676,9 @@ def setup_level(mats, lamp, tree):
     setp(gen, "lamp_meshes", lamp)
     setp(gen, "tree_meshes", tree)
     try:
-        kits, kit_sizes, kit_offsets = measure_building_kits(eas)
+        kits, kit_grounds, kit_sizes, kit_offsets = measure_building_kits(eas)
         setp(gen, "building_kits", kits)
+        setp(gen, "building_kit_ground_floors", kit_grounds)
         setp(gen, "building_kit_sizes", kit_sizes)
         setp(gen, "building_kit_offsets", kit_offsets)
     except Exception as e:

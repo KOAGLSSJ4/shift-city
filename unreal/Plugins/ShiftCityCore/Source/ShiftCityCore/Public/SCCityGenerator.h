@@ -52,7 +52,9 @@ public:
 	// ---- ready-made buildings (Epic's City Sample Buildings from Fab, Unreal only; filled by the setup script)
 	/** Building blueprints that can stand on a plot. Empty = every building is one of ours. */
 	UPROPERTY(EditAnywhere, Category = "Shift City|Buildings") TArray<TSubclassOf<AActor>> BuildingKits;
-	/** Measured size of each kit: footprint X, Y and height Z (cm). */
+	/** The ground-floor piece that goes under each kit (City Sample splits many buildings in two), or none. */
+	UPROPERTY(EditAnywhere, Category = "Shift City|Buildings") TArray<TSubclassOf<AActor>> BuildingKitGroundFloors;
+	/** Measured size of each kit (with its ground floor): footprint X, Y and height Z (cm). */
 	UPROPERTY(EditAnywhere, Category = "Shift City|Buildings") TArray<FVector> BuildingKitSizes;
 	/** Each kit's footprint centre (X, Y) and base height (Z) relative to its actor origin. */
 	UPROPERTY(EditAnywhere, Category = "Shift City|Buildings") TArray<FVector> BuildingKitOffsets;

@@ -239,6 +239,17 @@ void ASCCityGenerator::Generate()
 		Kit->SetRelativeScale3D(FVector(BestFit));
 		Kit->RegisterComponent();
 		KitBuildings.Add(Kit);
+		// its ground floor, placed exactly the same way
+		if (BuildingKitGroundFloors.IsValidIndex(Best) && BuildingKitGroundFloors[Best])
+		{
+			UChildActorComponent* GroundFloor = NewObject<UChildActorComponent>(this);
+			GroundFloor->CreationMethod = EComponentCreationMethod::UserConstructionScript;
+			GroundFloor->SetChildActorClass(BuildingKitGroundFloors[Best]);
+			GroundFloor->SetupAttachment(GetRootComponent());
+			GroundFloor->SetRelativeTransform(Kit->GetRelativeTransform());
+			GroundFloor->RegisterComponent();
+			KitBuildings.Add(GroundFloor);
+		}
 		return true;
 	};
 

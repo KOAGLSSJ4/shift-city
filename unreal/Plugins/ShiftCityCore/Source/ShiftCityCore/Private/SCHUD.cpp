@@ -516,6 +516,22 @@ void ASCHUD::DrawHUD()
 	Hm.bCareer = Hm.bCard = Hm.bGps = Hm.bBoard = Hm.bSpeed = false;
 	Hm.Story.Reset();
 	for (FString& ToastText : Hm.Toast) ToastText.Reset();
+	// every second, even behind the menu: hide the Vehicle template's own speed widget (it reads MPH) and dress the
+	// pawn as the garage car (body, wheels, handling; the robot can force one with -SCCar=<id>)
+	if (Pawn && (TemplateUiTimer -= GetWorld()->GetDeltaSeconds()) <= 0.f)
+	{
+		TemplateUiTimer = 1.f;
+		for (TObjectIterator<UUserWidget> It; It; ++It)
+			if (It->GetWorld() == GetWorld() && It->IsInViewport() && It->GetClass()->GetName().StartsWith(TEXT("BP_VehicleAdvUI"))) It->RemoveFromParent();
+		if (E)
+		{
+			FString CarId = E->GetSelectedVehicle().Id;
+			FParse::Value(FCommandLine::Get(), TEXT("SCCar="), CarId);
+			USCCarVisuals::Apply(Pawn, E->GetVehicle(CarId), E->GetUpgrades(CarId));
+		}
+	}
+	// V: chase camera <-> driver's seat
+	if (Pawn && PC && !MenuWidget.IsValid() && PC->WasInputKeyJustPressed(EKeys::V)) USCCarVisuals::ToggleView(Pawn);
 	if (MenuWidget.IsValid()) return; // the menu covers the screen: no HUD under it
 
 	// ---- career panel (top-left)
@@ -659,19 +675,6 @@ void ASCHUD::DrawHUD()
 		Hm.bSpeed = true;
 		Hm.Speed = FString::Printf(TEXT("%d"), FMath::RoundToInt(V.Size2D() * 0.036f));
 		Hm.Gear = Along < -50.f ? TEXT("R") : V.Size2D() < 50.f ? TEXT("N") : TEXT("D");
-		if ((TemplateUiTimer -= GetWorld()->GetDeltaSeconds()) <= 0.f)
-		{
-			TemplateUiTimer = 1.f;
-			for (TObjectIterator<UUserWidget> It; It; ++It)
-				if (It->GetWorld() == GetWorld() && It->IsInViewport() && It->GetClass()->GetName().StartsWith(TEXT("BP_VehicleAdvUI"))) It->RemoveFromParent();
-			// the garage car: body, wheels and handling (the robot can force one with -SCCar=<id>)
-			if (E)
-			{
-				FString CarId = E->GetSelectedVehicle().Id;
-				FParse::Value(FCommandLine::Get(), TEXT("SCCar="), CarId);
-				USCCarVisuals::Apply(Pawn, E->GetVehicle(CarId), E->GetUpgrades(CarId));
-			}
-		}
 	}
 	if (bShowSpeed && Pawn)
 	{
