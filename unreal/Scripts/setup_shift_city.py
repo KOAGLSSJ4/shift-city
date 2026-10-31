@@ -554,6 +554,37 @@ def measure_building_kits(eas):
             continue
         origin, extent = actor.get_actor_bounds(False)
         loc = actor.get_actor_location()
+        if extent.x < 150 or extent.y < 150:
+            # the packed buildings' bounds aren't ready yet: add up their pieces (instanced meshes) instead
+            lo, hi, pieces = [1e12] * 3, [-1e12] * 3, 0
+            comps = list(actor.get_components_by_class(unreal.InstancedStaticMeshComponent)) + list(actor.get_components_by_class(unreal.StaticMeshComponent))
+            seen = set()
+            for comp in comps:
+                if comp.get_name() in seen or not comp.static_mesh:
+                    continue
+                seen.add(comp.get_name())
+                box = comp.static_mesh.get_bounding_box()
+                corners = [unreal.Vector(x, y, z) for x in (box.min.x, box.max.x) for y in (box.min.y, box.max.y) for z in (box.min.z, box.max.z)]
+                if isinstance(comp, unreal.InstancedStaticMeshComponent):
+                    tms = []
+                    for i in range(comp.get_instance_count()):
+                        r = comp.get_instance_transform(i, True)
+                        tm = r[-1] if isinstance(r, tuple) else r
+                        if tm is not None:
+                            tms.append(tm)
+                else:
+                    tms = [comp.get_world_transform()]
+                for tm in tms:
+                    pieces += 1
+                    for c in corners:
+                        w = tm.transform_location(c)
+                        for k, v in enumerate((w.x, w.y, w.z)):
+                            lo[k] = min(lo[k], v)
+                            hi[k] = max(hi[k], v)
+            if pieces:
+                origin = unreal.Vector((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2)
+                extent = unreal.Vector((hi[0] - lo[0]) / 2, (hi[1] - lo[1]) / 2, (hi[2] - lo[2]) / 2)
+            log("building %s measured from %d pieces in %d parts" % (name, pieces, len(seen)))
         eas.destroy_actor(actor)
         size = unreal.Vector(extent.x * 2, extent.y * 2, extent.z * 2)
         if size.x < 300 or size.y < 300 or size.z < 300:
