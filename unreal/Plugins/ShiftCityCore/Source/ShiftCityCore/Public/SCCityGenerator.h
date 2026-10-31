@@ -11,6 +11,7 @@ class UProceduralMeshComponent;
 class UHierarchicalInstancedStaticMeshComponent;
 class UMaterialInterface;
 class UStaticMesh;
+class UChildActorComponent;
 
 UCLASS()
 class SHIFTCITYCORE_API ASCCityGenerator : public AActor
@@ -48,11 +49,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Shift City|Props") TObjectPtr<UStaticMesh> HydrantMesh;
 	UPROPERTY(EditAnywhere, Category = "Shift City|Props") TObjectPtr<UStaticMesh> BinMesh;
 
+	// ---- ready-made buildings (Epic's City Sample Buildings from Fab, Unreal only; filled by the setup script)
+	/** Building blueprints that can stand on a plot. Empty = every building is one of ours. */
+	UPROPERTY(EditAnywhere, Category = "Shift City|Buildings") TArray<TSubclassOf<AActor>> BuildingKits;
+	/** Measured size of each kit: footprint X, Y and height Z (cm). */
+	UPROPERTY(EditAnywhere, Category = "Shift City|Buildings") TArray<FVector> BuildingKitSizes;
+	/** Each kit's footprint centre (X, Y) and base height (Z) relative to its actor origin. */
+	UPROPERTY(EditAnywhere, Category = "Shift City|Buildings") TArray<FVector> BuildingKitOffsets;
+
 	/** Spawns the ten named SC Destinations when play starts (skips any you placed yourself). */
 	UPROPERTY(EditAnywhere, Category = "Shift City") bool bSpawnDestinations = true;
 
 	/** Bumped whenever the generator changes, so the setup script can tell if the C++ was rebuilt. */
-	UFUNCTION(BlueprintPure, Category = "Shift City") static int32 GetGeneratorVersion() { return 4; }
+	UFUNCTION(BlueprintPure, Category = "Shift City") static int32 GetGeneratorVersion() { return 5; }
 
 	/** Where the player should start (next to Central Station, facing along the road). */
 	UFUNCTION(BlueprintPure, Category = "Shift City") FTransform GetSpawnTransform() const;
@@ -63,4 +72,5 @@ private:
 	void AddPropInstances(const TArray<TObjectPtr<UStaticMesh>>& Meshes, const TArray<FTransform>& Ts, bool bCollide);
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Hydrants;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Bins;
+	UPROPERTY() TArray<TObjectPtr<UChildActorComponent>> KitBuildings;
 };

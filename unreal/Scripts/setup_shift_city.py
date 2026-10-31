@@ -536,6 +536,37 @@ def report_fab_vehicles():
                 log("FAB   %s %s" % (cls, p))
 
 
+def measure_building_kits(eas):
+    """Epic's City Sample Buildings (Fab, kept only on David's drive): measures each ready-made building once so the
+    city generator can stand the ones that fit on its plots. Returns (classes, sizes, offsets); empty if the pack is missing."""
+    classes, sizes, offsets = [], [], []
+    reg = unreal.AssetRegistryHelpers.get_asset_registry()
+    for data in reg.get_assets_by_path("/Game/CitySampleBuildings", recursive=True):
+        name = str(data.asset_name)
+        if not name.startswith("BPP_") or str(data.asset_class_path.asset_name) != "Blueprint":
+            continue
+        cls = unreal.load_class(None, "%s.%s_C" % (data.package_name, name))
+        if not cls:
+            continue
+        actor = eas.spawn_actor_from_class(cls, unreal.Vector(0, 0, -500000))
+        if not actor:
+            continue
+        origin, extent = actor.get_actor_bounds(False)
+        loc = actor.get_actor_location()
+        eas.destroy_actor(actor)
+        size = unreal.Vector(extent.x * 2, extent.y * 2, extent.z * 2)
+        if size.x < 300 or size.y < 300 or size.z < 300:
+            log("building %s skipped (no size: %.0f x %.0f x %.0f)" % (name, size.x, size.y, size.z))
+            continue
+        classes.append(cls)
+        sizes.append(size)
+        # footprint centre and base height relative to the actor origin
+        offsets.append(unreal.Vector(origin.x - loc.x, origin.y - loc.y, (origin.z - extent.z) - loc.z))
+        log("BUILDING %s %.0f x %.0f, %.0f m tall" % (name, size.x / 100, size.y / 100, size.z / 100))
+    log("%d City Sample buildings available" % len(classes))
+    return classes, sizes, offsets
+
+
 def setup_level(mats, lamp, tree):
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -594,6 +625,13 @@ def setup_level(mats, lamp, tree):
         setp(gen, key, value)
     setp(gen, "lamp_meshes", lamp)
     setp(gen, "tree_meshes", tree)
+    try:
+        kits, kit_sizes, kit_offsets = measure_building_kits(eas)
+        setp(gen, "building_kits", kits)
+        setp(gen, "building_kit_sizes", kit_sizes)
+        setp(gen, "building_kit_offsets", kit_offsets)
+    except Exception as e:
+        unreal.log_warning("[ShiftCity] City Sample buildings not used: %s" % e)
     gen.generate()
 
     try:
@@ -633,7 +671,7 @@ def setup_level(mats, lamp, tree):
     les.save_current_level()
 
 
-REQUIRED_GENERATOR_VERSION = 4
+REQUIRED_GENERATOR_VERSION = 5
 
 
 def check_code_is_current():

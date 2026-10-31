@@ -1,6 +1,7 @@
 #include "SCCityGenerator.h"
 #include "SCDestination.h"
 #include "ShiftCityCore.h"
+#include "Components/ChildActorComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -198,6 +199,46 @@ void ASCCityGenerator::Generate()
 			Tinted(SRoof, FColor(200, 200, 205)).Flat(RX, RY, RX + RW, RY + RD, KerbH + H + RH, 600.f);
 		}
 	};
+	// ready-made City Sample buildings: the kit that best fits a plot (turned in 90 degree steps), taller ones downtown
+	for (UChildActorComponent* Old : KitBuildings) if (Old) Old->DestroyComponent();
+	KitBuildings.Reset();
+	const int32 NumKits = FMath::Min3(BuildingKits.Num(), BuildingKitSizes.Num(), BuildingKitOffsets.Num());
+	auto PlaceKit = [&](const FBox2D& Plot, float WantH) -> bool
+	{
+		if (NumKits == 0) return false;
+		const FVector2D PlotSize = Plot.GetSize();
+		int32 Best = -1, BestYaw = 0;
+		float BestScore = 1e30f;
+		for (int32 K = 0; K < NumKits; ++K)
+		{
+			if (!BuildingKits[K]) continue;
+			const FVector& Sz = BuildingKitSizes[K];
+			for (int32 Yaw = 0; Yaw < 360; Yaw += 90)
+			{
+				const bool bSide = (Yaw / 90) % 2 == 1;
+				const float FX = bSide ? Sz.Y : Sz.X, FY = bSide ? Sz.X : Sz.Y;
+				if (FX > PlotSize.X * 1.04f || FY > PlotSize.Y * 1.04f) continue; // must stay off the pavement
+				// fill the plot well, match the wanted height, with a little randomness so neighbours differ
+				const float Fill = 1.f - (FX * FY) / (PlotSize.X * PlotSize.Y);
+				const float HeightMiss = FMath::Abs(Sz.Z - WantH) / FMath::Max(WantH, 1000.f);
+				const float Score = Fill * 2.f + HeightMiss + Rng.FRand() * 0.6f;
+				if (Score < BestScore) { BestScore = Score; Best = K; BestYaw = Yaw; }
+			}
+		}
+		if (Best < 0) return false;
+		const FRotator Rot(0.f, float(BestYaw), 0.f);
+		const FVector Off = Rot.RotateVector(FVector(BuildingKitOffsets[Best].X, BuildingKitOffsets[Best].Y, 0.f));
+		const FVector2D Mid = Plot.GetCenter();
+		UChildActorComponent* Kit = NewObject<UChildActorComponent>(this);
+		Kit->CreationMethod = EComponentCreationMethod::UserConstructionScript; // replaced whenever the city is rebuilt
+		Kit->SetChildActorClass(BuildingKits[Best]);
+		Kit->SetupAttachment(GetRootComponent());
+		Kit->SetRelativeLocationAndRotation(FVector(Mid.X - Off.X, Mid.Y - Off.Y, KerbH - BuildingKitOffsets[Best].Z), Rot);
+		Kit->RegisterComponent();
+		KitBuildings.Add(Kit);
+		return true;
+	};
+
 	// facade style pools (indices into Facades): glass for towers, mixed mid-rise, masonry for low-rise
 	auto PickStyle = [&](float H) -> int32
 	{
@@ -265,7 +306,7 @@ void ASCCityGenerator::Generate()
 			for (const FBox2D& P : Parcels)
 			{
 				const float H = 900.f + Rng.FRand() * 1400.f + FMath::Pow(Downtown, 1.6f) * Rng.FRand() * 11000.f;
-				AddBuilding(P.Min.X, P.Min.Y, P.Max.X, P.Max.Y, H, PickStyle(H));
+				if (!PlaceKit(P, H)) AddBuilding(P.Min.X, P.Min.Y, P.Max.X, P.Max.Y, H, PickStyle(H));
 			}
 		}
 	}
