@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 120
     env:
       UE_ROOT: ${{ vars.UE_ROOT || 'D:\Epic Games\UE_5.8' }}
+      # Unreal's shader/mesh cache (the "DDC") defaults to the C: drive and grows by many GB with the Fab packs: keep it on D:
+      UE-LocalDataCachePath: 'D:\UnrealDDC'
     steps:
       - uses: actions/checkout@v4
         with:
