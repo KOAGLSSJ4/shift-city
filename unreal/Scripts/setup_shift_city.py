@@ -548,7 +548,8 @@ def measure_building_kits(eas):
         cls = unreal.load_class(None, "%s.%s_C" % (data.package_name, name))
         if not cls:
             continue
-        actor = eas.spawn_actor_from_class(cls, unreal.Vector(0, 0, -500000))
+        # measured at the world origin: the packed buildings keep a part there, which skews bounds measured elsewhere
+        actor = eas.spawn_actor_from_class(cls, unreal.Vector(0, 0, 0))
         if not actor:
             continue
         origin, extent = actor.get_actor_bounds(False)
