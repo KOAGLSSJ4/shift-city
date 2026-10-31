@@ -208,7 +208,7 @@ void ASCCityGenerator::Generate()
 		if (NumKits == 0) return false;
 		const FVector2D PlotSize = Plot.GetSize();
 		int32 Best = -1, BestYaw = 0;
-		float BestScore = 1e30f;
+		float BestScore = 1e30f, BestFit = 1.f;
 		for (int32 K = 0; K < NumKits; ++K)
 		{
 			if (!BuildingKits[K]) continue;
@@ -217,23 +217,26 @@ void ASCCityGenerator::Generate()
 			{
 				const bool bSide = (Yaw / 90) % 2 == 1;
 				const float FX = bSide ? Sz.Y : Sz.X, FY = bSide ? Sz.X : Sz.Y;
-				if (FX > PlotSize.X * 1.04f || FY > PlotSize.Y * 1.04f) continue; // must stay off the pavement
-				// fill the plot well, match the wanted height, with a little randomness so neighbours differ
-				const float Fill = 1.f - (FX * FY) / (PlotSize.X * PlotSize.Y);
-				const float HeightMiss = FMath::Abs(Sz.Z - WantH) / FMath::Max(WantH, 1000.f);
-				const float Score = Fill * 2.f + HeightMiss + Rng.FRand() * 0.6f;
-				if (Score < BestScore) { BestScore = Score; Best = K; BestYaw = Yaw; }
+				// City Sample's buildings are made for bigger blocks: shrink one a little if that makes it fit (not below 72%)
+				const float Fit = FMath::Min3(1.f, PlotSize.X * 1.02f / FX, PlotSize.Y * 1.02f / FY);
+				if (Fit < 0.72f) continue; // must stay off the pavement
+				// fill the plot well, match the wanted height, stay near full size, a little randomness so neighbours differ
+				const float Fill = 1.f - (FX * Fit * FY * Fit) / (PlotSize.X * PlotSize.Y);
+				const float HeightMiss = FMath::Abs(Sz.Z * Fit - WantH) / FMath::Max(WantH, 1000.f);
+				const float Score = Fill * 2.f + HeightMiss + (1.f - Fit) * 1.5f + Rng.FRand() * 0.6f;
+				if (Score < BestScore) { BestScore = Score; Best = K; BestYaw = Yaw; BestFit = Fit; }
 			}
 		}
 		if (Best < 0) return false;
 		const FRotator Rot(0.f, float(BestYaw), 0.f);
-		const FVector Off = Rot.RotateVector(FVector(BuildingKitOffsets[Best].X, BuildingKitOffsets[Best].Y, 0.f));
+		const FVector Off = Rot.RotateVector(FVector(BuildingKitOffsets[Best].X, BuildingKitOffsets[Best].Y, 0.f)) * BestFit;
 		const FVector2D Mid = Plot.GetCenter();
 		UChildActorComponent* Kit = NewObject<UChildActorComponent>(this);
 		Kit->CreationMethod = EComponentCreationMethod::UserConstructionScript; // replaced whenever the city is rebuilt
 		Kit->SetChildActorClass(BuildingKits[Best]);
 		Kit->SetupAttachment(GetRootComponent());
-		Kit->SetRelativeLocationAndRotation(FVector(Mid.X - Off.X, Mid.Y - Off.Y, KerbH - BuildingKitOffsets[Best].Z), Rot);
+		Kit->SetRelativeLocationAndRotation(FVector(Mid.X - Off.X, Mid.Y - Off.Y, KerbH - BuildingKitOffsets[Best].Z * BestFit), Rot);
+		Kit->SetRelativeScale3D(FVector(BestFit));
 		Kit->RegisterComponent();
 		KitBuildings.Add(Kit);
 		return true;

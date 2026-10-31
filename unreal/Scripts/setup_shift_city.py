@@ -545,6 +545,9 @@ def measure_building_kits(eas):
         name = str(data.asset_name)
         if not name.startswith("BPP_") or str(data.asset_class_path.asset_name) != "Blueprint":
             continue
+        # whole buildings only: skip ground-floor-only slices ("Level01") and rooftop add-ons
+        if "Level01" in name or name.startswith("BPP_Roof"):
+            continue
         cls = unreal.load_class(None, "%s.%s_C" % (data.package_name, name))
         if not cls:
             continue
