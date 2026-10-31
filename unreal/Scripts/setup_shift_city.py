@@ -518,21 +518,22 @@ def find_car_meshes():
 
 
 def report_fab_vehicles():
-    """Logs what the City Sample Vehicles pack (Fab) contains, so the cars can be wired up from the robot's log."""
-    found = {}
-    for path in EAL.list_assets("/Game", recursive=True):
-        low = path.lower()
-        if "citysample" not in low and "/fab/" not in low and "/vehicles/" not in low:
+    """Logs what each Fab pack (any Content folder that isn't ours) holds, so it can be wired up from the robot's log."""
+    own = {"ShiftCity", "Vehicles", "VehicleTemplate", "Variant_OffRoad", "Variant_TimeTrial", "Input", "__ExternalActors__", "__ExternalObjects__", "Collections", "Developers"}
+    packs = {}
+    # the asset registry answers in one call (the buildings pack has tens of thousands of assets)
+    for data in unreal.AssetRegistryHelpers.get_asset_registry().get_assets_by_path("/Game", recursive=True):
+        path = str(data.package_name)
+        parts = path.split("/")
+        if len(parts) < 4 or parts[2] in own:
             continue
-        if "/shiftcity/" in low:
-            continue
-        cls = str(EAL.find_asset_data(path).asset_class_path.asset_name)
-        if cls in ("Blueprint", "SkeletalMesh", "PhysicsAsset", "AnimBlueprint", "World"):
-            found.setdefault(cls, []).append(path.split(".")[0])
-    for cls, paths in sorted(found.items()):
-        log("FAB %s x%d" % (cls, len(paths)))
-        for p in paths[:80]:
-            log("FAB   %s" % p)
+        cls = str(data.asset_class_path.asset_name)
+        packs.setdefault(parts[2], {}).setdefault(cls, []).append(path)
+    for pack, classes in sorted(packs.items()):
+        log("FAB pack %s: %s" % (pack, ", ".join("%s x%d" % (c, len(p)) for c, p in sorted(classes.items()))))
+        for cls in ("Blueprint", "World"):
+            for p in classes.get(cls, [])[:60]:
+                log("FAB   %s %s" % (cls, p))
 
 
 def setup_level(mats, lamp, tree):

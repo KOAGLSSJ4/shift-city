@@ -473,10 +473,10 @@ void ASCHUD::DrawHUD()
 	APawn* Pawn = PC ? PC->GetPawn() : nullptr;
 	// build robot: with -SCShots on the command line, save a few screenshots so visuals can be checked remotely
 	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
-	// shots: 1 = main menu, 2 = garage screen, 3 = gameplay with GPS, 4 = traffic car close-up, 5-6 = Fab vehicle line-up
-	static const float RobotShotTimes[] = { 12.f, 17.f, 25.f, 33.f, 60.f, 70.f }; // line-up shots late: first-time shader preparation
+	// shots: 1 = main menu, 2 = garage screen, 3 = gameplay with GPS, 4 = traffic car close-up, 5-7 = Fab vehicle line-up
+	static const float RobotShotTimes[] = { 12.f, 17.f, 25.f, 33.f, 60.f, 70.f, 80.f }; // line-up shots late: first-time shader preparation
 	const float RobotNow = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
-	if (bRobotShots && RobotShot < 6 && RobotNow > RobotShotTimes[RobotShot])
+	if (bRobotShots && RobotShot < 7 && RobotNow > RobotShotTimes[RobotShot])
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
 	// the robot can't click: open the garage after the first screenshot, then start Free Ride after the second
 	if (bRobotShots && MenuWidget.IsValid() && RobotShot == 1 && CurrentScreen != uint8(SCMenu::EChoice::Garage) && RobotNow > 13.f)
@@ -490,7 +490,7 @@ void ASCHUD::DrawHUD()
 	// after the fourth shot, look at the Fab pack line-up (one row per shot)
 	if (bRobotShots && RobotShot >= 4 && RobotCam && GetWorld())
 	{
-		const FVector Centre = USCCarVisuals::RobotLineup(GetWorld(), RobotShot >= 5 ? 1 : 0);
+		const FVector Centre = USCCarVisuals::RobotLineup(GetWorld(), RobotShot - 4); // row 0, 1, 2 for shots 5, 6, 7
 		const FVector Eye = Centre + FVector(-300.f, -2300.f, 650.f);
 		RobotCam->SetActorLocationAndRotation(Eye, (Centre - Eye).Rotation());
 	}

@@ -450,18 +450,32 @@ FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 			UStaticMeshComponent* Slab = NewObject<UStaticMeshComponent>(Floor);
 			Slab->SetStaticMesh(Cube);
 			Slab->SetupAttachment(FloorRoot);
-			Slab->SetRelativeLocation(FVector(3.f * Spacing, RowGap * 0.5f, -50.f));
-			Slab->SetRelativeScale3D(FVector(60.f, 30.f, 1.f));
+			Slab->SetRelativeLocation(FVector(3.f * Spacing, RowGap, -50.f));
+			Slab->SetRelativeScale3D(FVector(60.f, 40.f, 1.f));
 			Slab->RegisterComponent();
 		}
 		TArray<FAssetData> Assets;
-		FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get().GetAssetsByPath(FName(TEXT("/Game/CitySampleVehicles")), Assets, true);
+		// every Fab pack (any Content folder that isn't ours); the buildings pack is skipped, it holds no vehicles
+		TArray<FAssetData> All;
+		FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get().GetAssetsByPath(FName(TEXT("/Game")), All, true);
+		const TCHAR* const OwnFolders[] = { TEXT("/Game/ShiftCity/"), TEXT("/Game/Vehicles/"), TEXT("/Game/VehicleTemplate/"), TEXT("/Game/Variant_"), TEXT("/Game/Input/"), TEXT("/Game/__") };
+		for (const FAssetData& Asset : All)
+		{
+			const FString Path = Asset.PackagePath.ToString() + TEXT("/");
+			bool bOurs = Path.Contains(TEXT("Building"));
+			for (const TCHAR* Own : OwnFolders) bOurs = bOurs || Path.StartsWith(Own);
+			if (!bOurs) Assets.Add(Asset);
+		}
 		Assets.Sort([](const FAssetData& A, const FAssetData& B) { return A.AssetName.LexicalLess(B.AssetName); });
 		int32 Slot = 0;
 		for (const FAssetData& Asset : Assets)
 		{
 			const FString AssetName = Asset.AssetName.ToString();
-			if (Asset.AssetClassPath.GetAssetName() != FName(TEXT("Blueprint")) || !(AssetName.StartsWith(TEXT("BP_vehicle")) || AssetName.StartsWith(TEXT("BP_trailer")))) continue;
+			if (Asset.AssetClassPath.GetAssetName() != FName(TEXT("Blueprint"))) continue;
+			// drivable vehicles (Chaos wheeled pawns) plus City Sample's trailer
+			FString NativeParent;
+			Asset.GetTagValue(FName(TEXT("NativeParentClass")), NativeParent);
+			if (!NativeParent.Contains(TEXT("WheeledVehiclePawn")) && !AssetName.StartsWith(TEXT("BP_trailer"))) continue;
 			UClass* VehicleClass = LoadClass<AActor>(nullptr, *(Asset.GetObjectPathString() + TEXT("_C")));
 			const FVector At = Origin + FVector((Slot % 7) * Spacing, (Slot / 7) * RowGap, 120.f);
 			++Slot;
@@ -488,7 +502,7 @@ FVector USCCarVisuals::RobotLineup(UWorld* World, int32 Row)
 			USkeletalMeshComponent* Sk = Vehicle->FindComponentByClass<USkeletalMeshComponent>();
 			USkeletalMesh* Mesh = Sk ? Sk->GetSkeletalMeshAsset() : nullptr;
 			const FBoxSphereBounds B = Sk ? Sk->CalcBounds(FTransform::Identity) : FBoxSphereBounds(ForceInit);
-			UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s mesh %s size %.0fx%.0fx%.0f slot %d"), *AssetName, *GetNameSafe(Mesh), B.BoxExtent.X * 2.f, B.BoxExtent.Y * 2.f, B.BoxExtent.Z * 2.f, Slot - 1);
+			UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] FABCAR %s (%s) mesh %s size %.0fx%.0fx%.0f slot %d"), *AssetName, *Asset.PackagePath.ToString(), *GetNameSafe(Mesh), B.BoxExtent.X * 2.f, B.BoxExtent.Y * 2.f, B.BoxExtent.Z * 2.f, Slot - 1);
 			if (!Sk) continue;
 			TArray<FName> Bones;
 			Sk->GetBoneNames(Bones);
