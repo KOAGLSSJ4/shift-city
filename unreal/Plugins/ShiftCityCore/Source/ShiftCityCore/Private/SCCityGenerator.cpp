@@ -218,7 +218,7 @@ void ASCCityGenerator::Generate()
 				const bool bSide = (Yaw / 90) % 2 == 1;
 				const float FX = bSide ? Sz.Y : Sz.X, FY = bSide ? Sz.X : Sz.Y;
 				// City Sample's buildings are made for bigger blocks: shrink one a little if that makes it fit (not below 72%)
-				const float Fit = FMath::Min3(1.f, PlotSize.X * 1.02f / FX, PlotSize.Y * 1.02f / FY);
+				const float Fit = FMath::Min3(1.f, float(PlotSize.X) * 1.02f / FX, float(PlotSize.Y) * 1.02f / FY);
 				if (Fit < 0.72f) continue; // must stay off the pavement
 				// fill the plot well, match the wanted height, stay near full size, a little randomness so neighbours differ
 				const float Fill = 1.f - (FX * Fit * FY * Fit) / (PlotSize.X * PlotSize.Y);
