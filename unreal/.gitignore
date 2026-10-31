@@ -16,5 +16,12 @@ Plugins/*/Intermediate/
 *.slnx
 UpgradeLog*.htm
 # Epic marketplace (Fab) packs stay on David's laptop only (too big for GitHub; the robot copies them locally)
-Content/CitySample*/
-Content/Fab/
+Content/*/
+!Content/Input/
+!Content/Variant_OffRoad/
+!Content/Variant_TimeTrial/
+!Content/VehicleTemplate/
+!Content/Vehicles/
+!Content/__ExternalActors__/
+!Content/__ExternalObjects__/
+# ShiftCity/ is made by the setup script on each machine

@@ -38,7 +38,7 @@ jobs:
           GIT_CONFIG_VALUE_0: "*"
         run: git lfs checkout
 
-      - name: Copy the Fab packs (City Sample Vehicles etc.) from David's project
+      - name: Copy the Fab packs (City Sample, Vehicle Variety Pack...) from David's project
         # they are too big for GitHub, so they live only in David's own project folder; mirror them into this checkout
         shell: powershell
         env:
@@ -46,7 +46,9 @@ jobs:
         run: |
           $src = Join-Path $env:SC_PROJECT "Content"
           $dst = Join-Path $env:GITHUB_WORKSPACE "unreal\Content"
-          $packs = Get-ChildItem $src -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'CitySample*' -or $_.Name -eq 'Fab' }
+          # every top-level Content folder that isn't part of the repo (or made by the setup script) is a Fab pack
+          $own = @('Input', 'Variant_OffRoad', 'Variant_TimeTrial', 'VehicleTemplate', 'Vehicles', '__ExternalActors__', '__ExternalObjects__', 'ShiftCity', 'Collections', 'Developers')
+          $packs = Get-ChildItem $src -Directory -ErrorAction SilentlyContinue | Where-Object { $own -notcontains $_.Name }
           if (-not $packs) { "No Fab packs in $src (fine: the game falls back to the Shift City cars)" }
           foreach ($p in $packs) {
             "Copying $($p.Name)..."
