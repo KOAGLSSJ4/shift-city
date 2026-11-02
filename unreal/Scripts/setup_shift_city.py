@@ -583,6 +583,13 @@ def measure_building_kits(eas):
     for name, path in found.items():
         if "_Level01" in name:
             grounds[name.replace("_Level01", "").replace("A1l_", "A1_")] = path
+    # measurements are remembered between runs (Saved/BuildingKits.json): measuring spawns every building, which is slow
+    # and memory-hungry the first time
+    cache_path = os.path.join(unreal.Paths.project_saved_dir(), "BuildingKits.json")
+    try:
+        cache = json.load(open(cache_path))
+    except Exception:
+        cache = {}
     classes, ground_floors, sizes, offsets = [], [], [], []
     for name, path in sorted(found.items()):
         if "_Level01" in name:
@@ -590,6 +597,14 @@ def measure_building_kits(eas):
         cls = unreal.load_class(None, path)
         ground_cls = unreal.load_class(None, grounds[name]) if name in grounds else None
         if not cls:
+            continue
+        if name in cache:
+            c = cache[name]
+            if c:
+                classes.append(cls)
+                ground_floors.append(ground_cls)
+                sizes.append(unreal.Vector(*c["size"]))
+                offsets.append(unreal.Vector(*c["offset"]))
             continue
         # measured at the world origin (the packed buildings keep a part there, which skews bounds measured elsewhere)
         lo, hi = [1e12] * 3, [-1e12] * 3
@@ -603,10 +618,17 @@ def measure_building_kits(eas):
             eas.destroy_actor(actor)
             lo = [min(x, y) for x, y in zip(lo, a_lo)]
             hi = [max(x, y) for x, y in zip(hi, a_hi)]
+        unreal.SystemLibrary.collect_garbage()  # let go of each building before loading the next
         size = unreal.Vector(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])
         if size.x < 300 or size.y < 300 or size.z < 300 or size.x > 1e9:
             log("building %s skipped (no size)" % name)
+            cache[name] = None
             continue
+        cache[name] = {"size": [size.x, size.y, size.z], "offset": [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2]]}
+        try:
+            json.dump(cache, open(cache_path, "w"))
+        except Exception:
+            pass
         classes.append(cls)
         ground_floors.append(ground_cls)
         sizes.append(size)
