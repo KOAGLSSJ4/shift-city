@@ -339,8 +339,9 @@ void ASCTraffic::Tick(float Dt)
 	const APawn* Player = PC ? PC->GetPawn() : nullptr;
 	const FVector PlayerPos = Player ? GetActorTransform().InverseTransformPosition(Player->GetActorLocation()) : FVector(1e9);
 	TArray<int32> Nb;
-	for (FSCTrafficCar& C : Cars)
+	for (int32 Ci = 0; Ci < Cars.Num(); ++Ci)
 	{
+		FSCTrafficCar& C = Cars[Ci];
 		const FVector Fwd = FRotator(0.f, C.Yaw, 0.f).Vector();
 		float Gap = 1e9f;
 		auto Probe = [&](const FVector& P, float OtherLen)
@@ -350,7 +351,13 @@ void ASCTraffic::Tick(float Dt)
 			const float Lat = FMath::Abs(R.X * Fwd.Y - R.Y * Fwd.X);
 			if (Ahead > 0.f && Ahead < 3000.f && Lat < 220.f) Gap = FMath::Min(Gap, Ahead - (450.f + OtherLen) / 2.f);
 		};
-		for (const FSCTrafficCar& O : Cars) if (&O != &C) Probe(O.Pos, 450.f);
+		for (int32 Oi = 0; Oi < Cars.Num(); ++Oi)
+		{
+			if (Oi == Ci) continue;
+			// two cars tangled in a junction would each wait for the other forever: the one earlier in the list drives on
+			if (Oi > Ci && FVector::DistSquared2D(Cars[Oi].Pos, C.Pos) < FMath::Square(400.f)) continue;
+			Probe(Cars[Oi].Pos, 450.f);
+		}
 		Probe(PlayerPos, 480.f);
 		if (!C.bTurning)
 		{

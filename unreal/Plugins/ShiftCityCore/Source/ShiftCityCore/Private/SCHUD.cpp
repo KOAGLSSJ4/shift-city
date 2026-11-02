@@ -88,7 +88,6 @@ void ASCHUD::ShowMenu()
 	if (APlayerController* PC = GetOwningPlayerController())
 	{
 		FInputModeUIOnly Mode;
-		Mode.SetWidgetToFocus(MenuWidget);
 		PC->SetInputMode(Mode);
 		PC->SetShowMouseCursor(true);
 	}
@@ -99,6 +98,9 @@ void ASCHUD::ShowMenu()
 void ASCHUD::HideMenu()
 {
 	if (!MenuWidget.IsValid()) return;
+	PreviewCar.Reset();
+	CurrentScreen = 0;
+	TemplateUiTimer = 0.f;
 	if (GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(MenuWidget.ToSharedRef());
 	MenuWidget.Reset();
 	if (APlayerController* PC = GetOwningPlayerController())
@@ -117,7 +119,6 @@ void ASCHUD::SwapMenuWidget(TSharedRef<SWidget> Widget)
 	if (APlayerController* PC = GetOwningPlayerController())
 	{
 		FInputModeUIOnly Mode;
-		Mode.SetWidgetToFocus(MenuWidget);
 		PC->SetInputMode(Mode);
 		PC->SetShowMouseCursor(true);
 	}
@@ -125,6 +126,8 @@ void ASCHUD::SwapMenuWidget(TSharedRef<SWidget> Widget)
 
 void ASCHUD::BackToMenu()
 {
+	PreviewCar.Reset(); // back to the car you drive
+	TemplateUiTimer = 0.f;
 	if (MenuWidget.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(MenuWidget.ToSharedRef());
 	MenuWidget.Reset();
 	ShowMenu();
@@ -155,7 +158,13 @@ void ASCHUD::ShowScreen(uint8 Which)
 			R.Title = V.Name;
 			R.Sub = FString::Printf(TEXT("Fares x%.2f  -  top %.0f km/h  -  comfort %d/5%s"), V.Fare, V.TopSpeed * 3.6f, V.Comfort,
 				V.Premium == 2 ? TEXT("  -  VIP jobs") : V.Premium == 1 ? TEXT("  -  premium jobs") : TEXT(""));
-			R.bHighlight = bDriving;
+			const bool bShown = PreviewCar.IsEmpty() ? bDriving : PreviewCar == V.Id;
+			R.bHighlight = bShown;
+			if (bShown && !bDriving) R.Sub += bOwned ? TEXT("  -  previewing") : TEXT("  -  previewing (not yours yet)");
+			{
+				const FString PreviewId = V.Id;
+				R.OnSelect = [Self, PreviewId]() { if (Self.IsValid()) { Self->PreviewCar = PreviewId; Self->TemplateUiTimer = 0.f; Self->ShowScreen(uint8(SCMenu::EChoice::Garage)); } };
+			}
 			if (bDriving) { R.Button = TEXT("Driving"); R.bEnabled = false; }
 			else if (bOwned)
 			{
@@ -273,7 +282,8 @@ void ASCHUD::ShowScreen(uint8 Which)
 		}
 	}
 	if (!ScreenNote.IsEmpty()) Sub = ScreenNote + TEXT("   |   ") + Sub;
-	SwapMenuWidget(SCMenu::MakeListScreen(Title, Sub, Rows, [Self]() { if (Self.IsValid()) Self->BackToMenu(); }));
+	// the garage sits on the left so the car you're looking at shows on the right
+	SwapMenuWidget(SCMenu::MakeListScreen(Title, Sub, Rows, [Self]() { if (Self.IsValid()) Self->BackToMenu(); }, SCMenu::EChoice(Which) == SCMenu::EChoice::Garage));
 }
 
 void ASCHUD::OnMenuChoice(uint8 Choice)
@@ -481,7 +491,12 @@ void ASCHUD::DrawHUD()
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
 	// the robot can't click: open the garage after the first screenshot, then start Free Ride after the second
 	if (bRobotShots && MenuWidget.IsValid() && RobotShot == 1 && CurrentScreen != uint8(SCMenu::EChoice::Garage) && RobotNow > 13.f)
+	{
 		OnMenuChoice(uint8(SCMenu::EChoice::Garage));
+		PreviewCar = TEXT("vortex"); // robot: preview a car you don't own yet (the copper hypercar)
+		TemplateUiTimer = 0.f;
+		ShowScreen(uint8(SCMenu::EChoice::Garage));
+	}
 	if (bRobotShots && MenuWidget.IsValid() && RobotShot >= 2 && RobotNow > 18.f) OnMenuChoice(uint8(SCMenu::EChoice::FreeRide));
 	// ...and accept the first request so the GPS banner shows in the next screenshot
 	if (bRobotShots && !MenuWidget.IsValid() && RobotShot == 2 && RobotNow > 21.f)
@@ -527,6 +542,7 @@ void ASCHUD::DrawHUD()
 		{
 			FString CarId = E->GetSelectedVehicle().Id;
 			FParse::Value(FCommandLine::Get(), TEXT("SCCar="), CarId);
+			if (!PreviewCar.IsEmpty() && MenuWidget.IsValid() && CurrentScreen == uint8(SCMenu::EChoice::Garage)) CarId = PreviewCar;
 			USCCarVisuals::Apply(Pawn, E->GetVehicle(CarId), E->GetUpgrades(CarId));
 		}
 	}

@@ -56,12 +56,14 @@ namespace SCMenu
 		/** 0..1 progress bar under the text, or < 0 for none. */
 		float Progress = -1.f;
 		TFunction<void()> OnClick;
+		/** Clicking anywhere on the row (not its button): the garage previews that car. */
+		TFunction<void()> OnSelect;
 		/** A section heading instead of a normal row. */
 		bool bHeading = false;
 	};
 
 	/** Full-screen list (Garage, Goals, Settings) in the menu's style, with a Back button. */
-	TSharedRef<SWidget> MakeListScreen(const FString& Title, const FString& Subtitle, const TArray<FRow>& Rows, TFunction<void()> OnBack);
+	TSharedRef<SWidget> MakeListScreen(const FString& Title, const FString& Subtitle, const TArray<FRow>& Rows, TFunction<void()> OnBack, bool bLeftSide = false);
 
 	/** Full-screen main menu. OnChoose is called with the button the player clicked. */
 	TSharedRef<SWidget> MakeMainMenu(const FMenuInfo& Info, TFunction<void(EChoice)> OnChoose);

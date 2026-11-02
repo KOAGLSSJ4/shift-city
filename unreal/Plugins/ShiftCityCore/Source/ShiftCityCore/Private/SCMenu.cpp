@@ -1,5 +1,6 @@
 #include "SCMenu.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
+#include "Brushes/SlateNoResource.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateTypes.h"
 #include "Widgets/Input/SButton.h"
@@ -317,8 +318,11 @@ TSharedRef<SWidget> SCMenu::MakeHud(TSharedRef<FSCHudModel> Model)
 		];
 }
 
-TSharedRef<SWidget> SCMenu::MakeListScreen(const FString& Title, const FString& Subtitle, const TArray<FRow>& Rows, TFunction<void()> OnBack)
+TSharedRef<SWidget> SCMenu::MakeListScreen(const FString& Title, const FString& Subtitle, const TArray<FRow>& Rows, TFunction<void()> OnBack, bool bLeftSide)
 {
+	static const FButtonStyle RowClick = FButtonStyle()
+		.SetNormal(FSlateNoResource()).SetHovered(FSlateRoundedBoxBrush(FLinearColor(1.f, 1.f, 1.f, 0.05f), 12.f)).SetPressed(FSlateNoResource())
+		.SetNormalPadding(FMargin(0.f)).SetPressedPadding(FMargin(0.f));
 	static const FSlateRoundedBoxBrush RowBrush(FLinearColor(0.08f, 0.12f, 0.17f, 0.9f), 12.f, FLinearColor(1.f, 1.f, 1.f, 0.06f), 1.f);
 	static const FSlateRoundedBoxBrush RowHot(FLinearColor(0.08f, 0.2f, 0.16f, 0.95f), 12.f, MenuAccent, 1.5f);
 	static const FSlateRoundedBoxBrush BarBg(FLinearColor(1.f, 1.f, 1.f, 0.12f), 3.f);
@@ -352,11 +356,9 @@ TSharedRef<SWidget> SCMenu::MakeListScreen(const FString& Title, const FString& 
 				]
 			];
 		}
-		TFunction<void()> Click = R.OnClick;
-		List->AddSlot().Padding(FMargin(0.f, 0.f, 0.f, 8.f))
-		[
-			SNew(SBorder).BorderImage(R.bHighlight ? &RowHot : &RowBrush).Padding(FMargin(16.f, 10.f))
-			[
+		TFunction<void()> Click = R.OnClick, Select = R.OnSelect;
+		TSharedRef<SBorder> RowBox = SNew(SBorder).BorderImage(R.bHighlight ? &RowHot : &RowBrush).Padding(FMargin(16.f, 10.f));
+		RowBox->SetContent(
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ Text ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)
@@ -368,17 +370,24 @@ TSharedRef<SWidget> SCMenu::MakeListScreen(const FString& Title, const FString& 
 					.ContentPadding(FMargin(16.f, 8.f))
 					.OnClicked_Lambda([Click]() { if (Click) Click(); return FReply::Handled(); })
 					[ SNew(STextBlock).Text(FText::FromString(R.Button)).Font(MenuFont("Bold", 13)).ColorAndOpacity(FSlateColor(FLinearColor::White)) ]
-				]
-			]
-		];
+				]);
+		if (Select)
+			List->AddSlot().Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+			[
+				SNew(SButton).ButtonStyle(&RowClick).ContentPadding(FMargin(0.f))
+				.OnClicked_Lambda([Select]() { Select(); return FReply::Handled(); })
+				[ RowBox ]
+			];
+		else
+			List->AddSlot().Padding(FMargin(0.f, 0.f, 0.f, 8.f))[ RowBox ];
 	}
 
 	return SNew(SOverlay)
 		+ SOverlay::Slot()
-		[ SNew(SBorder).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush")).BorderBackgroundColor(FLinearColor(0.01f, 0.02f, 0.04f, 0.6f)) ]
-		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(20.f)
+		[ SNew(SBorder).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush")).BorderBackgroundColor(FLinearColor(0.01f, 0.02f, 0.04f, bLeftSide ? 0.2f : 0.6f)) ]
+		+ SOverlay::Slot().HAlign(bLeftSide ? HAlign_Left : HAlign_Center).VAlign(VAlign_Center).Padding(bLeftSide ? FMargin(40.f, 20.f) : FMargin(20.f))
 		[
-			SNew(SBox).WidthOverride(640.f).MaxDesiredHeight(620.f)
+			SNew(SBox).WidthOverride(bLeftSide ? 560.f : 640.f).MaxDesiredHeight(620.f)
 			[
 				SNew(SBorder).BorderImage(PanelBrush()).Padding(FMargin(28.f, 22.f))
 				[

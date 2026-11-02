@@ -67,6 +67,8 @@ private:
 	void BackToMenu();
 	void SwapMenuWidget(TSharedRef<SWidget> Widget);
 	uint8 CurrentScreen = 0;
+	/** Garage: the car shown behind the screen (any car, owned or not); empty = the one you drive. */
+	FString PreviewCar;
 	/** Last message from a screen action (shown under the screen title). */
 	FString ScreenNote;
 	bool bShowFps = false;

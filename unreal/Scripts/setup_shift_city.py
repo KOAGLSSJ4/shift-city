@@ -537,10 +537,9 @@ def report_fab_vehicles():
 
 
 def _actor_box(actor):
-    """World-space (lo, hi) of a spawned packed building, from its bounds or, when those aren't ready, its pieces."""
-    origin, extent = actor.get_actor_bounds(False)
-    if extent.x >= 150 and extent.y >= 150:
-        return [origin.x - extent.x, origin.y - extent.y, origin.z - extent.z], [origin.x + extent.x, origin.y + extent.y, origin.z + extent.z]
+    """World-space (lo, hi) of a spawned packed building, from its mesh pieces. (Its actor bounds also take in the
+    packed actor's empty root at 0, 0, 0, so a building made of only the upper floors looked like it reached the
+    ground and was placed floating one storey up.)"""
     lo, hi = [1e12] * 3, [-1e12] * 3
     comps = list(actor.get_components_by_class(unreal.InstancedStaticMeshComponent)) + list(actor.get_components_by_class(unreal.StaticMeshComponent))
     seen = set()
@@ -585,7 +584,7 @@ def measure_building_kits(eas):
             grounds[name.replace("_Level01", "").replace("A1l_", "A1_")] = path
     # measurements are remembered between runs (Saved/BuildingKits.json): measuring spawns every building, which is slow
     # and memory-hungry the first time
-    cache_path = os.path.join(unreal.Paths.project_saved_dir(), "BuildingKits.json")
+    cache_path = os.path.join(unreal.Paths.project_saved_dir(), "BuildingKits2.json")
     try:
         cache = json.load(open(cache_path))
     except Exception:
@@ -622,6 +621,11 @@ def measure_building_kits(eas):
         size = unreal.Vector(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])
         if size.x < 300 or size.y < 300 or size.z < 300 or size.x > 1e9:
             log("building %s skipped (no size)" % name)
+            cache[name] = None
+            continue
+        if lo[2] > 150:
+            # only the floors above a ground floor that isn't in the pack: it would float, so it isn't used
+            log("building %s skipped (starts %.1f m up: no ground floor)" % (name, lo[2] / 100))
             cache[name] = None
             continue
         cache[name] = {"size": [size.x, size.y, size.z], "offset": [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2]]}

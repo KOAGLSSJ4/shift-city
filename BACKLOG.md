@@ -55,6 +55,10 @@ Newest at the top of each section. When something is fixed, move it to **Done** 
 
 ## Done
 
+- 2026-11-02 (Unreal): garage previews any car (click its row; buy/drive still need the money/level); traffic cars
+  tangled in a junction no longer wait for each other forever; City Sample buildings that are only upper floors
+  (their ground floor isn't in the pack) are left out instead of floating.
+
 - 2026-10-30: Time of day + weather are always dynamic in the city (no player setting); Arcade Rush is always a
   dry day.
 - 2026-10-30: Realism pass: Unreal photo look (TSR anti-aliasing, sharpen, Lumen reflection/GI quality, bloom,
