@@ -36,18 +36,21 @@ void ASCDestination::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 	const float D = Radius * 2.f / 100.f;
-	Ring->SetRelativeScale3D(FVector(D, D, 0.02f));
-	Ring->SetRelativeLocation(FVector(0, 0, 2.f));
+	Ring->SetRelativeScale3D(FVector(D, D, 0.01f)); // 1 cm thin
+	Ring->SetRelativeLocation(FVector(0, 0, 3.f));
 	Label->SetText(FText::FromString(DisplayName));
 }
 
 void ASCDestination::BeginPlay()
 {
 	Super::BeginPlay();
-	if (UMaterialInterface* Base = Beam->GetMaterial(0))
+	// a glowing disc on the road marks the spot (the HUD's floating arrow shows it from afar); the old grey light
+	// column read as a pillar standing in the street, so it stays hidden
+	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/ShiftCity/Materials/M_CarSurface.M_CarSurface"));
+	if (!Base) Base = Ring->GetMaterial(0);
+	if (Base)
 	{
 		Mat = UMaterialInstanceDynamic::Create(Base, this);
-		Beam->SetMaterial(0, Mat);
 		Ring->SetMaterial(0, Mat);
 	}
 	SetMarker(false, FLinearColor::White);
@@ -55,8 +58,13 @@ void ASCDestination::BeginPlay()
 
 void ASCDestination::SetMarker(bool bShow, const FLinearColor& Color)
 {
-	Beam->SetVisibility(bShow);
+	Beam->SetVisibility(false);
 	Ring->SetVisibility(bShow);
-	// BasicShapeMaterial exposes a "Color" parameter
-	if (Mat) Mat->SetVectorParameterValue(TEXT("Color"), Color);
+	// both our car paint and BasicShapeMaterial have a "Color" parameter; ours also glows
+	if (Mat)
+	{
+		Mat->SetVectorParameterValue(TEXT("Color"), Color);
+		Mat->SetVectorParameterValue(TEXT("Emissive"), Color * 4.f);
+		Mat->SetScalarParameterValue(TEXT("Roughness"), 0.6f);
+	}
 }

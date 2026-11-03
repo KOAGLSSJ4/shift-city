@@ -323,8 +323,8 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 	FSCCarModel FabDims;
 	if (BuildFromFab(Car, FabDims, WheelAt, Centre))
 	{
-		// driver's eye: a little over a metre behind the front axle, left seat, about four fifths of the roof height
-		CockpitEye = FVector(PivotRest.Num() ? PivotRest[0].X - 135.f : -20.f, -36.f, FMath::Max(85.f, FabDims.Height * 0.8f));
+		// driver's eye: about 1.7 m behind the front axle (back in the seat, not over the dash), left seat, a bit under of the roof height
+		CockpitEye = FVector(PivotRest.Num() ? PivotRest[0].X - 170.f : -50.f, -36.f, FMath::Max(95.f, FabDims.Height * 0.86f));
 		SetCameraFor(&FabDims);
 		if (bCockpit) SetCockpit(true);
 		UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (Fab pack car, %.0f cm long), %d template parts hidden"), *Car.Name, FabDims.Length, HiddenParts.Num());
@@ -375,7 +375,7 @@ void USCCarVisuals::Rebuild(const FSCVehicleDef& Car)
 		Spinners.Add(Spinner);
 		Meshes.Add(WheelMesh);
 	}
-	CockpitEye = FVector(Model->WheelBase * 0.5f - 135.f, -36.f, FMath::Max(85.f, Model->Height * 0.8f));
+	CockpitEye = FVector(Model->WheelBase * 0.5f - 170.f, -36.f, FMath::Max(95.f, Model->Height * 0.86f));
 	SetCameraFor(Model);
 	if (bCockpit) SetCockpit(true);
 	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] cars: player is now %s (%s), physics wheel radius %.0f, %d template parts hidden"), *Car.Name, *Car.Body, Radius, HiddenParts.Num());

@@ -539,7 +539,14 @@ def report_fab_vehicles():
                 log("FAB   %s %s" % (cls, p))
 
 
-def _actor_box(actor):
+CELL = 200.0  # cm: footprint grid used to check a building stands on the ground
+
+
+def _cells(lo_x, lo_y, hi_x, hi_y):
+    return {(i, j) for i in range(int(lo_x // CELL), int(hi_x // CELL) + 1) for j in range(int(lo_y // CELL), int(hi_y // CELL) + 1)}
+
+
+def _actor_box(actor, cover=None):
     """World-space (lo, hi) of a spawned packed building, from its mesh pieces. (Its actor bounds also take in the
     packed actor's empty root at 0, 0, 0, so a building made of only the upper floors looked like it reached the
     ground and was placed floating one storey up.)"""
@@ -562,11 +569,20 @@ def _actor_box(actor):
         else:
             tms = [comp.get_world_transform()]
         for tm in tms:
+            p_lo, p_hi = [1e12] * 3, [-1e12] * 3
             for c in corners:
                 w = tm.transform_location(c)
                 for k, v in enumerate((w.x, w.y, w.z)):
-                    lo[k] = min(lo[k], v)
-                    hi[k] = max(hi[k], v)
+                    p_lo[k] = min(p_lo[k], v)
+                    p_hi[k] = max(p_hi[k], v)
+            lo = [min(a, b) for a, b in zip(lo, p_lo)]
+            hi = [max(a, b) for a, b in zip(hi, p_hi)]
+            if cover is not None and p_hi[0] - p_lo[0] < 20000 and p_hi[1] - p_lo[1] < 20000:
+                # thin facade panels count too: a building's outline at street level must match its outline above
+                cells = _cells(p_lo[0], p_lo[1], p_hi[0], p_hi[1])
+                cover["all"] |= cells
+                if p_lo[2] < 150:
+                    cover["low"] |= cells
     return lo, hi
 
 
@@ -587,7 +603,7 @@ def measure_building_kits(eas):
             grounds[name.replace("_Level01", "").replace("A1l_", "A1_")] = path
     # measurements are remembered between runs (Saved/BuildingKits.json): measuring spawns every building, which is slow
     # and memory-hungry the first time
-    cache_path = os.path.join(unreal.Paths.project_saved_dir(), "BuildingKits2.json")
+    cache_path = os.path.join(unreal.Paths.project_saved_dir(), "BuildingKits3.json")
     try:
         cache = json.load(open(cache_path))
     except Exception:
@@ -609,18 +625,35 @@ def measure_building_kits(eas):
                 offsets.append(unreal.Vector(*c["offset"]))
             continue
         # measured at the world origin (the packed buildings keep a part there, which skews bounds measured elsewhere)
-        lo, hi = [1e12] * 3, [-1e12] * 3
+        boxes = []
+        cover = {"all": set(), "low": set()}
         for c in (cls, ground_cls):
-            if not c:
-                continue
-            actor = eas.spawn_actor_from_class(c, unreal.Vector(0, 0, 0))
-            if not actor:
-                continue
-            a_lo, a_hi = _actor_box(actor)
-            eas.destroy_actor(actor)
-            lo = [min(x, y) for x, y in zip(lo, a_lo)]
-            hi = [max(x, y) for x, y in zip(hi, a_hi)]
+            box = None
+            if c:
+                actor = eas.spawn_actor_from_class(c, unreal.Vector(0, 0, 0))
+                if actor:
+                    box = _actor_box(actor, cover)
+                    eas.destroy_actor(actor)
+                    if box[0][0] > box[1][0]:
+                        box = None  # no mesh pieces found
+            boxes.append(box)
         unreal.SystemLibrary.collect_garbage()  # let go of each building before loading the next
+        upper, ground = boxes
+        if not upper:
+            log("building %s skipped (no size)" % name)
+            cache[name] = None
+            continue
+        # most of the building's footprint must reach the ground (a stub of an entrance under floors that start a
+        # storey up still floats; seen in David's test, 2026-11-03)
+        grounded = len(cover["low"] & cover["all"]) / max(1, len(cover["all"]))
+        if grounded < 0.7:
+            log("building %s skipped (only %d%% of it reaches the ground)" % (name, grounded * 100))
+            cache[name] = None
+            continue
+        lo, hi = list(upper[0]), list(upper[1])
+        if ground:
+            lo = [min(x, y) for x, y in zip(lo, ground[0])]
+            hi = [max(x, y) for x, y in zip(hi, ground[1])]
         size = unreal.Vector(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])
         if size.x < 300 or size.y < 300 or size.z < 300 or size.x > 1e9:
             log("building %s skipped (no size)" % name)
@@ -641,7 +674,7 @@ def measure_building_kits(eas):
         sizes.append(size)
         # footprint centre and base height relative to the actor origin (spawned at 0, 0, 0)
         offsets.append(unreal.Vector((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2]))
-        log("BUILDING %s %.0f x %.0f, %.0f m tall%s" % (name, size.x / 100, size.y / 100, size.z / 100, " + ground floor" if ground_cls else ""))
+        log("BUILDING %s %.0f x %.0f, %.0f m tall%s, %d%% on the ground" % (name, size.x / 100, size.y / 100, size.z / 100, " + ground floor" if ground_cls else "", grounded * 100))
     log("%d City Sample buildings available" % len(classes))
     return classes, ground_floors, sizes, offsets
 
