@@ -539,11 +539,9 @@ def report_fab_vehicles():
                 log("FAB   %s %s" % (cls, p))
 
 
-CELL = 200.0  # cm: footprint grid used to check a building stands on the ground
-
-
-def _cells(lo_x, lo_y, hi_x, hi_y):
-    return {(i, j) for i in range(int(lo_x // CELL), int(hi_x // CELL) + 1) for j in range(int(lo_y // CELL), int(hi_y // CELL) + 1)}
+def _grow(box, p_lo, p_hi):
+    box[0] = min(box[0], p_lo[0]); box[1] = min(box[1], p_lo[1])
+    box[2] = max(box[2], p_hi[0]); box[3] = max(box[3], p_hi[1])
 
 
 def _actor_box(actor, cover=None):
@@ -577,12 +575,12 @@ def _actor_box(actor, cover=None):
                     p_hi[k] = max(p_hi[k], v)
             lo = [min(a, b) for a, b in zip(lo, p_lo)]
             hi = [max(a, b) for a, b in zip(hi, p_hi)]
-            if cover is not None and p_hi[0] - p_lo[0] < 20000 and p_hi[1] - p_lo[1] < 20000:
-                # thin facade panels count too: a building's outline at street level must match its outline above
-                cells = _cells(p_lo[0], p_lo[1], p_hi[0], p_hi[1])
-                cover["all"] |= cells
-                if p_lo[2] < 150:
-                    cover["low"] |= cells
+            if cover is not None:
+                # outline at street level (walls standing on the ground, not flat slabs) and one storey up (5-9 m)
+                if p_lo[2] < 150 and p_hi[2] > 250:
+                    _grow(cover["street"], p_lo, p_hi)
+                if p_lo[2] < 900 and p_hi[2] > 500:
+                    _grow(cover["above"], p_lo, p_hi)
     return lo, hi
 
 
@@ -603,7 +601,7 @@ def measure_building_kits(eas):
             grounds[name.replace("_Level01", "").replace("A1l_", "A1_")] = path
     # measurements are remembered between runs (Saved/BuildingKits.json): measuring spawns every building, which is slow
     # and memory-hungry the first time
-    cache_path = os.path.join(unreal.Paths.project_saved_dir(), "BuildingKits3.json")
+    cache_path = os.path.join(unreal.Paths.project_saved_dir(), "BuildingKits4.json")
     try:
         cache = json.load(open(cache_path))
     except Exception:
@@ -626,7 +624,7 @@ def measure_building_kits(eas):
             continue
         # measured at the world origin (the packed buildings keep a part there, which skews bounds measured elsewhere)
         boxes = []
-        cover = {"all": set(), "low": set()}
+        cover = {"street": [1e12, 1e12, -1e12, -1e12], "above": [1e12, 1e12, -1e12, -1e12]}
         for c in (cls, ground_cls):
             box = None
             if c:
@@ -643,10 +641,17 @@ def measure_building_kits(eas):
             log("building %s skipped (no size)" % name)
             cache[name] = None
             continue
-        # most of the building's footprint must reach the ground (a stub of an entrance under floors that start a
-        # storey up still floats; seen in David's test, 2026-11-03)
-        grounded = len(cover["low"] & cover["all"]) / max(1, len(cover["all"]))
-        if grounded < 0.7:
+        # what stands on the street must cover the outline of the storey above it (a stub of an entrance under floors
+        # that start a storey up still floats; seen in David's test, 2026-11-03)
+        st, ab = cover["street"], cover["above"]
+        ab_area = (ab[2] - ab[0]) * (ab[3] - ab[1])
+        if ab_area <= 0:
+            grounded = 1.0 if st[2] > st[0] else 0.0  # nothing at that height: a low building
+        else:
+            ox = max(0.0, min(st[2], ab[2]) - max(st[0], ab[0]))
+            oy = max(0.0, min(st[3], ab[3]) - max(st[1], ab[1]))
+            grounded = ox * oy / ab_area
+        if grounded < 0.8:
             log("building %s skipped (only %d%% of it reaches the ground)" % (name, grounded * 100))
             cache[name] = None
             continue
