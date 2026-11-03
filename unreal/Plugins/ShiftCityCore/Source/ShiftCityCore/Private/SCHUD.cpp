@@ -12,6 +12,7 @@
 #include "SCJobDirector.h"
 #include "SCSaveGame.h"
 #include "SCTraffic.h"
+#include "SCCityGenerator.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
@@ -485,9 +486,9 @@ void ASCHUD::DrawHUD()
 	static const bool bRobotShots = FParse::Param(FCommandLine::Get(), TEXT("SCShots"));
 	// shots: 1 = main menu, 2 = garage screen, 3 = gameplay with GPS, 4 = traffic car close-up, 5 = aerial view of the city
 	// (USCCarVisuals::RobotLineup can photograph every Fab pack vehicle when a new pack arrives)
-	static const float RobotShotTimes[] = { 12.f, 17.f, 25.f, 33.f, 40.f }; // line-up shots late: first-time shader preparation
+	static const float RobotShotTimes[] = { 12.f, 17.f, 25.f, 33.f, 40.f, 48.f }; // line-up shots late: first-time shader preparation
 	const float RobotNow = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
-	if (bRobotShots && RobotShot < 5 && RobotNow > RobotShotTimes[RobotShot])
+	if (bRobotShots && RobotShot < 6 && RobotNow > RobotShotTimes[RobotShot])
 		FScreenshotRequest::RequestScreenshot(FPaths::ProjectSavedDir() / FString::Printf(TEXT("RobotShots/shot_%d.png"), ++RobotShot), true, false);
 	// the robot can't click: open the garage after the first screenshot, then start Free Ride after the second
 	if (bRobotShots && MenuWidget.IsValid() && RobotShot == 1 && CurrentScreen != uint8(SCMenu::EChoice::Garage) && RobotNow > 13.f)
@@ -506,6 +507,25 @@ void ASCHUD::DrawHUD()
 	{
 		const FVector Eye(-22000.f, -26000.f, 9000.f), Target(0.f, 0.f, 1500.f);
 		RobotCam->SetActorLocationAndRotation(Eye, (Target - Eye).Rotation());
+	}
+	// after the aerial shot, stand in the street by the City Sample building nearest University Quarter (David saw
+	// floating buildings there, 2026-11-03)
+	if (bRobotShots && RobotShot == 5 && RobotCam && GetWorld())
+	{
+		FVector Spot = FVector::ZeroVector;
+		for (TActorIterator<ASCDestination> It(GetWorld()); It; ++It) if (It->DisplayName == TEXT("University Quarter")) Spot = It->GetActorLocation();
+		TActorIterator<ASCCityGenerator> Gen(GetWorld());
+		if (Gen)
+		{
+			FVector Best = FVector::ZeroVector;
+			double BestD = 1e30;
+			for (const FVector& L : Gen->GetKitLocations())
+				if (FVector::DistSquared2D(L, Spot) < BestD) { BestD = FVector::DistSquared2D(L, Spot); Best = L; }
+			FVector Away = (Spot - Best).GetSafeNormal2D();
+			if (Away.IsNearlyZero()) Away = FVector(1.f, 0.f, 0.f);
+			const FVector Eye = Best + Away * 4500.f + FVector(0.f, 0.f, 250.f);
+			RobotCam->SetActorLocationAndRotation(Eye, (Best + FVector(0.f, 0.f, 900.f) - Eye).Rotation());
+		}
 	}
 	// after the third shot, follow traffic car 0 so the next shot shows whether traffic renders
 	if (bRobotShots && RobotShot == 3 && PC && GetWorld())

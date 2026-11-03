@@ -789,7 +789,7 @@ def setup_level(mats, lamp, tree):
     les.save_current_level()
 
 
-REQUIRED_GENERATOR_VERSION = 5
+REQUIRED_GENERATOR_VERSION = 6
 
 
 def check_code_is_current():

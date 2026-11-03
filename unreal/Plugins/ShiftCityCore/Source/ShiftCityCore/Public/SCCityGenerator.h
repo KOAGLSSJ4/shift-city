@@ -63,7 +63,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Shift City") bool bSpawnDestinations = true;
 
 	/** Bumped whenever the generator changes, so the setup script can tell if the C++ was rebuilt. */
-	UFUNCTION(BlueprintPure, Category = "Shift City") static int32 GetGeneratorVersion() { return 5; }
+	UFUNCTION(BlueprintPure, Category = "Shift City") static int32 GetGeneratorVersion() { return 6; }
+
+	/** World positions of the City Sample buildings placed (build robot: street-level check shot). */
+	TArray<FVector> GetKitLocations() const;
 
 	/** Where the player should start (next to Central Station, facing along the road). */
 	UFUNCTION(BlueprintPure, Category = "Shift City") FTransform GetSpawnTransform() const;
@@ -75,4 +78,5 @@ private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Hydrants;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UHierarchicalInstancedStaticMeshComponent> Bins;
 	UPROPERTY() TArray<TObjectPtr<UChildActorComponent>> KitBuildings;
+	UPROPERTY() TArray<int32> KitGroup; // per KitBuildings entry: which building it belongs to (floors above + ground floor)
 };

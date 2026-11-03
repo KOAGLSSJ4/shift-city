@@ -2,6 +2,7 @@
 #include "SCDestination.h"
 #include "ShiftCityCore.h"
 #include "Components/ChildActorComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -202,6 +203,7 @@ void ASCCityGenerator::Generate()
 	// ready-made City Sample buildings: the kit that best fits a plot (turned in 90 degree steps), taller ones downtown
 	for (UChildActorComponent* Old : KitBuildings) if (Old) Old->DestroyComponent();
 	KitBuildings.Reset();
+	KitGroup.Reset();
 	const int32 NumKits = FMath::Min3(BuildingKits.Num(), BuildingKitSizes.Num(), BuildingKitOffsets.Num());
 	auto PlaceKit = [&](const FBox2D& Plot, float WantH) -> bool
 	{
@@ -238,7 +240,9 @@ void ASCCityGenerator::Generate()
 		Kit->SetRelativeLocationAndRotation(FVector(Mid.X - Off.X, Mid.Y - Off.Y, KerbH - BuildingKitOffsets[Best].Z * BestFit), Rot);
 		Kit->SetRelativeScale3D(FVector(BestFit));
 		Kit->RegisterComponent();
+		const int32 Group = KitGroup.Num() ? KitGroup.Last() + 1 : 0;
 		KitBuildings.Add(Kit);
+		KitGroup.Add(Group);
 		// its ground floor, placed exactly the same way
 		if (BuildingKitGroundFloors.IsValidIndex(Best) && BuildingKitGroundFloors[Best])
 		{
@@ -249,6 +253,7 @@ void ASCCityGenerator::Generate()
 			GroundFloor->SetRelativeTransform(Kit->GetRelativeTransform());
 			GroundFloor->RegisterComponent();
 			KitBuildings.Add(GroundFloor);
+			KitGroup.Add(Group);
 		}
 		return true;
 	};
@@ -381,6 +386,35 @@ void ASCCityGenerator::AddPropInstances(const TArray<TObjectPtr<UStaticMesh>>& M
 void ASCCityGenerator::BeginPlay()
 {
 	Super::BeginPlay();
+	// check every City Sample building really stands on the street: the lowest mesh piece of the building (its ground
+	// floor, if it has one) should start at the kerb
+	int32 Floating = 0;
+	TMap<int32, float> GroupLowest;
+	TMap<int32, int32> GroupFirst;
+	for (int32 K = 0; K < KitBuildings.Num(); ++K)
+	{
+		const UChildActorComponent* Kit = KitBuildings[K];
+		const AActor* Child = Kit ? Kit->GetChildActor() : nullptr;
+		const int32 Group = KitGroup.IsValidIndex(K) ? KitGroup[K] : K;
+		GroupFirst.FindOrAdd(Group, K);
+		float& Lowest = GroupLowest.FindOrAdd(Group, 1e9f);
+		if (!Child) continue;
+		Child->ForEachComponent<UPrimitiveComponent>(false, [&Lowest](const UPrimitiveComponent* Prim)
+		{
+			if (Prim->IsVisible() && Prim->Bounds.SphereRadius >= 1.f) Lowest = FMath::Min(Lowest, float(Prim->Bounds.GetBox().Min.Z));
+		});
+	}
+	for (const TPair<int32, float>& G : GroupLowest)
+	{
+		const float Above = G.Value - (GetActorLocation().Z + SC::KerbH);
+		if (Above <= 150.f) continue;
+		++Floating;
+		const UChildActorComponent* Kit = KitBuildings[GroupFirst[G.Key]];
+		UE_LOG(LogShiftCity, Warning, TEXT("[ShiftCity] building %s at (%.0f, %.0f): lowest piece %.1f m above the kerb"),
+			Kit && Kit->GetChildActor() ? *GetNameSafe(Kit->GetChildActor()->GetClass()) : TEXT("?"),
+			Kit ? Kit->GetComponentLocation().X : 0.f, Kit ? Kit->GetComponentLocation().Y : 0.f, Above / 100.f);
+	}
+	UE_LOG(LogShiftCity, Log, TEXT("[ShiftCity] %d City Sample buildings placed, %d not on the street"), GroupLowest.Num(), Floating);
 	if (!bSpawnDestinations) return;
 	TSet<FString> Existing;
 	for (TActorIterator<ASCDestination> It(GetWorld()); It; ++It) Existing.Add(It->DisplayName);
@@ -398,4 +432,12 @@ void ASCCityGenerator::BeginPlay()
 		}
 	}
 	UE_LOG(LogShiftCity, Log, TEXT("Shift City generated; destinations ready"));
+}
+
+TArray<FVector> ASCCityGenerator::GetKitLocations() const
+{
+	TArray<FVector> Out;
+	for (int32 K = 0; K < KitBuildings.Num(); ++K)
+		if (KitBuildings[K] && (!KitGroup.IsValidIndex(K) || K == 0 || KitGroup[K] != KitGroup[K - 1])) Out.Add(KitBuildings[K]->GetComponentLocation());
+	return Out;
 }
