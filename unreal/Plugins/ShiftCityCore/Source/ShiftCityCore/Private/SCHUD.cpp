@@ -523,7 +523,7 @@ void ASCHUD::DrawHUD()
 				if (FVector::DistSquared2D(L, Spot) < BestD) { BestD = FVector::DistSquared2D(L, Spot); Best = L; }
 			FVector Away = (Spot - Best).GetSafeNormal2D();
 			if (Away.IsNearlyZero()) Away = FVector(1.f, 0.f, 0.f);
-			const FVector Eye = Best + Away * 4500.f + FVector(0.f, 0.f, 250.f);
+			const FVector Eye = Best + Away * 6000.f + FVector(0.f, 0.f, 1500.f); // above the street trees and awnings, low enough to see the ground floor
 			RobotCam->SetActorLocationAndRotation(Eye, (Best + FVector(0.f, 0.f, 900.f) - Eye).Rotation());
 		}
 	}
