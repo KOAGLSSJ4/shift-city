@@ -468,6 +468,8 @@ def make_car_materials():
         MEL.connect_material_property(const(surf, 0.02, -600, 450), "", P.MP_CUSTOM_DATA1)
     except Exception as e:
         unreal.log_warning("[ShiftCity] car clear coat inputs not connected: %s" % e)
+    # the hypercar is one skeletal mesh: without this flag Unreal swaps our paint for its plain grey default material
+    setp(surf, "used_with_skeletal_mesh", True)
     MEL.recompile_material(surf)
     EAL.save_loaded_asset(surf)
 
@@ -480,6 +482,7 @@ def make_car_materials():
     MEL.connect_material_property(scalar(glass, "Metallic", 0.2, -600, -100), "", P.MP_METALLIC)
     MEL.connect_material_property(scalar(glass, "Roughness", 0.05, -600, 0), "", P.MP_ROUGHNESS)
     MEL.connect_material_property(scalar(glass, "Opacity", 0.8, -600, 150), "", P.MP_OPACITY)
+    setp(glass, "used_with_skeletal_mesh", True)
     MEL.recompile_material(glass)
     EAL.save_loaded_asset(glass)
     log("car materials ready")
